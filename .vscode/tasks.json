@@ -1,0 +1,30 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: cl.exe build active file",
+			"command": "cmake",
+			"args": [
+				//"-DCMAKE_TOOLCHAIN_FILE=D:\\Workspace\\3rdparty\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+				"--build",
+				"build",
+				"--target",
+				"all_build",
+				//"${fileDirname}\\${fileBasenameNoExtension}.exe",
+				//"${file}"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group":{
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: cl.exe",
+		}
+	]
+}
