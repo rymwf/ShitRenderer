@@ -15,13 +15,14 @@ namespace Shit
 {
 	void Win32Window::Create()
 	{			
-		//DISPLAY_DEVICE lpDisplayDevice;
-		//DEVMODE lpDevMode;
-		//DWORD iDevNum{0};
-		//if (EnumDisplayDevices(nullptr, iDevNum, &lpDisplayDevice, 0))
-		//{
-		//	EnumDisplaySettings(lpDisplayDevice.DeviceName, ENUM_CURRENT_SETTINGS, &lpDevMode);
-		//}
+
+//		DISPLAY_DEVICE lpDisplayDevice;
+//		DEVMODE lpDevMode;
+//		DWORD iDevNum{0};
+//		if (EnumDisplayDevices(nullptr, iDevNum, &lpDisplayDevice, 0))
+//		{
+//			EnumDisplaySettings(lpDisplayDevice.DeviceName, ENUM_CURRENT_SETTINGS, &lpDevMode);
+//		}
 
 		const char CLASS_NAME[] = "Win32Window Class";
 
@@ -52,7 +53,7 @@ namespace Shit
 		);
 
 		if (mHwnd == NULL)
-			throw std::runtime_error("failed to create win32 window");
+			THROW("failed to create win32 window");
 		//		sWindowMap[mHwnd] = this;
 
 		RECT rect;
@@ -82,13 +83,14 @@ namespace Shit
 			case WM_CLOSE:
 			case WM_DESTROY:
 				ev.type = EventType::WINDOW_CLOSE;
+				ev.windowClose.pWindow = pThis;
 				pThis->mObserver.Notify(ev);
 				PostQuitMessage(0);
 				return 0;
 			case WM_SIZE:
 				ev.type = EventType::WINDOW_RESIZE;
-				pThis->mCreateInfo.rect.extent.width = ev.resize.width = LOWORD(lParam);
-				pThis->mCreateInfo.rect.extent.height = ev.resize.height = HIWORD(lParam);
+				pThis->mCreateInfo.rect.extent.width = ev.windowResize.width = LOWORD(lParam);
+				pThis->mCreateInfo.rect.extent.height = ev.windowResize.height = HIWORD(lParam);
 				pThis->mObserver.Notify(ev);
 				break;
 			case WM_MOUSEMOVE:

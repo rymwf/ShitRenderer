@@ -57,7 +57,7 @@ renderer/GL/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
 add_library(GLRenderer SHARED ${glfile} )
 target_link_libraries(GLRenderer PRIVATE
 GLEW::GLEW
-#Opengl32.lib
+Opengl32.lib
 )
 target_include_directories(GLRenderer PRIVATE	
 ${CMAKE_SOURCE_DIR}/
@@ -116,7 +116,7 @@ target_include_directories(ShitRenderer PRIVATE
 ${CMAKE_SOURCE_DIR}/renderer
 ${CMAKE_BINARY_DIR} 
 )
-#add_dependencies(ShitRenderer GLRenderer)
+add_dependencies(ShitRenderer GLRenderer VKRenderer)
 
 #===================
 #add examples
@@ -135,7 +135,7 @@ ${CMAKE_BINARY_DIR}
 target_link_libraries(${examplename}
 ${SHIT_OUTPUT_DIR}/ShitRenderer$<$<CONFIG:Debug>:d>.lib
 )
-
+add_dependencies(${examplename} ShitRenderer)
 #string(REGEX REPLACE "/" "\\\\" STR0 ${CMAKE_SOURCE_DIR}/3rdparty/assimp/build/bin/$(Configuration)/assimp-vc142-mt$<$<CONFIG:Debug>:d>.dll)
 #string(REGEX REPLACE "/" "\\\\" STR1 ${SHIT_OUTPUT_DIR}/)
 #add_custom_command(TARGET ${examplename} PRE_BUILD 

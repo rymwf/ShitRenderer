@@ -14,12 +14,12 @@
 
 using namespace Shit;
 
-#ifdef NDEBUG
-#define LOG(str)
-#define LOG_VAR(str)
-#else
-#define LOG(str) \
-	std::cout << __FILE__ << " " << __LINE__ << ":  " << str << std::endl
-#define LOG_VAR(str) \
-	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl
-#endif
+//#ifdef NDEBUG
+//#define LOG(str)
+//#define LOG_VAR(str)
+//#else
+//#define LOG(str) \
+//	std::cout << __FILE__ << " " << __LINE__ << ":  " << str << std::endl
+//#define LOG_VAR(str) \
+//	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl
+//#endif

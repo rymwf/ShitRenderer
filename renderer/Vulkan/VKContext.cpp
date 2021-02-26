@@ -10,7 +10,7 @@
 #include "VKContext.h"
 namespace Shit
 {
-	VKContext::VKContext(VkInstance instance, const ContextCreateInfo &createInfo)
+	VKContext::VKContext(const ContextCreateInfo &createInfo) : Context(createInfo)
 	{
 #if _WIN32
 		VkWin32SurfaceCreateInfoKHR tempInfo{
@@ -21,7 +21,11 @@ namespace Shit
 			static_cast<HWND>(createInfo.pWindow->GetNativeHandle())
 		};
 #else
-		static_assert(0, "there is no surface implementation");
+		static_assert(0, "there is no VK surface implementation");
 #endif
+
+		if (vkCreateWin32SurfaceKHR(vk_instance, &tempInfo, nullptr, &mSurface) != VK_SUCCESS)
+			THROW("failed to create VK surface");
 	}
+
 } // namespace Shit

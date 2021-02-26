@@ -9,9 +9,6 @@
  */
 #pragma once
 
-#ifdef _WIN32
-#define APIENTRY __stdcall
-#endif
 #include <GL/glew.h>
 
 #if _WIN32
@@ -20,7 +17,31 @@
 
 #include <renderer/ShitRendererPrerequisites.h>
 
+#define LOADGL                                                            \
+	{                                                                     \
+		GLenum err = glewInit();                                          \
+		if (GLEW_OK != err)                                               \
+		{                                                                 \
+			/* Problem: glewInit failed, something is seriously wrong. */ \
+			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));      \
+			THROW("failed to init glew");                                 \
+		}                                                                 \
+	}
+
+#define LOADWGL                                                           \
+	{                                                                     \
+		GLenum err = wglewInit();                                         \
+		if (GLEW_OK != err)                                               \
+		{                                                                 \
+			/* Problem: glewInit failed, something is seriously wrong. */ \
+			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));      \
+			THROW("failed to init wglew");                                \
+		}                                                                 \
+	}
+
+#define glIsExtensionSupported(x) glewIsExtensionSupported(x)
+#define wglIsExtensionSupported(x) wglewIsSupported(x)
+
 namespace Shit
 {
-
 } // namespace Shit

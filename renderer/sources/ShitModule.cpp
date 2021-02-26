@@ -26,7 +26,7 @@ namespace Shit
 			mHDLL = LoadLibrary(fileName.data());
 			if (mHDLL == NULL)
 			{
-				throw std::runtime_error("file " + fileName + " not exist");
+				THROW("file " + fileName + " not exist");
 			}
 		}
 		~Win32Module()

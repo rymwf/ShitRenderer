@@ -23,16 +23,17 @@ namespace Shit
 
 		RenderSystem() {}
 
-		struct WindowSurface
+		struct WindowContext
 		{
 			std::unique_ptr<ShitWindow> window;
-			std::unique_ptr<Context> surface;
+			std::unique_ptr<Context> context;
 		};
-		std::vector<WindowSurface> mWindowSurfaces;
+		std::vector<WindowContext> mWindowContexts;
 
-		virtual Context *CreateContext(const ContextCreateInfo &createInfo) = 0;
+		void DestroyWindow(const ShitWindow* pWindow);
 
-		
+		void ProcessWindowEvent(const Event& ev);
+
 	public:
 		RenderSystem(const RenderSystemCreateInfo &createInfo)
 			: mCreateInfo(createInfo)
@@ -49,7 +50,14 @@ namespace Shit
 
 		ShitWindow *CreateRenderWindow(const WindowCreateInfo &createInfo);
 
-//		virtual void EnumeratePhysicalDevice() ;
+		virtual Context *CreateContext(const ContextCreateInfo &createInfo) = 0;
+
+		/**
+		 * @brief TODO: physical device not finished
+		 * 
+		 * @param physicalDevices 
+		 */
+		virtual void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) = 0;
 	};
 
 	RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo);

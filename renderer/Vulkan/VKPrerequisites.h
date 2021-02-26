@@ -17,3 +17,8 @@
 #endif
 
 constexpr char *LAYER_VALIDATION_KHRONOS_validation = "VK_LAYER_KHRONOS_validation";
+
+namespace Shit{
+
+	extern VkInstance vk_instance;
+}

@@ -14,11 +14,8 @@
 #include "VKContext.h"
 namespace Shit
 {
-
 	class VKRenderSystem final : public RenderSystem
 	{
-		VkInstance mInstance;
-
 		void QueryInstanceExtensionProperties(const char *layerName, std::vector<VkExtensionProperties> &extensionProperties);
 		void QueryInstanceLayerProperties(std::vector<VkLayerProperties> &layerProperties);
 
@@ -26,12 +23,18 @@ namespace Shit
 
 		std::vector<VkLayerProperties> mInstanceLayerProperties;
 
+		int RateDeviceSuitability(VkPhysicalDevice device);
+		VkPhysicalDevice SelectPhysicalDevice();
+
+		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)override;
+
+		void CreateSurface(const ShitWindow* pWindow);
 	public:
 		VKRenderSystem(const RenderSystemCreateInfo &createInfo);
 
 		~VKRenderSystem() override
 		{
-			vkDestroyInstance(mInstance, nullptr);
+			vkDestroyInstance(vk_instance, nullptr);
 		}
 
 		Context *CreateContext(const ContextCreateInfo &createInfo) override;

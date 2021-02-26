@@ -28,12 +28,14 @@ namespace Shit
 		{
 			//			if (!gladLoadGL())
 			//			{
-			//				throw std::runtime_error("failed to init glad");
+			//				THROW("failed to init glad");
 			//		}
 		}
 		~GLRenderSystem() override
 		{
 		}
 		Context *CreateContext(const ContextCreateInfo &createInfo) override;
+
+		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)override;
 	};
 }

@@ -6,6 +6,7 @@ class Hello
 {
 	RenderSystem *renderSystem;
 	ShitWindow *window;
+	Context *context;
 
 public:
 	void initRenderSystem()
@@ -13,7 +14,7 @@ public:
 		RenderSystemCreateInfo renderSystemCreateInfo{
 			RendererVersion::GL,
 			//RendererVersion::VULKAN,
-			true};
+			RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT};
 
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		WindowCreateInfo windowCreateInfo{
@@ -21,6 +22,14 @@ public:
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}}};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
+
+		std::vector<PhysicalDevice> physicalDevices;
+		renderSystem->EnumeratePhysicalDevice(physicalDevices);
+
+		ContextCreateInfo contextCreateInfo{
+			window,
+		};
+		context = renderSystem->CreateContext(contextCreateInfo);
 	}
 	void createScene()
 	{
@@ -50,6 +59,6 @@ int main()
 	}
 	catch (const std::exception &err)
 	{
-		LOG_VAR(err.what());
+		std::cout << err.what() << std::endl;
 	}
 }

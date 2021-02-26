@@ -15,11 +15,21 @@ namespace Shit
 {
 	class VKContext final : public Context
 	{
-		VkSurfaceKHR mHandle;
+		VkSurfaceKHR mSurface;
+		VkPhysicalDevice mPhysicalDevice;
+		VkDevice mDevice;
+
+		int RateDeviceSuitability(VkPhysicalDevice device);
+		VkPhysicalDevice SelectPhysicalDevice();
+
+		void CreatePhysicalDevice();
 
 	public:
-		VKContext(VkInstance instance, const ContextCreateInfo &createInfo);
-
+		VKContext(const ContextCreateInfo &createInfo);
+		~VKContext()
+		{
+			vkDestroySurfaceKHR(vk_instance, mSurface, nullptr);
+		}
 	};
 
 } // namespace Shit

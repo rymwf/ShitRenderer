@@ -13,14 +13,90 @@
 
 namespace Shit
 {
-
-	GLContext::GLContext(const ContextCreateInfo &createInfo)
+	void GLContext::QueryGLExtensionNames(std::vector<const GLubyte *> &extensionNames)
 	{
-#ifdef _WIN32
+		int extensionCount{};
+		glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
+		extensionNames.resize(extensionCount);
+		LOG_VAR(extensionCount);
+		for (int i = 0; i < extensionCount; ++i)
+		{
+			extensionNames[i] = glGetStringi(GL_EXTENSIONS, i);
+			LOG_VAR(extensionNames[i]);
+		}
+	}
+
+#if _WIN32
+
+	void GLContextWin32::CreateRenderContext()
+	{
+		const int attribList[] =
+			{
+				WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+				//WGL_ACCELERATION_ARB,WGL_FULL_ACCELERATION_ARB,
+				WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+				WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+				WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB, //or WGL_TYPE_COLORINDEX_ARB
+				WGL_COLOR_BITS_ARB, 32,
+				WGL_DEPTH_BITS_ARB, 24,
+				WGL_STENCIL_BITS_ARB, 8,
+				0, // End
+			};
+
+		int pixelFormat{};
+		UINT numFormats;
+		if (!(mHDeviceContext, attribList, NULL, 1, &pixelFormat, &numFormats))
+		{
+			THROW("wglChoosePixelFormatARB failed");
+		}
+		LOG_VAR(pixelFormat);
+
+		int majorversion = max((static_cast<int>(mRenderSystemCreateInfo->version) >> 2) & 1, 1);
+		int minorversion = (static_cast<int>(mRenderSystemCreateInfo->version) >> 1) & 1;
+
+		int contexFlag{};
+		if (static_cast<bool>(mRenderSystemCreateInfo->flags & RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT))
+			contexFlag |= WGL_CONTEXT_DEBUG_BIT_ARB;
+		if (static_cast<bool>(mRenderSystemCreateInfo->flags & RenderSystemCreateFlagBits::SHIT_GL_CONTEXT_FORWARD_COMPATIBLE_BIT))
+			contexFlag |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+		int profileMaskFlag{WGL_CONTEXT_CORE_PROFILE_BIT_ARB};
+		if (static_cast<bool>(mRenderSystemCreateInfo->flags & RenderSystemCreateFlagBits::SHIT_GL_CONTEXT_COMPATIBILITY_PROFILE_BIT))
+			profileMaskFlag |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+
+		const int attribList2[] = {
+			WGL_CONTEXT_MAJOR_VERSION_ARB,
+			majorversion, //seems to be not support < 330
+			WGL_CONTEXT_MINOR_VERSION_ARB,
+			minorversion,
+			WGL_CONTEXT_FLAGS_ARB, contexFlag,
+			WGL_CONTEXT_PROFILE_MASK_ARB,
+			profileMaskFlag,
+			0};
+		wglDeleteContext(mHRenderContext);
+		mHRenderContext = wglCreateContextAttribsARB(mHDeviceContext, 0, attribList2);
+		if (!mHRenderContext)
+		{
+			THROW("failed to create render context");
+		}
+		if (!wglMakeContextCurrentARB(mHDeviceContext, mHDeviceContext, mHRenderContext))
+		{
+			fprintf(stderr, "ErrorCode: (0x)%x/n", GetLastError());
+			THROW("failed to make context current");
+		}
+
+		//reinit opengl and wgl
+		LOADGL
+		LOADWGL
+
+		LOG_VAR(QueryInstanceExtensionNames());
+	}
+
+	GLContextWin32::GLContextWin32(const RenderSystemCreateInfo *pRenderSystemCreateInfo, const ContextCreateInfo &createInfo)
+		: GLContext(pRenderSystemCreateInfo, createInfo)
+	{
 		mHDeviceContext = GetDC(static_cast<HWND>(createInfo.pWindow->GetNativeHandle()));
 		if (!mHDeviceContext)
-			throw std::runtime_error("failed to create surface");
-#endif
+			THROW("failed to create surface");
 
 		PIXELFORMATDESCRIPTOR pfd = {
 			sizeof(PIXELFORMATDESCRIPTOR), // size of this pfd
@@ -44,78 +120,25 @@ namespace Shit
 		};
 		// get the best available match of pixel format for the device context
 		int iPixelFormat = ChoosePixelFormat(mHDeviceContext, &pfd);
+		LOG_VAR(iPixelFormat);
 		SetPixelFormat(mHDeviceContext, iPixelFormat, &pfd);
 		mHRenderContext = wglCreateContext(mHDeviceContext);
 		if (!mHRenderContext)
-			throw std::runtime_error("failed to create surface");
+			THROW("failed to create surface");
 
 		wglMakeCurrent(mHDeviceContext, mHRenderContext);
 
-		GLenum err = glewInit();
-		if (GLEW_OK != err)
-		{
-			/* Problem: glewInit failed, something is seriously wrong. */
-			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
-			throw std::runtime_error("failed to init glew");
-		}
-		err = wglewInit();
-		if (GLEW_OK != err)
-		{
-			/* Problem: glewInit failed, something is seriously wrong. */
-			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
-			throw std::runtime_error("failed to init wglew");
-		}
-
-		const int attribList[] =
-			{
-				WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-				//WGL_ACCELERATION_ARB,WGL_FULL_ACCELERATION_ARB,
-				WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-				WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-				WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB, //or WGL_TYPE_COLORINDEX_ARB
-				WGL_COLOR_BITS_ARB, 32,
-				WGL_DEPTH_BITS_ARB, 24,
-				WGL_STENCIL_BITS_ARB, 8,
-				0, // End
-			};
-
-		int pixelFormat;
-		UINT numFormats;
-		if (!wglChoosePixelFormatARB(mHDeviceContext, attribList, NULL, 1, &pixelFormat, &numFormats))
-		{
-			throw std::runtime_error("wglChoosePixelFormatARB failed");
-		}
-
-
-
-
-		LOG(QueryInstanceExtensionNames());
-		std::vector<const GLubyte*> a;
-		QueryGLExtensionNames(a);
-		LOG_VAR(glGetString(GL_VENDOR));
-		LOG_VAR(glGetString(GL_RENDERER));
-		LOG_VAR(glGetString(GL_VERSION));
-		LOG_VAR(glGetString(GL_SHADING_LANGUAGE_VERSION));
+		LOADGL
+		LOADWGL
 	}
 
-	const char *GLContext::QueryInstanceExtensionNames()
+	const char *GLContextWin32::QueryInstanceExtensionNames()
 	{
-		if (wglewIsSupported("WGL_ARB_extensions_string"))
+		if (wglIsExtensionSupported("WGL_ARB_extensions_string"))
 			return wglGetExtensionsStringARB(mHDeviceContext);
-		else if (wglewIsSupported("WGL_EXT_extensions_string"))
+		else if (wglIsExtensionSupported("WGL_EXT_extensions_string"))
 			return wglGetExtensionsStringEXT();
-		throw std::runtime_error("failed to query instance extension names");
+		THROW("failed to query instance extension names");
 	}
-	void GLContext::QueryGLExtensionNames(std::vector<const GLubyte *> &extensionNames)
-	{
-		int extensionCount;
-		glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
-		extensionNames.resize(extensionCount);
-		LOG_VAR(extensionCount);
-		for (int i = 0; i < extensionCount; ++i)
-		{
-			extensionNames[i] = glGetStringi(GL_EXTENSIONS, i);
-			LOG_VAR(extensionNames[i]);
-		}
-	}
+#endif
 }

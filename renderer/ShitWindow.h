@@ -35,5 +35,10 @@ namespace Shit
 		virtual void SetSize(uint32_t width, uint32_t height) = 0;
 		virtual void SetTitle(const char *title) = 0;
 		virtual void SetPos(int x, int y) = 0;
+
+		void AttachEventHandle(const std::function<void(const Event &)> &eventHandler)
+		{
+			mObserver.Attach(eventHandler);
+		}
 	};
 }

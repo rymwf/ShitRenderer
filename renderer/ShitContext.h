@@ -15,9 +15,17 @@ namespace Shit
 {
 	class Context
 	{
+
 	protected:
-		Context() = default;
+		ContextCreateInfo mCreateInfo;
+		Context(const ContextCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+
 	public:
+		const ContextCreateInfo *GetCreateInfo() const
+		{
+			return &mCreateInfo;
+		}
+		virtual ~Context() {}
 	};
 
 }

@@ -333,8 +333,7 @@ namespace Shit
 
 	enum class RendererVersion
 	{
-		GL = (0x10000),			  //!< OpenGL lastest
-		GL_100 = (0x10000 | 100), //!< OpenGL 1.0.	1992
+		GL = (0x10000),			  //!< OpenGL lastest.
 		GL_110 = (0x10000 | 110), //!< OpenGL 1.1.	1997
 		GL_120 = (0x10000 | 120), //!< OpenGL 1.2.	1998
 		GL_121 = (0x10000 | 121), //!< OpenGL 1.2.1	1998
@@ -372,5 +371,18 @@ namespace Shit
 		D3D12 = (0x60000),
 
 		VersionBitmask = 0x0000ffff, //!< Bitmask for the version number of each shading language enumeration entry.
+		TypeBitmask = 0xf0000,		 //!< Typemask for renderer check
 	};
+	ENABLE_BITMASK_OPERATORS(RendererVersion);
+
+	enum class RenderSystemCreateFlagBits
+	{
+		None = 0,
+		SHIT_CONTEXT_DEBUG_BIT = (0x1),
+
+		SHIT_GL_CONTEXT_FORWARD_COMPATIBLE_BIT = (0x2),
+		SHIT_GL_CONTEXT_CORE_PROFILE_BIT = (0x4), //!< default for opengl
+		SHIT_GL_CONTEXT_COMPATIBILITY_PROFILE_BIT = (0x8),
+	};
+	ENABLE_BITMASK_OPERATORS(RenderSystemCreateFlagBits);
 }

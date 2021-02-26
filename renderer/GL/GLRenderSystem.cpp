@@ -22,17 +22,21 @@ namespace Shit
 
 	Context *GLRenderSystem::CreateContext(const ContextCreateInfo &createInfo)
 	{
-		for (auto &&windowSurface : mWindowSurfaces)
+		for (auto &&windowContext : mWindowContexts)
 		{
-			if (windowSurface.window.get() == createInfo.pWindow)
+			if (windowContext.window.get() == createInfo.pWindow)
 			{
 #ifdef _WIN32
-				windowSurface.surface = std::move(std::make_unique<GLContext>(createInfo));
-				return windowSurface.surface.get();
+				windowContext.context= std::move(std::make_unique<GLContextWin32>(&mCreateInfo, createInfo));
+				return windowContext.context.get();
 #endif
 			}
 		}
-		throw std::runtime_error("failed to create surface");
+		THROW("failed to create surface");
+	}
+	void GLRenderSystem::EnumeratePhysicalDevice([[maybe_unused]] std::vector<PhysicalDevice> &physicalDevices)
+	{
+		LOG("currently GL do not support select gpus");
 	}
 
 } // namespace Shit

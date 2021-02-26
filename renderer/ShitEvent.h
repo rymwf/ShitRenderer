@@ -51,6 +51,7 @@ namespace Shit
 	};
 	struct CloseEvent
 	{
+		ShitWindow *pWindow;
 	};
 	struct ResizeEvent
 	{
@@ -98,14 +99,14 @@ namespace Shit
 			DropEvent drop;
 
 			//window event
-			CloseEvent Close;
-			ResizeEvent resize;
-			ContentScaleEvent constentScale;
-			PosEvent pos;
-			IconifyEvent iconify;
-			MaximizeEvent maximize;
-			FocusEvent focus;
-			RefreshEvent refresh;
+			CloseEvent windowClose;
+			ResizeEvent windowResize;
+			ContentScaleEvent windowConstentScale;
+			PosEvent windowPos;
+			IconifyEvent windowIconify;
+			MaximizeEvent windowMaximize;
+			FocusEvent windowFocus;
+			RefreshEvent windowRefresh;
 		};
 	};
 

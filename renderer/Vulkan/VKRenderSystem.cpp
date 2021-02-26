@@ -8,9 +8,12 @@
  * 
  */
 #include "VKRenderSystem.h"
+#include <algorithm>
 
 namespace Shit
 {
+
+	VkInstance vk_instance;
 
 	extern "C" [[nodiscard]] SHIT_API Shit::RenderSystem *ShitLoadRenderSystem(const Shit::RenderSystemCreateInfo &createInfo)
 	{
@@ -91,7 +94,7 @@ namespace Shit
 		QueryInstanceExtensionProperties(nullptr, instanceExtensionProperties);
 		std::vector<const char *> extensionNames;
 		extensionNames.reserve(instanceExtensionProperties.size());
-		LOG("vulkan implementaion extenions:");
+		LOG("vulkan instance extenions:");
 		for (auto &e : instanceExtensionProperties)
 		{
 			extensionNames.emplace_back(e.extensionName);
@@ -100,7 +103,7 @@ namespace Shit
 
 		std::vector<const char *> layers;
 
-		if (createInfo.debug)
+		if (static_cast<bool>(createInfo.flags & RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT))
 		{
 			//enable validation layer
 			if (CheckLayerSupport(LAYER_VALIDATION_KHRONOS_validation))
@@ -121,22 +124,108 @@ namespace Shit
 			layers.data(),
 			extensionNames.size(),
 			extensionNames.data()};
-		if (vkCreateInstance(&instanceInfo, 0, &mInstance) != VK_SUCCESS)
-			throw std::runtime_error("create instance failed");
+		if (vkCreateInstance(&instanceInfo, 0, &vk_instance) != VK_SUCCESS)
+			THROW("create instance failed");
 	}
 
 	Context *VKRenderSystem::CreateContext(const ContextCreateInfo &createInfo)
 	{
-		for (auto &&windowSurface : mWindowSurfaces)
+		//TODO:fix this, let user choose physical device
+		//select physical device
+		ContextCreateInfo tempCreateInfo = createInfo;
+		tempCreateInfo.phyicalDevice = SelectPhysicalDevice();
+
+		for (auto &&windowContext : mWindowContexts)
 		{
-			if (windowSurface.window.get() == createInfo.pWindow)
+			if (windowContext.window.get() == createInfo.pWindow)
 			{
 #ifdef _WIN32
-				windowSurface.surface = std::move(std::make_unique<VKContext>(mInstance, createInfo));
-				return windowSurface.surface.get();
+				//windowContext.surface = std::move(std::make_unique<VKContext>(createInfo));
+				windowContext.context= std::move(std::make_unique<VKContext>(tempCreateInfo));
+				return windowContext.context.get();
 #endif
 			}
 		}
-		throw std::runtime_error("failed to create surface");
+		THROW("failed to create surface");
 	}
+	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
+	{
+		uint32_t count{};
+		vkEnumeratePhysicalDevices(vk_instance, &count, nullptr);
+		std::vector<VkPhysicalDevice> devices(count);
+		vkEnumeratePhysicalDevices(vk_instance, &count, reinterpret_cast<VkPhysicalDevice *>(physicalDevices.data()));
+	}
+
+	int VKRenderSystem::RateDeviceSuitability(VkPhysicalDevice device)
+	{
+		VkPhysicalDeviceProperties deviceProperties;
+		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+		LOG_VAR(deviceProperties.apiVersion);
+		LOG_VAR(VK_VERSION_MAJOR(deviceProperties.apiVersion));
+		LOG_VAR(VK_VERSION_MINOR(deviceProperties.apiVersion));
+		LOG_VAR(VK_VERSION_PATCH(deviceProperties.apiVersion));
+		LOG_VAR(deviceProperties.driverVersion);
+		LOG_VAR(deviceProperties.vendorID);
+		LOG_VAR(deviceProperties.deviceID);
+		LOG_VAR(deviceProperties.deviceType);
+		LOG_VAR(deviceProperties.deviceName);
+		LOG_VAR(deviceProperties.pipelineCacheUUID);
+		LOG_VAR(deviceProperties.limits.maxVertexInputBindings);
+		LOG_VAR(deviceProperties.limits.maxVertexInputBindingStride);
+		LOG_VAR(deviceProperties.limits.maxVertexInputAttributes);
+		LOG_VAR(deviceProperties.limits.maxImageDimension2D);
+		// LOG_VAR(deviceProperties.sparseProperties);
+
+		LOG_VAR(deviceFeatures.geometryShader);
+		LOG_VAR(deviceFeatures.samplerAnisotropy);
+		// Application can't function without geometry shaders
+		int score = 0;
+		if (!deviceFeatures.geometryShader)
+		{
+			LOG_VAR(score);
+			LOG_VAR(deviceProperties.deviceName);
+			return 0;
+		}
+
+		//discrete gpu is prefered
+		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			score += 1000;
+		// Maximum possible size of textures affects graphics quality
+		score += deviceProperties.limits.maxImageDimension2D;
+
+		LOG_VAR(score);
+		LOG_VAR(deviceProperties.deviceName);
+		return score;
+	}
+
+	VkPhysicalDevice VKRenderSystem::SelectPhysicalDevice()
+	{
+		uint32_t physicalDeviceCount;
+		vkEnumeratePhysicalDevices(vk_instance, &physicalDeviceCount, nullptr);
+		LOG(physicalDeviceCount);
+		if (physicalDeviceCount == 0)
+		{
+			THROW("failed to find GPUs with vulkan support");
+		}
+		//first element is score
+		std::vector<VkPhysicalDevice> devices(physicalDeviceCount);
+		vkEnumeratePhysicalDevices(vk_instance, &physicalDeviceCount, devices.data());
+
+		std::vector<std::pair<int, VkPhysicalDevice>> scoreddevices;
+		for (auto &device : devices)
+		{
+			scoreddevices.emplace_back(RateDeviceSuitability(device), device);
+		}
+		std::sort(scoreddevices.begin(), scoreddevices.end());
+
+		auto &temp = scoreddevices.back();
+		if (temp.first == 0)
+			THROW("failed to find a suitable GPU");
+
+		return temp.second;
+	}
+
 }

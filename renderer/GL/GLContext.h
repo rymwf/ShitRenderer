@@ -17,17 +17,31 @@
 
 namespace Shit
 {
-	class GLContext final : public Context
+	class GLContext : public Context
 	{
-#if _WIN32
-		HDC mHDeviceContext;
- 	 	HGLRC mHRenderContext;	//false context
-#endif
-		const char *QueryInstanceExtensionNames();
+	protected:
+		const RenderSystemCreateInfo *mRenderSystemCreateInfo;
 
 		void QueryGLExtensionNames(std::vector<const GLubyte *> &extensionNames);
+		GLContext(const RenderSystemCreateInfo *pRenderSystemCreateInfo, const ContextCreateInfo &createInfo)
+			: Context(createInfo), mRenderSystemCreateInfo(pRenderSystemCreateInfo) {}
 
 	public:
-		GLContext(const ContextCreateInfo &createInfo);
 	};
+
+#if _WIN32
+	class GLContextWin32 final : public GLContext
+	{
+		HDC mHDeviceContext;
+		HGLRC mHRenderContext; //false context
+
+		const char *QueryInstanceExtensionNames();
+
+		void CreateRenderContext();
+
+	public:
+		GLContextWin32(const RenderSystemCreateInfo *pRenderSystemCreateInfo, const ContextCreateInfo &createInfo);
+	};
+#endif
+
 } // namespace Shit
