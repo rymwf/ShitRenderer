@@ -9,35 +9,52 @@
  */
 #pragma once
 #include <renderer/ShitRenderSystem.h>
-
 #include "VKPrerequisites.h"
-#include "VKContext.h"
+#include "VKSwapchain.h"
+
 namespace Shit
 {
 	class VKRenderSystem final : public RenderSystem
 	{
-		void QueryInstanceExtensionProperties(const char *layerName, std::vector<VkExtensionProperties> &extensionProperties);
-		void QueryInstanceLayerProperties(std::vector<VkLayerProperties> &layerProperties);
+		std::vector<VkLayerProperties> mInstanceLayerProperties;
+
+		std::vector<WindowAttribute> mWindowAttributes;
 
 		bool CheckLayerSupport(const char *layerName);
 
-		std::vector<VkLayerProperties> mInstanceLayerProperties;
+		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
 
-		int RateDeviceSuitability(VkPhysicalDevice device);
-		VkPhysicalDevice SelectPhysicalDevice();
+		void CreateSurface(ShitWindow *pWindow) override;
 
-		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)override;
+		decltype(auto) GetWindowAttributeIterator(const ShitWindow *pWindow)
+		{
+			auto end = mWindowAttributes.end();
+			for (auto it = mWindowAttributes.begin(); it != end; ++it)
+				if (it->pWindow == pWindow)
+					return it;
+			return end;
+		}
 
-		void CreateSurface(const ShitWindow* pWindow);
+		void DeleteSurface(const ShitWindow *pWindow)
+		{
+			vkDestroySurfaceKHR(vk_instance, GetWindowAttributeIterator(pWindow)->surface, nullptr);
+		}
+
+		void ProcessWindowEvent(const Event &ev) override;
+
 	public:
 		VKRenderSystem(const RenderSystemCreateInfo &createInfo);
 
 		~VKRenderSystem() override
 		{
+			for (auto &&e : mWindowAttributes)
+				vkDestroySurfaceKHR(vk_instance, e.surface, nullptr);
+			mDevices.clear();
 			vkDestroyInstance(vk_instance, nullptr);
 		}
 
-		Context *CreateContext(const ContextCreateInfo &createInfo) override;
+		Device *CreateDevice(PhysicalDevice *pPhyicalDevice, ShitWindow *pWindow) override;
 
+		Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) override;
 	};
 }

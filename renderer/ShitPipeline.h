@@ -1,5 +1,5 @@
 /**
- * @file ShitDevice.h
+ * @file ShitPipeline.h
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -12,9 +12,10 @@
 
 namespace Shit{
 
-	class Device
+	class Pipeline
 	{
 		public:
-			virtual ~Device() {}
+
 	};
 }
+

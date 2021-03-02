@@ -8,13 +8,13 @@
  * 
  */
 #include "ShitEvent.h"
-#if _WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #endif
 namespace Shit
 {
 
-#if _WIN32
+#ifdef _WIN32
 
 	static uint32_t shitKey2NativeKeyMap[]{
 		VK_SPACE,

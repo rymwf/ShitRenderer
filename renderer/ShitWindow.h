@@ -11,7 +11,6 @@
 #include "ShitRendererPrerequisites.h"
 #include "ShitEvent.h"
 #include "ShitObserver.h"
-#include "ShitContext.h"
 
 namespace Shit
 {
@@ -30,8 +29,6 @@ namespace Shit
 		virtual ~ShitWindow() {}
 
 		virtual void PollEvent() = 0;
-		virtual void *GetNativeHandle() const= 0;
-		virtual void *GetNativeInstance() const= 0;
 		virtual void SetSize(uint32_t width, uint32_t height) = 0;
 		virtual void SetTitle(const char *title) = 0;
 		virtual void SetPos(int x, int y) = 0;

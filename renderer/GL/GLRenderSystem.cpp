@@ -11,6 +11,7 @@
 #include <gl/wglext.h>
 namespace Shit
 {
+
 	extern "C" [[nodiscard]] SHIT_API Shit::RenderSystem *ShitLoadRenderSystem(const Shit::RenderSystemCreateInfo &createInfo)
 	{
 		return new GLRenderSystem(createInfo);
@@ -20,23 +21,22 @@ namespace Shit
 		delete pRenderSystem;
 	}
 
-	Context *GLRenderSystem::CreateContext(const ContextCreateInfo &createInfo)
-	{
-		for (auto &&windowContext : mWindowContexts)
-		{
-			if (windowContext.window.get() == createInfo.pWindow)
-			{
-#ifdef _WIN32
-				windowContext.context= std::move(std::make_unique<GLContextWin32>(&mCreateInfo, createInfo));
-				return windowContext.context.get();
-#endif
-			}
-		}
-		THROW("failed to create surface");
-	}
 	void GLRenderSystem::EnumeratePhysicalDevice([[maybe_unused]] std::vector<PhysicalDevice> &physicalDevices)
 	{
 		LOG("currently GL do not support select gpus");
+	}
+
+	Swapchain *GLRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
+	{
+#ifdef _WIN32
+		mSwapchains.emplace_back(std::make_unique<GLSwapchainWin32>(createInfo, mCreateInfo.version, mCreateInfo.flags));
+#else
+		static_assert(0, "CreateSwapchain is not implemented ye");
+#endif
+		return mSwapchains.back().get();
+	}
+	void GLRenderSystem::ProcessWindowEvent([[maybe_unused]] const Event &ev)
+	{
 	}
 
 } // namespace Shit

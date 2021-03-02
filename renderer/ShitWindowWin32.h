@@ -13,7 +13,7 @@
 
 namespace Shit
 {
-	class Win32Window final : public ShitWindow
+	class WindowWin32 final : public ShitWindow
 	{
 		HWND mHwnd;
 		HINSTANCE mHInstance;
@@ -22,11 +22,11 @@ namespace Shit
 
 	public:
 		static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-		Win32Window(const WindowCreateInfo &createInfo) : ShitWindow(createInfo)
+		WindowWin32(const WindowCreateInfo &createInfo) : ShitWindow(createInfo)
 		{
 			Create();
 		}
-		~Win32Window() override {}
+		~WindowWin32() override {}
 
 		void SetSize(uint32_t width, uint32_t height) override;
 		void SetTitle(const char *title) override;
@@ -34,7 +34,7 @@ namespace Shit
 
 		//void Close() override;
 		void PollEvent() override;
-		void *GetNativeHandle() const override { return mHwnd; }
-		void *GetNativeInstance() const override { return mHInstance; }
+		HWND GetHWND() const { return mHwnd; }
+		HINSTANCE GetInstance() const { return mHInstance; }
 	};
 }

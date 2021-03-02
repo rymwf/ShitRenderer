@@ -11,7 +11,7 @@
 
 #include <GL/glew.h>
 
-#if _WIN32
+#ifdef _WIN32
 #include <GL/wglew.h>
 #endif
 
@@ -44,4 +44,43 @@
 
 namespace Shit
 {
+	using ProgramHandle = GLuint;
+
+	struct ShitGLVersion
+	{
+		int major;
+		int minor;
+	};
+	extern ShitGLVersion GLVersion;
+
+	struct ProgramCreateInfo
+	{
+		std::shared_ptr<std::vector<GLuint>> pShaders;
+		bool separable;
+		bool retrievable;
+	};
+
+	namespace GL
+	{
+		void queryGLExtensionNames(std::vector<const GLubyte *> &extensionNames);
+
+		void querySupportedShaderBinaryFormat(std::vector<GLint> &shaderBinaryFormats);
+		void querySupportedProgramBinaryFormat(std::vector<GLint> &programBinaryFormats);
+		bool isSupportShaderBinaryFormat(GLenum format);
+
+#ifdef _WIN32
+		const char *queryWGLExtensionNames(HDC hdc);
+#endif
+		void listGLInfo();
+	}
+
+	GLenum MapInternalFormat(ShitFormat format);
+	GLenum Map(ShaderStageFlagBits flag);
+	GLenum Map(BufferUsageFlagBits flag);
+	GLenum Map(BufferMutableStorageUsage usage);
+	GLbitfield Map(BufferMapFlagBits flag);
+	GLbitfield Map(BufferStorageFlagBits flag);
+
+	ProgramHandle CreateProgram(const ProgramCreateInfo &createInfo);
+
 } // namespace Shit

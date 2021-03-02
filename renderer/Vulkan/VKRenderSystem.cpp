@@ -8,7 +8,11 @@
  * 
  */
 #include "VKRenderSystem.h"
-#include <algorithm>
+#include "VKDevice.h"
+
+#ifdef _WIN32
+#include <renderer/ShitWindowWin32.h>
+#endif
 
 namespace Shit
 {
@@ -24,26 +28,11 @@ namespace Shit
 		delete pRenderSystem;
 	}
 
-	void VKRenderSystem::QueryInstanceExtensionProperties(const char *layerName, std::vector<VkExtensionProperties> &extensionProperties)
-	{
-		uint32_t count;
-		vkEnumerateInstanceExtensionProperties(layerName, &count, nullptr);
-		extensionProperties.resize(count);
-		vkEnumerateInstanceExtensionProperties(layerName, &count, extensionProperties.data());
-	}
-	void VKRenderSystem::QueryInstanceLayerProperties(std::vector<VkLayerProperties> &layerProperties)
-	{
-		uint32_t count;
-		vkEnumerateInstanceLayerProperties(&count, nullptr);
-		layerProperties.resize(count);
-		vkEnumerateInstanceLayerProperties(&count, layerProperties.data());
-	}
-
 	bool VKRenderSystem::CheckLayerSupport(const char *layerName)
 	{
 		if (mInstanceLayerProperties.empty())
 		{
-			QueryInstanceLayerProperties(mInstanceLayerProperties);
+			VK::queryInstanceLayerProperties(mInstanceLayerProperties);
 #ifndef NDEBUG
 			for (auto &&layer : mInstanceLayerProperties)
 			{
@@ -54,7 +43,7 @@ namespace Shit
 				LOG_VAR(layer.description);
 
 				std::vector<VkExtensionProperties> layerExtensionProperties;
-				QueryInstanceExtensionProperties(layer.layerName, layerExtensionProperties);
+				VK::queryInstanceExtensionProperties(layer.layerName, layerExtensionProperties);
 				for (auto &&layerExtensionProp : layerExtensionProperties)
 				{
 					LOG_VAR(layerExtensionProp.specVersion);
@@ -91,7 +80,7 @@ namespace Shit
 
 		//add extensions
 		std::vector<VkExtensionProperties> instanceExtensionProperties;
-		QueryInstanceExtensionProperties(nullptr, instanceExtensionProperties);
+		VK::queryInstanceExtensionProperties(nullptr, instanceExtensionProperties);
 		std::vector<const char *> extensionNames;
 		extensionNames.reserve(instanceExtensionProperties.size());
 		LOG("vulkan instance extenions:");
@@ -128,104 +117,55 @@ namespace Shit
 			THROW("create instance failed");
 	}
 
-	Context *VKRenderSystem::CreateContext(const ContextCreateInfo &createInfo)
+	void VKRenderSystem::CreateSurface(ShitWindow *pWindow)
 	{
-		//TODO:fix this, let user choose physical device
-		//select physical device
-		ContextCreateInfo tempCreateInfo = createInfo;
-		tempCreateInfo.phyicalDevice = SelectPhysicalDevice();
-
-		for (auto &&windowContext : mWindowContexts)
-		{
-			if (windowContext.window.get() == createInfo.pWindow)
-			{
 #ifdef _WIN32
-				//windowContext.surface = std::move(std::make_unique<VKContext>(createInfo));
-				windowContext.context= std::move(std::make_unique<VKContext>(tempCreateInfo));
-				return windowContext.context.get();
+		VkWin32SurfaceCreateInfoKHR createInfo{
+			VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+			nullptr,
+			0,
+			static_cast<WindowWin32 *>(pWindow)->GetInstance(),
+			static_cast<WindowWin32 *>(pWindow)->GetHWND(),
+		};
+#else
+		static_assert(0, "there is no VK surface implementation");
 #endif
-			}
-		}
-		THROW("failed to create surface");
+		VkSurfaceKHR surface;
+		if (vkCreateWin32SurfaceKHR(vk_instance, &createInfo, nullptr, &surface) != VK_SUCCESS)
+			THROW("failed to create VK surface");
+
+		mWindowAttributes.emplace_back(WindowAttribute{pWindow, surface});
 	}
 	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
 	{
-		uint32_t count{};
-		vkEnumeratePhysicalDevices(vk_instance, &count, nullptr);
-		std::vector<VkPhysicalDevice> devices(count);
-		vkEnumeratePhysicalDevices(vk_instance, &count, reinterpret_cast<VkPhysicalDevice *>(physicalDevices.data()));
+		VK::queryPhysicalDevices(vk_instance, physicalDevices);
 	}
 
-	int VKRenderSystem::RateDeviceSuitability(VkPhysicalDevice device)
+	Device *VKRenderSystem::CreateDevice([[maybe_unused]] PhysicalDevice *pPhyicalDevice, [[maybe_unused]] ShitWindow *pWindow)
 	{
-		VkPhysicalDeviceProperties deviceProperties;
-		vkGetPhysicalDeviceProperties(device, &deviceProperties);
-		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-		LOG_VAR(deviceProperties.apiVersion);
-		LOG_VAR(VK_VERSION_MAJOR(deviceProperties.apiVersion));
-		LOG_VAR(VK_VERSION_MINOR(deviceProperties.apiVersion));
-		LOG_VAR(VK_VERSION_PATCH(deviceProperties.apiVersion));
-		LOG_VAR(deviceProperties.driverVersion);
-		LOG_VAR(deviceProperties.vendorID);
-		LOG_VAR(deviceProperties.deviceID);
-		LOG_VAR(deviceProperties.deviceType);
-		LOG_VAR(deviceProperties.deviceName);
-		LOG_VAR(deviceProperties.pipelineCacheUUID);
-		LOG_VAR(deviceProperties.limits.maxVertexInputBindings);
-		LOG_VAR(deviceProperties.limits.maxVertexInputBindingStride);
-		LOG_VAR(deviceProperties.limits.maxVertexInputAttributes);
-		LOG_VAR(deviceProperties.limits.maxImageDimension2D);
-		// LOG_VAR(deviceProperties.sparseProperties);
-
-		LOG_VAR(deviceFeatures.geometryShader);
-		LOG_VAR(deviceFeatures.samplerAnisotropy);
-		// Application can't function without geometry shaders
-		int score = 0;
-		if (!deviceFeatures.geometryShader)
-		{
-			LOG_VAR(score);
-			LOG_VAR(deviceProperties.deviceName);
-			return 0;
-		}
-
-		//discrete gpu is prefered
-		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-			score += 1000;
-		// Maximum possible size of textures affects graphics quality
-		score += deviceProperties.limits.maxImageDimension2D;
-
-		LOG_VAR(score);
-		LOG_VAR(deviceProperties.deviceName);
-		return score;
+		static PhysicalDevice physicalDevice;
+		physicalDevice = VK::pickPhysicalDevice(vk_instance);
+		mDevices.emplace_back(std::make_unique<VKDevice>(physicalDevice));
+		return mDevices.back().get();
 	}
 
-	VkPhysicalDevice VKRenderSystem::SelectPhysicalDevice()
+	Swapchain *VKRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
 	{
-		uint32_t physicalDeviceCount;
-		vkEnumeratePhysicalDevices(vk_instance, &physicalDeviceCount, nullptr);
-		LOG(physicalDeviceCount);
-		if (physicalDeviceCount == 0)
-		{
-			THROW("failed to find GPUs with vulkan support");
-		}
-		//first element is score
-		std::vector<VkPhysicalDevice> devices(physicalDeviceCount);
-		vkEnumeratePhysicalDevices(vk_instance, &physicalDeviceCount, devices.data());
-
-		std::vector<std::pair<int, VkPhysicalDevice>> scoreddevices;
-		for (auto &device : devices)
-		{
-			scoreddevices.emplace_back(RateDeviceSuitability(device), device);
-		}
-		std::sort(scoreddevices.begin(), scoreddevices.end());
-
-		auto &temp = scoreddevices.back();
-		if (temp.first == 0)
-			THROW("failed to find a suitable GPU");
-
-		return temp.second;
+		auto windowAttribIt = GetWindowAttributeIterator(createInfo.pWindow);
+		windowAttribIt->swapchain = std::move(std::make_unique<VKSwapchain>(createInfo, windowAttribIt->surface));
+		return windowAttribIt->swapchain.get();
 	}
 
+	void VKRenderSystem::ProcessWindowEvent(const Event &ev)
+	{
+		switch (ev.type)
+		{
+		case EventType::WINDOW_CLOSE:
+			auto it = GetWindowAttributeIterator(ev.pWindow);
+			auto surface = it->surface;
+			mWindowAttributes.erase(it);
+			vkDestroySurfaceKHR(vk_instance, surface, nullptr);
+			break;
+		}
+	}
 }

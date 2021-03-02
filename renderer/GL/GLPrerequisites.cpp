@@ -1,0 +1,401 @@
+/**
+ * @file GLPrerequisites.cpp
+ * @author yangzs
+ * @brief 
+ * @version 0.1
+ * 
+ * @copyright Copyright (c) 2021
+ * 
+ */
+#include "GLPrerequisites.h"
+
+namespace Shit
+{
+	ShitGLVersion GLVersion;
+
+	namespace GL
+	{
+		void queryGLExtensionNames(std::vector<const GLubyte *> &extensionNames)
+		{
+			int extensionCount{};
+			glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
+			extensionNames.resize(extensionCount);
+			LOG_VAR(extensionCount);
+			for (int i = 0; i < extensionCount; ++i)
+			{
+				extensionNames[i] = glGetStringi(GL_EXTENSIONS, i);
+				LOG_VAR(extensionNames[i]);
+			}
+		}
+
+		void querySupportedShaderBinaryFormat(std::vector<GLint> &shaderBinaryFormats)
+		{
+			GLint count;
+			glGetIntegerv(GL_NUM_SHADER_BINARY_FORMATS, &count);
+			shaderBinaryFormats.resize(count);
+			glGetIntegerv(GL_SHADER_BINARY_FORMATS, shaderBinaryFormats.data());
+		}
+
+		void querySupportedProgramBinaryFormat(std::vector<GLint> &programBinaryFormats)
+		{
+			GLint count;
+			glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &count);
+			programBinaryFormats.resize(count);
+			glGetIntegerv(GL_PROGRAM_BINARY_FORMATS, programBinaryFormats.data());
+		}
+
+		bool isSupportShaderBinaryFormat(GLenum format)
+		{
+			std::vector<GLint> shaderBinaryFormats;
+			querySupportedShaderBinaryFormat(shaderBinaryFormats);
+			for (auto &shaderBinaryFormat : shaderBinaryFormats)
+			{
+				LOG_VAR(shaderBinaryFormat);
+				if (static_cast<GLenum>(shaderBinaryFormat) == format)
+					return true;
+			}
+			return false;
+		}
+
+#ifdef _WIN32
+		const char *queryWGLExtensionNames(HDC hdc)
+		{
+			if (wglIsExtensionSupported("WGL_ARB_extensions_string"))
+				return wglGetExtensionsStringARB(hdc);
+			else if (wglIsExtensionSupported("WGL_EXT_extensions_string"))
+				return wglGetExtensionsStringEXT();
+			THROW("failed to query instance extension names");
+		}
+#endif
+
+		void listGLInfo()
+		{
+			// check opengl informations
+			LOG_VAR(glGetString(GL_VENDOR));
+			LOG_VAR(glGetString(GL_RENDERER));
+			LOG_VAR(glGetString(GL_VERSION));
+			LOG_VAR(glGetString(GL_SHADING_LANGUAGE_VERSION));
+			int samples;
+			glGetIntegerv(GL_SAMPLES, &samples);
+			LOG_VAR(samples);
+
+			int maxFramebufferWidth{}, maxFramebufferHeight{};
+			glGetIntegerv(GL_MAX_FRAMEBUFFER_WIDTH, &maxFramebufferWidth);
+			glGetIntegerv(GL_MAX_FRAMEBUFFER_HEIGHT, &maxFramebufferHeight);
+			LOG_VAR(maxFramebufferWidth);
+			LOG_VAR(maxFramebufferHeight);
+
+			if (GLVersion.major * 10 + GLVersion.minor >= 43)
+			{
+				//framebuffer parameter
+				GLenum list0[]{
+					//		GL_FRAMEBUFFER_DEFAULT_WIDTH,
+					//		GL_FRAMEBUFFER_DEFAULT_HEIGHT,
+					//		GL_FRAMEBUFFER_DEFAULT_LAYERS,
+					//		GL_FRAMEBUFFER_DEFAULT_SAMPLES,
+					//		GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS,
+
+					GL_DOUBLEBUFFER,
+					GL_IMPLEMENTATION_COLOR_READ_FORMAT,
+					GL_IMPLEMENTATION_COLOR_READ_TYPE,
+					GL_SAMPLES,
+					GL_SAMPLE_BUFFERS,
+					GL_STEREO};
+				const char *list1[]{
+					"GL_DOUBLEBUFFER",
+					"GL_IMPLEMENTATION_COLOR_READ_FORMAT",
+					"GL_IMPLEMENTATION_COLOR_READ_TYPE",
+					"GL_SAMPLES",
+					"GL_SAMPLE_BUFFERS",
+					"GL_STEREO"};
+
+				//default framebuffer
+				for (int i = 0, len = sizeof list0 / sizeof list0[0]; i < len; ++i)
+				{
+					GLint a{};
+					glGetFramebufferParameteriv(GL_FRAMEBUFFER, list0[i], &a);
+					LOG(list1[i]);
+					LOG(a);
+				}
+			}
+
+			GLenum list2[]{
+				GL_FRONT_LEFT,
+				GL_FRONT_RIGHT,
+				GL_BACK_LEFT,
+				GL_BACK_RIGHT,
+				GL_DEPTH,
+				GL_STENCIL};
+			const char *list3[]{
+				"GL_FRONT_LEFT",
+				"GL_FRONT_RIGHT",
+				"GL_BACK_LEFT",
+				"GL_BACK_RIGHT",
+				"GL_DEPTH",
+				"GL_STENCIL"};
+			GLenum list4[]{
+				GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE,
+				GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE,
+				GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE,
+				GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE,
+				GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE,
+				GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
+				GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE,
+				GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING};
+			const char *list5[]{
+				"GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE",
+				"GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE",
+				"GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE",
+				"GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE",
+				"GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE",
+				"GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE",
+				"GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE",
+				"GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING"};
+			for (int i = 0; i < 6; ++i)
+			{
+				GLint a{};
+				glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, list2[i], GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &a);
+				LOG(list3[i]);
+				LOG(a);
+				if (a != GL_NONE)
+				{
+					for (int j = 0, len = sizeof list4 / sizeof list4[0]; j < len; ++j)
+					{
+						glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, list2[i], list4[j], &a);
+						LOG(list5[j]);
+						LOG(a);
+					}
+				}
+			}
+
+			// extensions
+#if 0
+	GLint a;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &a);
+	for (GLint i = 0; i < a; ++i)
+		LOG(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)));
+#endif
+
+			constexpr GLenum glCapabilityEnum[] = {
+				GL_BLEND,
+				GL_COLOR_LOGIC_OP,
+				GL_CULL_FACE,
+				GL_DEPTH_CLAMP,
+				GL_DEBUG_OUTPUT,
+				GL_DEBUG_OUTPUT_SYNCHRONOUS,
+				GL_DEPTH_TEST,
+				GL_DITHER,
+				GL_FRAMEBUFFER_SRGB,
+				GL_LINE_SMOOTH,
+				GL_MULTISAMPLE,
+				GL_POLYGON_SMOOTH,
+				GL_POLYGON_OFFSET_FILL,
+				GL_POLYGON_OFFSET_LINE,
+				GL_POLYGON_OFFSET_POINT,
+				GL_PROGRAM_POINT_SIZE,
+				GL_PRIMITIVE_RESTART,
+				GL_SAMPLE_ALPHA_TO_COVERAGE,
+				GL_SAMPLE_ALPHA_TO_ONE,
+				GL_SAMPLE_COVERAGE,
+				GL_SAMPLE_MASK,
+				GL_SCISSOR_TEST,
+				GL_STENCIL_TEST,
+				GL_TEXTURE_CUBE_MAP_SEAMLESS,
+			};
+			constexpr char *glCapabilityEnumNames[]{
+				"GL_BLEND",
+				"GL_COLOR_LOGIC_OP",
+				"GL_CULL_FACE",
+				"GL_DEPTH_CLAMP",
+				"GL_DEBUG_OUTPUT",
+				"GL_DEBUG_OUTPUT_SYNCHRONOUS",
+				"GL_DEPTH_TEST",
+				"GL_DITHER",
+				"GL_FRAMEBUFFER_SRGB",
+				"GL_LINE_SMOOTH",
+				"GL_MULTISAMPLE",
+				"GL_POLYGON_SMOOTH",
+				"GL_POLYGON_OFFSET_FILL",
+				"GL_POLYGON_OFFSET_LINE",
+				"GL_POLYGON_OFFSET_POINT",
+				"GL_PROGRAM_POINT_SIZE",
+				"GL_PRIMITIVE_RESTART",
+				"GL_SAMPLE_ALPHA_TO_COVERAGE",
+				"GL_SAMPLE_ALPHA_TO_ONE",
+				"GL_SAMPLE_COVERAGE",
+				"GL_SAMPLE_MASK",
+				"GL_SCISSOR_TEST",
+				"GL_STENCIL_TEST",
+				"GL_TEXTURE_CUBE_MAP_SEAMLESS",
+			};
+
+			for (int i = 0, len = sizeof(glCapabilityEnum) / sizeof(glCapabilityEnum[0]);
+				 i < len; ++i)
+			{
+				LOG(glCapabilityEnumNames[i]);
+				LOG(bool(glIsEnabled(glCapabilityEnum[i])));
+			}
+		}
+
+	}
+
+	ProgramHandle CreateProgram(const ProgramCreateInfo &createInfo)
+	{
+		ProgramHandle ret = glCreateProgram();
+		if (ret)
+		{
+			glProgramParameteri(ret, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, createInfo.retrievable);
+			glProgramParameteri(ret, GL_PROGRAM_SEPARABLE, createInfo.separable);
+			for (auto &&shader : *createInfo.pShaders)
+				glAttachShader(ret, shader);
+			glLinkProgram(ret);
+#ifndef NODEBUG
+			GLint success;
+			glGetProgramiv(ret, GL_LINK_STATUS, &success);
+			if (!success)
+			{
+				GLint len;
+				glGetProgramiv(ret, GL_INFO_LOG_LENGTH, &len);
+				std::string log;
+				log.resize(static_cast<size_t>(len));
+				glGetProgramInfoLog(ret, len, NULL, &log[0]);
+				LOG(log);
+				glDeleteProgram(ret);
+				THROW("failed to link program");
+			}
+#endif
+		}
+		else
+			THROW("failed to create program");
+		return ret;
+	}
+
+	constexpr GLenum glFormatArray[][2]{
+		{GL_NONE, GL_NONE},
+
+		{GL_R8, GL_RED},
+		{GL_SR8_EXT, GL_RED}, //need GL_EXT_texture_sRGB_R8	2015
+
+		{GL_RG8, GL_RG},
+		{GL_SRG8_EXT, GL_RG}, //need GL_EXT_texture_sRGB_RG8	2015
+
+		{GL_RGB8, GL_RGB},
+		{GL_SRGB8, GL_RGB},
+		{GL_BGR_EXT, GL_BGR}, //need GL_EXT_bgra
+		{GL_NONE, GL_NONE},	  //no matching for BGR_SRGB
+
+		{GL_RGBA8, GL_RGBA},
+		{GL_SRGB8_ALPHA8, GL_RGBA},
+		{GL_BGRA8_EXT, GL_BGRA_EXT}, //need GL_EXT_texture_format_BGRA8888 2008
+		{GL_NONE, GL_NONE},			 //no matching for BGRA_SRGB
+
+		{GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT},
+		{GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT},
+		{GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT},
+		{GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL},
+		{GL_DEPTH32F_STENCIL8, GL_DEPTH_STENCIL},
+		{GL_STENCIL_INDEX8, GL_STENCIL_INDEX},
+	};
+	constexpr GLenum glShaderStageArray[]{
+		GL_VERTEX_SHADER,
+		GL_FRAGMENT_SHADER,
+		GL_GEOMETRY_SHADER,
+		GL_TESS_CONTROL_SHADER,
+		GL_TESS_EVALUATION_SHADER,
+		GL_COMPUTE_SHADER,
+		GL_NONE};
+
+	constexpr GLenum glBufferBindTargetArray[]{
+		GL_COPY_READ_BUFFER,
+		GL_COPY_WRITE_BUFFER,
+		GL_TEXTURE_BUFFER,
+		0,
+		GL_UNIFORM_BUFFER,
+		GL_SHADER_STORAGE_BUFFER,
+		GL_ELEMENT_ARRAY_BUFFER,
+		GL_ARRAY_BUFFER,
+		GL_DRAW_INDIRECT_BUFFER,
+		GL_TRANSFORM_FEEDBACK_BUFFER,
+	};
+	constexpr GLbitfield glBufferMapFlagBitArray[]{
+		GL_MAP_READ_BIT,			  // 0x0001
+		GL_MAP_WRITE_BIT,			  // 0x0002
+		GL_MAP_INVALIDATE_RANGE_BIT,  // 0x0004
+		GL_MAP_INVALIDATE_BUFFER_BIT, // 0x0008
+		GL_MAP_FLUSH_EXPLICIT_BIT,	  // 0x0010
+		GL_MAP_UNSYNCHRONIZED_BIT,	  // 0x0020
+		GL_MAP_PERSISTENT_BIT,		  // 0x0040
+		GL_MAP_COHERENT_BIT,		  // 0x0080
+	};
+	constexpr GLbitfield glBufferStorageFlagBitArray[]{
+		GL_MAP_READ_BIT,		// 0x0001
+		GL_MAP_WRITE_BIT,		// 0x0002
+		GL_MAP_PERSISTENT_BIT,	// 0x0040
+		GL_MAP_COHERENT_BIT,	// 0x0080
+		GL_DYNAMIC_STORAGE_BIT, // 0x0100
+		GL_CLIENT_STORAGE_BIT,	// 0x0200
+	};
+	constexpr GLenum glMutableStorageUsageArray[]{
+		GL_STREAM_DRAW,
+		GL_STREAM_READ,
+		GL_STREAM_COPY,
+		GL_DYNAMIC_DRAW,
+		GL_DYNAMIC_READ,
+		GL_DYNAMIC_COPY,
+		GL_STATIC_DRAW,
+		GL_STATIC_READ,
+		GL_STATIC_COPY,
+	};
+
+	GLenum Map(ShaderStageFlagBits flag)
+	{
+		GLenum shaderType{};
+		switch (flag)
+		{
+		case ShaderStageFlagBits::VERTEX_BIT:
+			shaderType = GL_VERTEX_SHADER;
+			break;
+		case ShaderStageFlagBits::FRAGMENT_BIT:
+			shaderType = GL_FRAGMENT_SHADER;
+			break;
+		case ShaderStageFlagBits::GEOMETRY_BIT:
+			shaderType = GL_GEOMETRY_SHADER;
+			break;
+		case ShaderStageFlagBits::TESS_CONTROL_BIT:
+			shaderType = GL_TESS_CONTROL_SHADER;
+			break;
+		case ShaderStageFlagBits::TESS_EVALUATION_BIT:
+			shaderType = GL_TESS_EVALUATION_SHADER;
+			break;
+		case ShaderStageFlagBits::COMPUTE_BIT:
+			shaderType = GL_COMPUTE_SHADER;
+			break;
+		case ShaderStageFlagBits::ALL_BITS:
+			THROW("GL do not contain shader stage all bits");
+			break;
+		}
+		return shaderType;
+	}
+
+	GLenum MapInternalFormat(ShitFormat format)
+	{
+		return glFormatArray[static_cast<size_t>(format)][0];
+	}
+	GLenum MapExternalFormat(ShitFormat format)
+	{
+		return glFormatArray[static_cast<size_t>(format)][1];
+	}
+	GLenum Map(BufferMutableStorageUsage usage)
+	{
+		return glMutableStorageUsageArray[static_cast<size_t>(usage)];
+	}
+	GLbitfield Map(BufferMapFlagBits flag)
+	{
+		return static_cast<GLbitfield>(flag);
+	}
+	GLbitfield Map(BufferStorageFlagBits flag)
+	{
+		return static_cast<GLbitfield>(flag);
+	}
+
+} // namespace Shit

@@ -14,6 +14,8 @@
 #include <vector>
 #include <stdexcept>
 #include <string>
+#include <optional>
+#include <utility>
 
 #include "ShitEnum.h"
 #include "config.h"
@@ -26,7 +28,7 @@
 
 #define SHIT_DEFAULT_WINDOW_X 100
 #define SHIT_DEFAULT_WINDOW_Y 60
-#define SHIT_DEFAULT_WINDOW_WIDTH 800 
+#define SHIT_DEFAULT_WINDOW_WIDTH 800
 #define SHIT_DEFAULT_WINDOW_HEIGHT 600
 
 #define SHIT_RENDERER_LOAD_FUNC "ShitLoadRenderSystem"
@@ -53,6 +55,8 @@
 namespace Shit
 {
 	class ShitWindow;
+	class Device;
+	class Swapchain;
 
 	using PhysicalDevice = void *;
 
@@ -91,61 +95,39 @@ namespace Shit
 		RenderSystemCreateFlagBits flags;
 	};
 
-	struct WindowCreateInfo{
+	struct WindowCreateInfo
+	{
 		const char *name;
 		Rect2D rect;
 	};
 
-	struct ContextCreateInfo
+	struct SwapchainCreateInfo
 	{
+		Device *device;
 		ShitWindow *pWindow;
-		PhysicalDevice phyicalDevice; //opengl this should be nullptr
+		uint32_t minImageCount;
+		ShitFormat format;		   //!<no use for opengl, opengl is always RGBA
+		ColorSpace colorSpace;	   //!<sRGB
+		Extent2D imageExtent;	   //no use for opengl
+		uint32_t imageArrayLayers; //!< alway 1 unless you are developing a stereoscopic 3D applicaiton
+		PresentMode presentMode;
 	};
 
-	//TODO: gl pixel format attributes
-	struct GLPixelFormatAttributes
+	struct ShaderModuleCreateInfo
 	{
-		//WGL_NUMBER_PIXEL_FORMATS_ARB
-		//WGL_DRAW_TO_WINDOW_ARB
-		//WGL_DRAW_TO_BITMAP_ARB
-		//WGL_ACCELERATION_ARB
-		//WGL_NEED_PALETTE_ARB
-		//WGL_NEED_SYSTEM_PALETTE_ARB
-		//WGL_SWAP_LAYER_BUFFERS_ARB,
-		//WGL_SWAP_METHOD_ARB
-		//WGL_NUMBER_OVERLAYS_ARB
-		//WGL_NUMBER_UNDERLAYS_ARB
-		//WGL_TRANSPARENT_ARB
-		//WGL_TRANSPARENT_RED_VALUE_ARB
-		//WGL_TRANSPARENT_GREEN_VALUE_ARB
-		//WGL_TRANSPARENT_BLUE_VALUE_ARB
-		//WGL_TRANSPARENT_ALPHA_VALUE_ARB
-		//WGL_TRANSPARENT_INDEX_VALUE_ARB
-		//WGL_SHARE_DEPTH_ARB
-		//WGL_SHARE_STENCIL_ARB
-		//WGL_SHARE_ACCUM_ARB
-		//WGL_SUPPORT_GDI_ARB
-		//WGL_SUPPORT_OPENGL_ARB
-		//WGL_DOUBLE_BUFFER_ARB
-		//WGL_STEREO_ARB
-		//WGL_PIXEL_TYPE_ARB
-		//WGL_COLOR_BITS_ARB
-		//WGL_RED_BITS_ARB
-		//WGL_RED_SHIFT_ARB
-		//WGL_GREEN_BITS_ARB
-		//WGL_GREEN_SHIFT_ARB
-		//WGL_BLUE_BITS_ARB
-		//WGL_BLUE_SHIFT_ARB
-		//WGL_ALPHA_BITS_ARB
-		//WGL_ALPHA_SHIFT_ARB
-		//WGL_ACCUM_BITS_ARB
-		//WGL_ACCUM_RED_BITS_ARB
-		//WGL_ACCUM_GREEN_BITS_ARB
-		//WGL_ACCUM_BLUE_BITS_ARB
-		//WGL_ACCUM_ALPHA_BITS_ARB
-		//WGL_DEPTH_BITS_ARB
-		//WGL_STENCIL_BITS_ARB
-		//WGL_AUX_BUFFERS_ARB
+		ShaderStageFlagBits stage;
+		std::string code;
+	};
+
+	struct BufferCreateInfo
+	{
+		BufferCreateFlagBits flags;
+		uint32_t size;
+		union
+		{
+			BufferStorageFlagBits storageFlags;
+			BufferMutableStorageUsage storageUsage;
+		};
 	};
 
 } // namespace Shit

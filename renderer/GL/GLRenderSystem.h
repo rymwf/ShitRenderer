@@ -11,31 +11,38 @@
 #include <renderer/ShitRenderSystem.h>
 
 #include "GLPrerequisites.h"
-#include "GLContext.h"
-
-#if _WIN32
-#include <Windows.h>
-#include <WGL/wgl.h>
-#endif
+#include "GLDevice.h"
+#include "GLSwapchain.h"
 
 namespace Shit
 {
+
 	class GLRenderSystem final : public RenderSystem
 	{
 
+		void ProcessWindowEvent(const Event &ev) override;
+
 	public:
+		std::vector<std::unique_ptr<Swapchain>> mSwapchains;
+
 		GLRenderSystem(const RenderSystemCreateInfo &createInfo) : RenderSystem(createInfo)
 		{
-			//			if (!gladLoadGL())
-			//			{
-			//				THROW("failed to init glad");
-			//		}
 		}
 		~GLRenderSystem() override
 		{
 		}
-		Context *CreateContext(const ContextCreateInfo &createInfo) override;
 
-		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)override;
+		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
+
+		Device *CreateDevice([[maybe_unused]] PhysicalDevice *pPhyicalDevice, ShitWindow *pWindow) override
+		{
+#ifdef _WIN32
+			mDevices.emplace_back(std::make_unique<GLDeviceWin32>(pWindow));
+#else
+			static_assert(0, "GL CreateDevice is not implemented yet");
+#endif
+			return mDevices.back().get();
+		};
+		Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) override;
 	};
 }

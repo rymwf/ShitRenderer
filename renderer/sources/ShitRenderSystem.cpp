@@ -10,8 +10,8 @@
 #include "ShitRenderSystem.h"
 #include "ShitModule.h"
 
-#if _WIN32
-#include "Platform/Windows/ShitWin32Window.h"
+#ifdef _WIN32
+#include "ShitWindowWin32.h"
 #endif
 
 namespace Shit
@@ -58,34 +58,25 @@ namespace Shit
 
 	ShitWindow *RenderSystem::CreateRenderWindow(const WindowCreateInfo &createInfo)
 	{
-#if _WIN32
-		mWindowContexts.emplace_back(WindowContext{std::make_unique<Win32Window>(createInfo)});
+#ifdef _WIN32
+		mWindows.emplace_back(std::make_unique<WindowWin32>(createInfo));
 #else
 		static_assert(0, "create render Window method not implemented");
 #endif
-		mWindowContexts.back().window.get()->AttachEventHandle(std::bind(&RenderSystem::ProcessWindowEvent, this, std::placeholders::_1));
-		return mWindowContexts.back().window.get();
+		mWindows.back().get()->AttachEventHandle(std::bind(&RenderSystem::ProcessWindowEvent, this, std::placeholders::_1));
+		CreateSurface(mWindows.back().get());
+		return mWindows.back().get();
 	}
 
-	void RenderSystem::DestroyWindow(const ShitWindow *pWindow)
+	void RenderSystem::DestroyDevice(const Device *pDevice)
 	{
-		for (auto it = mWindowContexts.begin(), end = mWindowContexts.end(); it != end; ++it)
+		for (auto it = mDevices.begin(), end = mDevices.end(); it != end; ++it)
 		{
-			if (it->window.get() == pWindow)
+			if (it->get() == pDevice)
 			{
-				mWindowContexts.erase(it);
+				mDevices.erase(it);
 				break;
 			}
 		}
 	}
-	void RenderSystem::ProcessWindowEvent(const Event &ev)
-	{
-		switch (ev.type)
-		{
-		case EventType::WINDOW_CLOSE:
-			DestroyWindow(ev.windowClose.pWindow);
-			break;
-		}
-	}
-
 } // namespace Shit

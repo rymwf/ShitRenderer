@@ -73,6 +73,34 @@ namespace Shit
 		return lhs;
 	}
 
+	template <typename Enum, typename std::enable_if_t<std::is_enum_v<Enum> && EnableBitMaskOperators<Enum>::enable, bool> = true>
+	Enum operator>>(Enum lhs, uint32_t offset)
+	{
+		lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) >> offset);
+		return lhs;
+	}
+
+	template <typename Enum, typename std::enable_if_t<std::is_enum_v<Enum> && EnableBitMaskOperators<Enum>::enable, bool> = true>
+	Enum operator<<(Enum lhs, uint32_t offset)
+	{
+		lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) << offset);
+		return lhs;
+	}
+
+	template <typename Enum, typename std::enable_if_t<std::is_enum_v<Enum> && EnableBitMaskOperators<Enum>::enable, bool> = true>
+	Enum &operator>>=(Enum &lhs, uint32_t offset)
+	{
+		lhs = lhs >> offset;
+		return lhs;
+	}
+
+	template <typename Enum, typename std::enable_if_t<std::is_enum_v<Enum> && EnableBitMaskOperators<Enum>::enable, bool> = true>
+	Enum &operator<<=(Enum &lhs, uint32_t offset)
+	{
+		lhs = lhs << offset;
+		return lhs;
+	}
+
 	enum class EventType
 	{
 		NONE,
@@ -328,7 +356,6 @@ namespace Shit
 		COMPUTE_BIT = 0x00000020,
 		ALL_BITS = 0x7FFFFFFF,
 	};
-
 	ENABLE_BITMASK_OPERATORS(ShaderStageFlagBits);
 
 	enum class RendererVersion
@@ -385,4 +412,212 @@ namespace Shit
 		SHIT_GL_CONTEXT_COMPATIBILITY_PROFILE_BIT = (0x8),
 	};
 	ENABLE_BITMASK_OPERATORS(RenderSystemCreateFlagBits);
+
+	enum class ColorSpace
+	{
+		SRGB_NONLINEAR,
+	};
+
+	enum class ShitFormat
+	{
+		UNDEFINED, //!< not supported in opengl
+
+		R8_UNORM,
+		R8_SRGB,
+
+		RG8_UNORM,
+		RG8_SRGB,
+
+		RGB8_UNORM,
+		RGB8_SRGB,
+		BGR8_UNORM,
+		BGR8_SRGB,
+
+		RGBA8_UNORM,
+		RGBA8_SRGB,
+		BGRA8_UNORM,
+		BGRA8_SRGB,
+
+		D16_UNORM,
+		D24_UNORM,
+		D32_SFLOAT,
+		D24_UNORM_S8_UINT,
+		D32_SFLOAT_S8_UINT,
+		S8_UINT,
+	};
+
+	enum class PresentMode
+	{
+		IMMEDIATE,
+		FIFO, //vertical synchronous
+	};
+
+	enum class DescriptorType
+	{
+		SAMPLER,				//sampler (vulkan)
+		COMBINED_IMAGE_SAMPLER, //sampler2D
+		SAMPLED_IMAGE,			//texture2D (vulkan)
+		STORAGE_IMAGE,			//image2D
+		UNIFORM_TEXEL_BUFFER,	//samplerbuffer	(access to buffer texture,can only be accessed with texelFetch function) ,textureBuffer(vulkan)
+		STORAGE_TEXEL_BUFFER,	//imagebuffer (access to buffer texture)
+		UNIFORM_BUFFER,			//uniform block
+		STORAGE_BUFFER,			//buffer block
+		UNIFORM_BUFFER_DYNAMIC,
+		STORAGE_BUFFER_DYNAMIC,
+		INPUT_ATTACHMENT0,
+	};
+
+	enum class BufferUsageFlagBits
+	{
+		TRANSFER_SRC_BIT = 0x1,
+		TRANSFER_DST_BIT = 0x2,
+		UNIFORM_TEXEL_BUFFER_BIT = 0x4,
+		STORAGE_TEXEL_BUFFER_BIT = 0x8,
+		UNIFORM_BUFFER_BIT = 0x10,
+		STORAGE_BUFFER_BIT = 0x20,
+		INDEX_BUFFER_BIT = 0x40,
+		VERTEX_BUFFER_BIT = 0x80,
+		INDIRECT_BUFFER_BIT = 0x100,
+		TRANSFORM_FEEDBACK_BUFFER_BIT = 0x200,
+	};
+	ENABLE_BITMASK_OPERATORS(BufferUsageFlagBits);
+
+	enum class BufferStorageFlagBits
+	{
+		MAP_READ_BIT = 0x1,
+		MAP_WRITE_BIT = 0x2,
+		MAP_PERSISTENT_BIT = 0x40,
+		MAP_COHERENT_BIT = 0x80,
+		DYNAMIC_STORAGE_BIT = 0x100,
+		CLIENT_STORAGE_BIT = 0x200,
+	};
+	ENABLE_BITMASK_OPERATORS(BufferStorageFlagBits);
+
+	enum class BufferMutableStorageUsage
+	{
+		STREAM_DRAW,
+		STREAM_READ,
+		STREAM_COPY,
+		DYNAMIC_DRAW,
+		DYNAMIC_READ,
+		DYNAMIC_COPY,
+		STATIC_DRAW,
+		STATIC_READ,
+		STATIC_COPY,
+	};
+	enum class BufferMapFlagBits
+	{
+		READ_BIT = 0x1,
+		WRITE_BIT = 0x2,
+		INVALIDATE_RANGE_BIT = 0x4,
+		INVALIDATE_BUFFER_BIT = 0x8,
+		FLUSH_EXPLICIT_BIT = 0x10,
+		UNSYNCHRONIZED_BIT = 0x20,
+		PERSISTENT_BIT = 0x40,
+		COHERENT_BIT = 0x80,
+	};
+	ENABLE_BITMASK_OPERATORS(BufferMapFlagBits);
+
+	enum class BufferCreateFlagBits
+	{
+		MUTABLE_FORMAT_BIT = 0x1, //for opengl
+	};
+	ENABLE_BITMASK_OPERATORS(BufferCreateFlagBits);
+
+	enum class ImageCreateFlagBits
+	{
+		MUTABLE_FORMAT_BIT = 0x1, //!< cannot use image view
+		RENDER_BUFFER_BIT = 0x2
+	};
+	ENABLE_BITMASK_OPERATORS(ImageCreateFlagBits);
+
+	enum class ImageType
+	{
+		TYPE_1D,
+		TYPE_2D,
+		TYPE_3D,
+	};
+
+	enum class ImageViewType
+	{
+		TYPE_1D,
+		TYPE_2D,
+		TYPE_3D,
+		TYPE_CUBE,
+		TYPE_1D_ARRAY,
+		TYPE_2D_ARRAY,
+		TYPE_CUBE_ARRAY,
+	};
+
+	enum class SampleCountFlagBits
+	{
+		BIT_1 = 0x00000001,
+		BIT_2 = 0x00000002,
+		BIT_4 = 0x00000004,
+		BIT_8 = 0x00000008,
+		BIT_16 = 0x00000010,
+		BIT_32 = 0x00000020,
+		BIT_64 = 0x00000040,
+	};
+
+	enum class Filter
+	{
+		NEAREST,
+		LINEAR,
+	};
+
+	enum SamplerMipmapMode
+	{
+		NEAREST,
+		LINEAR,
+	};
+
+	enum class SamplerWrapMode
+	{
+		REPEAT,
+		MIRRORED_REPEAT,
+		CLAMP_TO_EDGE,
+		CLAMP_TO_BORDER,
+	};
+	enum class CompareOp
+	{
+		NEVER,
+		LESS,
+		EQUAL,
+		LESS_OR_EQUAL,
+		GREATER,
+		NOT_EQUAL,
+		GREATER_OR_EQUAL,
+		ALWAYS,
+	};
+
+	enum class ComponentSwizzle
+	{
+		IDENTITY,
+		ZERO,
+		ONE,
+		R,
+		G,
+		B,
+		A,
+	};
+
+	enum class AttachmentLoadOp
+	{
+		LOAD,
+		CLEAR, //glClear
+		DONT_CARE,
+	};
+
+	enum class AttachmentStoreOp
+	{
+		STORE, //where to store
+		DONT_CARE,
+	};
+
+	enum class PipelineBindPoint
+	{
+		GRAPHICS,
+		COMPUTE,
+	};
 }

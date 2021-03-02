@@ -9,10 +9,10 @@
  */
 #pragma once
 #include "ShitRendererPrerequisites.h"
-#include "ShitTypes.h"
 #include "ShitNonCopyable.h"
 #include "ShitWindow.h"
-#include "ShitContext.h"
+#include "ShitDevice.h"
+#include "ShitSwapchain.h"
 
 namespace Shit
 {
@@ -21,18 +21,17 @@ namespace Shit
 	protected:
 		RenderSystemCreateInfo mCreateInfo;
 
+		std::vector<std::unique_ptr<ShitWindow>> mWindows;
+		std::vector<std::unique_ptr<Device>> mDevices;
+
+	protected:
 		RenderSystem() {}
 
-		struct WindowContext
-		{
-			std::unique_ptr<ShitWindow> window;
-			std::unique_ptr<Context> context;
-		};
-		std::vector<WindowContext> mWindowContexts;
+		void DestroyDevice(const Device *pDevice);
 
-		void DestroyWindow(const ShitWindow* pWindow);
+		virtual void ProcessWindowEvent(const Event &ev) = 0;
 
-		void ProcessWindowEvent(const Event& ev);
+		virtual void CreateSurface([[maybe_unused]] ShitWindow *pWindow){};
 
 	public:
 		RenderSystem(const RenderSystemCreateInfo &createInfo)
@@ -50,7 +49,16 @@ namespace Shit
 
 		ShitWindow *CreateRenderWindow(const WindowCreateInfo &createInfo);
 
-		virtual Context *CreateContext(const ContextCreateInfo &createInfo) = 0;
+		/**
+		 * @brief Create a Device object, 
+		 * create a device include all queue families supported by the physical device
+		 * currently physical device selection is not supported, the method will use the current gpu(opengl) or the best gpu(Vulkan)
+		 * 
+		 * @param pPhyicalDevice not used, can be nullptr
+		 * @param pWindow (opengl, used to create a false context) ,for vulkan canbe nullptr
+		 * @return Device* 
+		 */
+		virtual Device *CreateDevice(PhysicalDevice *pPhyicalDevice, ShitWindow *pWindow) = 0;
 
 		/**
 		 * @brief TODO: physical device not finished
@@ -58,6 +66,16 @@ namespace Shit
 		 * @param physicalDevices 
 		 */
 		virtual void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) = 0;
+
+
+		/**
+		 * @brief Create a Swapchain object,
+		 *  for opengl, just create a render context
+		 * 
+		 * @param createInfo 
+		 * @return Swapchain* 
+		 */
+		virtual Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) = 0;
 	};
 
 	RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo);

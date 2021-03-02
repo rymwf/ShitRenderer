@@ -51,7 +51,6 @@ namespace Shit
 	};
 	struct CloseEvent
 	{
-		ShitWindow *pWindow;
 	};
 	struct ResizeEvent
 	{
@@ -88,6 +87,7 @@ namespace Shit
 	{
 		EventType type;
 		EventModifierBits modifier;
+		ShitWindow *pWindow;
 		union
 		{
 			KeyEvent key;

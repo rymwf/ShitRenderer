@@ -1,5 +1,5 @@
 /**
- * @file ShitDevice.h
+ * @file ShitBuffer.h
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -8,13 +8,14 @@
  * 
  */
 #pragma once
-#include "ShitRendererPrerequisites.h"
 
 namespace Shit{
 
-	class Device
-	{
+	class Buffer{
+
 		public:
-			virtual ~Device() {}
+		Buffer(){}
+
 	};
+
 }
