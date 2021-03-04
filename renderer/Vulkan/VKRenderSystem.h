@@ -16,29 +16,20 @@
 #include "VKCommandBuffer.h"
 #include "VKDevice.h"
 #include "VKQueue.h"
+#include "VKSurface.h"
 
 namespace Shit
 {
 	class VKRenderSystem final : public RenderSystem
 	{
 		std::vector<VkLayerProperties> mInstanceLayerProperties;
-		std::vector<WindowAttribute> mWindowAttributes;
 
 	private:
 		bool CheckLayerSupport(const char *layerName);
 
 		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
 
-		void CreateSurface(ShitWindow *pWindow) override;
-
-		decltype(auto) GetWindowAttributeIterator(const ShitWindow *pWindow)
-		{
-			auto end = mWindowAttributes.end();
-			for (auto it = mWindowAttributes.begin(); it != end; ++it)
-				if (it->pWindow == pWindow)
-					return it;
-			return end;
-		}
+		Surface *CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createinfo) override;
 
 		void ProcessWindowEvent(const Event &ev) override;
 

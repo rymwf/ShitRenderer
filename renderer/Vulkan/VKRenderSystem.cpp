@@ -122,24 +122,10 @@ namespace Shit
 		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(vk_instance, &DestroyVKInstance);
 	}
 
-	void VKRenderSystem::CreateSurface(ShitWindow *pWindow)
+	Surface *VKRenderSystem::CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo)
 	{
-#ifdef _WIN32
-		VkWin32SurfaceCreateInfoKHR createInfo{
-			VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-			nullptr,
-			0,
-			static_cast<WindowWin32 *>(pWindow)->GetInstance(),
-			static_cast<WindowWin32 *>(pWindow)->GetHWND(),
-		};
-#else
-		static_assert(0, "there is no VK surface implementation");
-#endif
-		VkSurfaceKHR surface;
-		if (vkCreateWin32SurfaceKHR(vk_instance, &createInfo, nullptr, &surface) != VK_SUCCESS)
-			THROW("failed to create VK surface");
-
-		mWindowAttributes.emplace_back(WindowAttribute{pWindow, {}, surface});
+		createInfo.pWindow->SetSurface(std::make_unique<VKSurface>(createInfo));
+		return createInfo.pWindow->GetSurface();
 	}
 	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
 	{
@@ -156,9 +142,8 @@ namespace Shit
 
 	Swapchain *VKRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
 	{
-		auto &&windowAttribIt = GetWindowAttributeIterator(createInfo.pWindow);
-		windowAttribIt->swapchain = std::move(std::make_unique<VKSwapchain>(createInfo, windowAttribIt->surface));
-		return windowAttribIt->swapchain.get();
+		createInfo.pWindow->SetSwapchain(std::make_unique<VKSwapchain>(createInfo, createInfo.pWindow));
+		return createInfo.pWindow->GetSwapchain();
 	}
 
 	void VKRenderSystem::ProcessWindowEvent(const Event &ev)
@@ -166,10 +151,6 @@ namespace Shit
 		switch (ev.type)
 		{
 		case EventType::WINDOW_CLOSE:
-			auto it = GetWindowAttributeIterator(ev.pWindow);
-			it->swapchain.reset();
-			vkDestroySurfaceKHR(vk_instance, it->surface, nullptr);
-			mWindowAttributes.erase(it);
 			break;
 		}
 	}
@@ -216,14 +197,7 @@ namespace Shit
 	}
 	Queue *VKRenderSystem::CreateDeviceQueue(const QueueCreateInfo &createInfo)
 	{
-		VKDevice *device = static_cast<VKDevice *>(createInfo.pDevice);
-		auto properties = device->GetQueueFamilyIndexByFlag(Map(createInfo.queueFlags), createInfo.skipQueueFamilyIndices);
-		VkQueue queue;
-		if (properties.has_value())
-			vkGetDeviceQueue(device->GetHandle(), properties->index, min(properties->count, createInfo.queueIndex), &queue);
-		else
-			THROW("failed to create queue");
-		mQueues.emplace_back(std::make_unique<VKQueue>(queue));
+		mQueues.emplace_back(std::make_unique<VKQueue>(createInfo));
 		return mQueues.back().get();
 	}
 	Result VKRenderSystem::WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout)

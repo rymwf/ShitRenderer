@@ -23,5 +23,9 @@ namespace Shit
 		{
 			vkDestroySemaphore(static_cast<VKDevice *>(mCreateInfo.pDevice)->GetHandle(), mHandle, nullptr);
 		}
+		VkSemaphore GetHandle() const
+		{
+			return mHandle;
+		}
 	};
 } // namespace Shit

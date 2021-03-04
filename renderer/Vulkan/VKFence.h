@@ -23,5 +23,9 @@ namespace Shit
 		{
 			vkDestroyFence(static_cast<VKDevice *>(mCreateInfo.pDevice)->GetHandle(), mHandle, nullptr);
 		}
+		VkFence GetHandle() const
+		{
+			return mHandle;
+		}
 	};
 } // namespace Shit

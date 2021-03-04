@@ -10,6 +10,7 @@
 #pragma once
 #include <renderer/ShitQueue.h>
 #include "VKPrerequisites.h"
+#include "VKDevice.h"
 namespace Shit
 {
 	class VKQueue final : public Queue
@@ -17,13 +18,14 @@ namespace Shit
 		VkQueue mHandle;
 
 	public:
-		VKQueue(VkQueue queue) : mHandle(queue) {}
+		VKQueue(const QueueCreateInfo &createInfo) : Queue(createInfo)
+		{
+			vkGetDeviceQueue(static_cast<VKDevice *>(createInfo.pDevice)->GetHandle(), createInfo.queueFamilyIndex, createInfo.queueIndex, &mHandle);
+		}
 		VkQueue GetHandle() const
 		{
 			return mHandle;
 		}
-		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) override
-		{
-		}
+		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) override;
 	};
 } // namespace Shit

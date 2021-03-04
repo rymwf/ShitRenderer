@@ -10,6 +10,7 @@
 #pragma once
 #include <renderer/ShitDevice.h>
 #include "GLPrerequisites.h"
+#include "GLState.h"
 
 namespace Shit
 {
@@ -19,6 +20,7 @@ namespace Shit
 	{
 		HDC mHDC;
 		HGLRC mHRenderContext; //false context
+		GLStateManager mStateManager{};
 
 	public:
 		GLDeviceWin32(ShitWindow *pWindow);

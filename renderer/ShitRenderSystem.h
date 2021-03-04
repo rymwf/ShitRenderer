@@ -18,6 +18,7 @@
 #include "ShitCommandPool.h"
 #include "ShitCommandBuffer.h"
 #include "ShitQueue.h"
+#include "ShitSurface.h"
 
 namespace Shit
 {
@@ -27,12 +28,12 @@ namespace Shit
 		RenderSystemCreateInfo mCreateInfo;
 
 		std::vector<std::unique_ptr<ShitWindow>> mWindows;
-		std::vector<std::unique_ptr<Device>> mDevices;
 		std::vector<std::unique_ptr<Shader>> mShaders;
 		std::vector<std::unique_ptr<GraphicsPipeline>> mGraphicsPipelines;
 		std::vector<std::unique_ptr<CommandPool>> mCommandPools;
 		std::vector<std::unique_ptr<CommandBuffer>> mCommandBuffers;
 		std::vector<std::unique_ptr<Queue>> mQueues;
+		std::vector<std::unique_ptr<Device>> mDevices;
 
 	protected:
 		RenderSystem() {}
@@ -41,7 +42,10 @@ namespace Shit
 
 		virtual void ProcessWindowEvent(const Event &ev) = 0;
 
-		virtual void CreateSurface([[maybe_unused]] ShitWindow *pWindow){};
+		virtual Surface *CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo)
+		{
+			return nullptr;
+		};
 
 	public:
 		RenderSystem(const RenderSystemCreateInfo &createInfo)
@@ -50,6 +54,7 @@ namespace Shit
 		}
 		virtual ~RenderSystem()
 		{
+			mWindows.clear();
 		}
 
 		const RenderSystemCreateInfo *GetCreateInfo() const

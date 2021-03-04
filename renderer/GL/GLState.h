@@ -116,14 +116,8 @@ namespace Shit
 			std::stack<GLuint> pipelineStack;
 		} mPipelineState;
 
-		GLStateManager() = default;
-
 	public:
-		static GLStateManager *Get()
-		{
-			static GLStateManager instance;
-			return &instance;
-		}
+		GLStateManager() = default;
 
 		//framebuffer
 		void BindDrawBuffer(GLuint framebuffer);

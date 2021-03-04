@@ -26,8 +26,6 @@ namespace Shit
 		void ProcessWindowEvent(const Event &ev) override;
 
 	public:
-		std::vector<WindowAttribute> mWindowAttributes;
-
 		GLRenderSystem(const RenderSystemCreateInfo &createInfo) : RenderSystem(createInfo)
 		{
 		}
@@ -37,7 +35,7 @@ namespace Shit
 
 		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
 
-		Device *CreateDevice(const DeviceCreateInfo& createInfo) override
+		Device *CreateDevice(const DeviceCreateInfo &createInfo) override
 		{
 #ifdef _WIN32
 			mDevices.emplace_back(std::make_unique<GLDeviceWin32>(createInfo.pWindow));
@@ -49,7 +47,7 @@ namespace Shit
 		Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) override;
 
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
-		void DestroyShader(Shader* pShader) override;
+		void DestroyShader(Shader *pShader) override;
 
 		GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
 

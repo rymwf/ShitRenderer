@@ -59,6 +59,7 @@
 
 namespace Shit
 {
+	class RenderSystem;
 	class ShitWindow;
 	class Device;
 	class Swapchain;
@@ -68,6 +69,7 @@ namespace Shit
 	class Semaphore;
 	class CommandBuffer;
 	class Fence;
+	class Surface;
 
 	using PhysicalDevice = void *;
 
@@ -120,6 +122,11 @@ namespace Shit
 		const char *name;
 		Rect2D rect;
 		std::function<void(const Event &)> eventHandle;
+	};
+
+	struct SurfaceCreateInfo
+	{
+		ShitWindow *pWindow;
 	};
 
 	struct SwapchainCreateInfo
@@ -197,6 +204,12 @@ namespace Shit
 		};
 	};
 
+	struct QueueFamilyIndex
+	{
+		uint32_t index;
+		uint32_t count;
+	};
+
 	struct CommandPoolCreateInfo
 	{
 		Device *pDevice;
@@ -213,7 +226,7 @@ namespace Shit
 	struct QueueCreateInfo
 	{
 		Device *pDevice;
-		QueueFlagBits queueFlags;
+		uint32_t queueFamilyIndex;
 		uint32_t queueIndex;
 		std::vector<uint32_t> skipQueueFamilyIndices;
 	};

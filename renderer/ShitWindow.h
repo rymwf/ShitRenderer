@@ -11,6 +11,8 @@
 #include "ShitRendererPrerequisites.h"
 #include "ShitEvent.h"
 #include "ShitObserver.h"
+#include "ShitSurface.h"
+#include "ShitSwapchain.h"
 
 namespace Shit
 {
@@ -19,6 +21,9 @@ namespace Shit
 	protected:
 		WindowCreateInfo mCreateInfo;
 		Observer<const Event &> mObserver;
+
+		std::unique_ptr<Surface> mpSurface;
+		std::unique_ptr<Swapchain> mpSwapchain;
 
 	public:
 		ShitWindow(const WindowCreateInfo &createInfo) : mCreateInfo(createInfo){};
@@ -37,6 +42,22 @@ namespace Shit
 		void AttachEventHandle(const std::function<void(const Event &)> &eventHandler)
 		{
 			mObserver.Attach(eventHandler);
+		}
+		void SetSurface(std::unique_ptr<Surface> &&surface)
+		{
+			mpSurface = std::move(surface);
+		}
+		void SetSwapchain(std::unique_ptr<Swapchain> &&swapchain)
+		{
+			mpSwapchain = std::move(swapchain);
+		}
+		Surface* GetSurface() const
+		{
+			return mpSurface.get();
+		}
+		Swapchain *GetSwapchain() const
+		{
+			return mpSwapchain.get();
 		}
 	};
 }

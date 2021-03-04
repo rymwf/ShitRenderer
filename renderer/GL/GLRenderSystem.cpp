@@ -28,12 +28,8 @@ namespace Shit
 
 	Swapchain *GLRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
 	{
-#ifdef _WIN32
-		mWindowAttributes.emplace_back(WindowAttribute{createInfo.pWindow, std::make_unique<GLSwapchainWin32>(createInfo, mCreateInfo.version, mCreateInfo.flags)});
-#else
-		static_assert(0, "CreateSwapchain is not implemented ye");
-#endif
-		return mWindowAttributes.back().pSwapchain.get();
+		createInfo.pWindow->SetSwapchain(std::make_unique<GLSwapchainWin32>(createInfo, mCreateInfo.version, mCreateInfo.flags));
+		return createInfo.pWindow->GetSwapchain();
 	}
 	void GLRenderSystem::ProcessWindowEvent([[maybe_unused]] const Event &ev)
 	{

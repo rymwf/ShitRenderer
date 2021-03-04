@@ -8,6 +8,8 @@
  * 
  */
 #include "VKDevice.h"
+#include <renderer/ShitWindow.h>
+#include "VKSurface.h"
 
 namespace Shit
 {
@@ -65,14 +67,21 @@ namespace Shit
 			THROW("create logical device failed");
 	}
 
-	std::optional<uint32_t> VKDevice::GetPresentQueueFamilyIndex(VkSurfaceKHR surface)
+	std::optional<QueueFamilyIndex> VKDevice::GetPresentQueueFamilyIndex(ShitWindow *pWindow)
 	{
-		return VK::findQueueFamilyIndexPresent(mPhysicalDevice, static_cast<uint32_t>(mQueueFamilyProperties.size()), surface);
+		auto index = VK::findQueueFamilyIndexPresent(
+			mPhysicalDevice,
+			static_cast<uint32_t>(mQueueFamilyProperties.size()),
+			static_cast<VKSurface *>(pWindow->GetSurface())->GetHandle());
+		if (index.has_value())
+			return std::optional<QueueFamilyIndex>{{*index, mQueueFamilyProperties[*index].queueCount}};
+		else
+			return std::nullopt;
 	}
 
-	std::optional<QueueFamilyIndex> VKDevice::GetQueueFamilyIndexByFlag(VkQueueFlags flag, const std::vector<uint32_t> &skipIndices)
+	std::optional<QueueFamilyIndex> VKDevice::GetQueueFamilyIndexByFlag(QueueFlagBits flag, const std::unordered_set<uint32_t> &skipIndices)
 	{
-		auto index = VK::findQueueFamilyIndexByFlag(mQueueFamilyProperties, VK_QUEUE_TRANSFER_BIT, {});
+		auto index = VK::findQueueFamilyIndexByFlag(mQueueFamilyProperties, Map(flag), skipIndices);
 		if (index.has_value())
 			return std::optional<QueueFamilyIndex>{{*index, mQueueFamilyProperties[*index].queueCount}};
 		else

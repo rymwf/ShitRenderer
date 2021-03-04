@@ -14,8 +14,12 @@ namespace Shit
 {
 	class Queue
 	{
-		public:
-			virtual ~Queue() {}
-			virtual void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) = 0;
+	protected:
+		QueueCreateInfo mCreateInfo;
+		Queue(const QueueCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+
+	public:
+		virtual ~Queue() {}
+		virtual void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) = 0;
 	};
 } // namespace Shit

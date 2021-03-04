@@ -66,7 +66,7 @@ namespace Shit
 		auto window = mWindows.back().get();
 		window->AttachEventHandle(std::bind(&RenderSystem::ProcessWindowEvent, this, std::placeholders::_1));
 		window->AttachEventHandle(createInfo.eventHandle);
-		CreateSurface(mWindows.back().get());
+		CreateSurface({mWindows.back().get()});
 		return mWindows.back().get();
 	}
 

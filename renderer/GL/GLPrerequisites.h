@@ -53,12 +53,6 @@ namespace Shit
 		int minor;
 	};
 
-	struct WindowAttribute
-	{
-		ShitWindow *pWindow;
-		std::unique_ptr<Swapchain> pSwapchain;
-	};
-
 	extern ShitGLVersion GLVersion;
 
 

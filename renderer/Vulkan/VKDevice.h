@@ -35,14 +35,14 @@ namespace Shit
 			return mDevice;
 		}
 
-		std::optional<uint32_t> GetPresentQueueFamilyIndex(VkSurfaceKHR surface);
+		std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex(ShitWindow *pWindow) override;
 
 		VkPhysicalDevice GetPhysicalDevice()const
 		{
 			return mPhysicalDevice;
 		}
 
-		std::optional<QueueFamilyIndex> GetQueueFamilyIndexByFlag(VkQueueFlags flag, const std::vector<uint32_t> &skipIndices);
+		std::optional<QueueFamilyIndex> GetQueueFamilyIndexByFlag(QueueFlagBits flag, const std::unordered_set<uint32_t> &skipIndices) override;
 	};
 
 } // namespace Shit

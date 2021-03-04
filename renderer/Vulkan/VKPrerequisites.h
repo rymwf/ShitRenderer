@@ -27,18 +27,6 @@ namespace Shit
 	{
 		vkDestroySurfaceKHR(vk_instance, surface, nullptr);
 	}
-	struct WindowAttribute
-	{
-		ShitWindow *pWindow;
-		std::unique_ptr<Swapchain> swapchain;
-		VkSurfaceKHR surface;
-	};
-
-	struct QueueFamilyIndex
-	{
-		uint32_t index;
-		uint32_t count;
-	};
 
 	namespace VK
 	{
@@ -46,7 +34,7 @@ namespace Shit
 		void queryQueueFamilyProperties(VkPhysicalDevice physicalDevice, std::vector<VkQueueFamilyProperties> &queueFamilyProperties);
 		void queryPhysicalDeviceGroupInfo(VkInstance instance, std::vector<VkPhysicalDeviceGroupProperties> &physicalDeviceGroupProperties);
 
-		std::optional<uint32_t> findQueueFamilyIndexByFlag(std::vector<VkQueueFamilyProperties> &queueFamilyProperties, VkQueueFlagBits flag, const std::unordered_set<uint32_t> &skipIndices);
+		std::optional<uint32_t> findQueueFamilyIndexByFlag(std::vector<VkQueueFamilyProperties> &queueFamilyProperties, VkQueueFlags flag, const std::unordered_set<uint32_t> &skipIndices);
 		std::optional<uint32_t> findQueueFamilyIndexPresent(VkPhysicalDevice physicalDevice, uint32_t familyNum, VkSurfaceKHR surface);
 		VkPhysicalDevice pickPhysicalDevice(VkInstance instance);
 		VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, const std::vector<uint32_t> &queueFamilyIndices);

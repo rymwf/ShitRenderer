@@ -626,7 +626,6 @@ namespace Shit
 
 	enum class CommandPoolCreateFlagBits
 	{
-
 	};
 	ENABLE_BITMASK_OPERATORS(CommandPoolCreateFlagBits);
 
