@@ -25,7 +25,7 @@ namespace Shit
 	public:
 		VKSwapchain(const SwapchainCreateInfo &createInfo, VkSurfaceKHR surface) : Swapchain(createInfo)
 		{
-			auto presentQueueFamilyIndex = static_cast<VKDevice *>(createInfo.device)->GetPresentQueueFamilyIndex(surface);
+			auto presentQueueFamilyIndex = static_cast<VKDevice *>(createInfo.pDevice)->GetPresentQueueFamilyIndex(surface);
 
 			if (!presentQueueFamilyIndex.has_value())
 				THROW("current device do not support present to surface");
@@ -35,7 +35,7 @@ namespace Shit
 			//set format
 			std::vector<VkSurfaceFormatKHR> surfaceFormats;
 
-			VkPhysicalDevice physicalDevice = static_cast<VKDevice *>(createInfo.device)->GetPhysicalDevice();
+			VkPhysicalDevice physicalDevice = static_cast<VKDevice *>(createInfo.pDevice)->GetPhysicalDevice();
 
 			VK::querySurfaceFormats(physicalDevice, surface, surfaceFormats);
 
@@ -88,7 +88,7 @@ namespace Shit
 				VK_NULL_HANDLE};
 
 			if (vkCreateSwapchainKHR(
-					static_cast<VKDevice *>(createInfo.device)->GetHandle(),
+					static_cast<VKDevice *>(createInfo.pDevice)->GetHandle(),
 					&swapchainInfo, nullptr, &mHandle) != VK_SUCCESS)
 				THROW("failed to create swapchain");
 		}
@@ -103,7 +103,7 @@ namespace Shit
 		}
 		~VKSwapchain() override
 		{
-			vkDestroySwapchainKHR(static_cast<VKDevice*>(mCreateInfo.device)->GetHandle(), mHandle, nullptr);
+			vkDestroySwapchainKHR(static_cast<VKDevice*>(mCreateInfo.pDevice)->GetHandle(), mHandle, nullptr);
 		}
 	};
 

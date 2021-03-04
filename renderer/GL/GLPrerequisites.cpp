@@ -13,6 +13,30 @@ namespace Shit
 {
 	ShitGLVersion GLVersion;
 
+	/**
+	 * @brief if current gpu do not support a version, the value will be false,
+	 * they will be initialized after creating a device;
+	 */
+	bool SHIT_GL_110;
+	bool SHIT_GL_120;
+	bool SHIT_GL_121;
+	bool SHIT_GL_130;
+	bool SHIT_GL_140;
+	bool SHIT_GL_150;
+	bool SHIT_GL_200;
+	bool SHIT_GL_210;
+	bool SHIT_GL_300;
+	bool SHIT_GL_310;
+	bool SHIT_GL_320;
+	bool SHIT_GL_330;
+	bool SHIT_GL_400;
+	bool SHIT_GL_410;
+	bool SHIT_GL_420;
+	bool SHIT_GL_430;
+	bool SHIT_GL_440;
+	bool SHIT_GL_450;
+	bool SHIT_GL_460;
+
 	namespace GL
 	{
 		void queryGLExtensionNames(std::vector<const GLubyte *> &extensionNames)
@@ -75,6 +99,12 @@ namespace Shit
 			LOG_VAR(glGetString(GL_RENDERER));
 			LOG_VAR(glGetString(GL_VERSION));
 			LOG_VAR(glGetString(GL_SHADING_LANGUAGE_VERSION));
+			int numShadingLanguageVersions{};
+			glGetIntegerv(GL_NUM_SHADING_LANGUAGE_VERSIONS, &numShadingLanguageVersions);
+			LOG_VAR(numShadingLanguageVersions);
+			for (int i = 0; i < numShadingLanguageVersions; ++i)
+				LOG_VAR(glGetStringi(GL_SHADING_LANGUAGE_VERSION, i));
+
 			int samples;
 			glGetIntegerv(GL_SAMPLES, &samples);
 			LOG_VAR(samples);
@@ -239,37 +269,6 @@ namespace Shit
 
 	}
 
-	ProgramHandle CreateProgram(const ProgramCreateInfo &createInfo)
-	{
-		ProgramHandle ret = glCreateProgram();
-		if (ret)
-		{
-			glProgramParameteri(ret, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, createInfo.retrievable);
-			glProgramParameteri(ret, GL_PROGRAM_SEPARABLE, createInfo.separable);
-			for (auto &&shader : *createInfo.pShaders)
-				glAttachShader(ret, shader);
-			glLinkProgram(ret);
-#ifndef NODEBUG
-			GLint success;
-			glGetProgramiv(ret, GL_LINK_STATUS, &success);
-			if (!success)
-			{
-				GLint len;
-				glGetProgramiv(ret, GL_INFO_LOG_LENGTH, &len);
-				std::string log;
-				log.resize(static_cast<size_t>(len));
-				glGetProgramInfoLog(ret, len, NULL, &log[0]);
-				LOG(log);
-				glDeleteProgram(ret);
-				THROW("failed to link program");
-			}
-#endif
-		}
-		else
-			THROW("failed to create program");
-		return ret;
-	}
-
 	constexpr GLenum glFormatArray[][2]{
 		{GL_NONE, GL_NONE},
 
@@ -309,7 +308,7 @@ namespace Shit
 		GL_COPY_READ_BUFFER,
 		GL_COPY_WRITE_BUFFER,
 		GL_TEXTURE_BUFFER,
-		0,
+		0,//storage texel
 		GL_UNIFORM_BUFFER,
 		GL_SHADER_STORAGE_BUFFER,
 		GL_ELEMENT_ARRAY_BUFFER,

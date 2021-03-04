@@ -29,14 +29,49 @@ namespace Shit
 	Swapchain *GLRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
 	{
 #ifdef _WIN32
-		mSwapchains.emplace_back(std::make_unique<GLSwapchainWin32>(createInfo, mCreateInfo.version, mCreateInfo.flags));
+		mWindowAttributes.emplace_back(WindowAttribute{createInfo.pWindow, std::make_unique<GLSwapchainWin32>(createInfo, mCreateInfo.version, mCreateInfo.flags)});
 #else
 		static_assert(0, "CreateSwapchain is not implemented ye");
 #endif
-		return mSwapchains.back().get();
+		return mWindowAttributes.back().pSwapchain.get();
 	}
 	void GLRenderSystem::ProcessWindowEvent([[maybe_unused]] const Event &ev)
 	{
 	}
+	Shader *GLRenderSystem::CreateShader(const ShaderCreateInfo &createInfo)
+	{
+		mShaders.emplace_back(std::make_unique<GLShader>(createInfo));
+		return mShaders.back().get();
+	}
+	void GLRenderSystem::DestroyShader(Shader *pShader)
+	{
+		for (auto it = mShaders.begin(), end = mShaders.end(); it != end; ++it)
+		{
+			if (it->get() == pShader)
+			{
+				mShaders.erase(it);
+				break;
+			}
+		}
+	}
 
+	GraphicsPipeline *GLRenderSystem::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
+	{
+		mGraphicsPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(createInfo));
+		return mGraphicsPipelines.back().get();
+	}
+	CommandBuffer *GLRenderSystem::CreateCommandBuffer(const CommandBufferCreateInfo &createInfo)
+	{
+		mCommandBuffers.emplace_back(std::make_unique<GLCommandBuffer>(createInfo));
+		return mCommandBuffers.back().get();
+	}
+
+	Queue *GLRenderSystem::CreateDeviceQueue(const QueueCreateInfo &createInfo)
+	{
+		return nullptr;
+	}
+	Result GLRenderSystem::WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout)
+	{
+		return Result::SUCCESS;
+	}
 } // namespace Shit

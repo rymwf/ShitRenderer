@@ -15,7 +15,12 @@
 #include <stdexcept>
 #include <string>
 #include <optional>
+#include <stack>
 #include <utility>
+#include <array>
+#include <unordered_map>
+#include <functional>
+#include <type_traits>
 
 #include "ShitEnum.h"
 #include "config.h"
@@ -57,6 +62,12 @@ namespace Shit
 	class ShitWindow;
 	class Device;
 	class Swapchain;
+	class Shader;
+	struct Event;
+	class CommandPool;
+	class Semaphore;
+	class CommandBuffer;
+	class Fence;
 
 	using PhysicalDevice = void *;
 
@@ -95,32 +106,88 @@ namespace Shit
 		RenderSystemCreateFlagBits flags;
 	};
 
+	struct DeviceCreateInfo
+	{
+		union
+		{
+			PhysicalDevice *pPhysicalDevice; //no use for opengl
+			ShitWindow *pWindow;			 //no use for vulkan
+		};
+	};
+
 	struct WindowCreateInfo
 	{
 		const char *name;
 		Rect2D rect;
+		std::function<void(const Event &)> eventHandle;
 	};
 
 	struct SwapchainCreateInfo
 	{
-		Device *device;
-		ShitWindow *pWindow;
+		Device *pDevice;	 
+		ShitWindow *pWindow; //!<one window can only have one swapchain
 		uint32_t minImageCount;
 		ShitFormat format;		   //!<no use for opengl, opengl is always RGBA
 		ColorSpace colorSpace;	   //!<sRGB
-		Extent2D imageExtent;	   //no use for opengl
+		Extent2D imageExtent;	   //!<no use for opengl
 		uint32_t imageArrayLayers; //!< alway 1 unless you are developing a stereoscopic 3D applicaiton
 		PresentMode presentMode;
 	};
 
-	struct ShaderModuleCreateInfo
+	struct ShaderCreateInfo
 	{
+		Device *pDevice;
 		ShaderStageFlagBits stage;
 		std::string code;
 	};
 
+	struct SpecializationInfo
+	{
+		std::vector<uint32_t> constantIDs;
+		std::vector<uint32_t> constantValues;
+	};
+
+	struct PipelineShaderStageCreateInfo
+	{
+		ShaderStageFlagBits stage;
+		Shader *pShader;
+		const char* entryName;
+		std::shared_ptr<SpecializationInfo> pSpecializationInfo;
+	};
+
+	struct VertexAttributeDescription
+	{
+		uint32_t location;	 //location in shader
+		uint32_t binding;	 //index in given buffers
+		uint32_t components; //1,2,3,4
+		DataType dataType;
+		bool normalized;
+		uint32_t offset;
+	};
+
+	struct VertexBindingDescription
+	{
+		uint32_t binding; //index in given buffers
+		uint32_t stride;
+		uint32_t divisor; //attributes advance once per divior instances,when 0, advance per vertex
+	};
+
+	struct VertexInputStateCreateInfo
+	{
+		std::vector<VertexBindingDescription> vertexBindingDescriptions;
+		std::vector<VertexAttributeDescription> vertexAttributeDescriptions;
+	};
+	struct GraphicsPipelineCreateInfo
+	{
+		Device *pDevice;
+		std::shared_ptr<std::vector<PipelineShaderStageCreateInfo>> pStages;
+		std::shared_ptr<VertexInputStateCreateInfo> pVertexInputState;
+		//PipelineLayout layout;
+	};
+
 	struct BufferCreateInfo
 	{
+		Device *pDevice;
 		BufferCreateFlagBits flags;
 		uint32_t size;
 		union
@@ -128,6 +195,44 @@ namespace Shit
 			BufferStorageFlagBits storageFlags;
 			BufferMutableStorageUsage storageUsage;
 		};
+	};
+
+	struct CommandPoolCreateInfo
+	{
+		Device *pDevice;
+		CommandPoolCreateFlagBits flags;
+		uint32_t queueFamilyIndex;
+	};
+	struct CommandBufferCreateInfo
+	{
+		Device *pDevice;
+		CommandPool *pCommandPool;
+		CommandBufferLevel level;
+	};
+
+	struct QueueCreateInfo
+	{
+		Device *pDevice;
+		QueueFlagBits queueFlags;
+		uint32_t queueIndex;
+		std::vector<uint32_t> skipQueueFamilyIndices;
+	};
+
+	struct SubmitInfo
+	{
+		std::vector<Semaphore *> waitSempahores; //wait pipeline stage is color attachment output
+		std::vector<CommandBuffer *> commandBuffers;
+		std::vector<Semaphore *> signalSempahores;
+	};
+
+	struct FenceCreateInfo
+	{
+		Device* pDevice;
+	};
+
+	struct SemaphoreCreateInfo
+	{
+		Device* pDevice;
 	};
 
 } // namespace Shit

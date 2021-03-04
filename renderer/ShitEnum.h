@@ -110,7 +110,10 @@ namespace Shit
 		KEYBOARD,
 		DROP,
 		CHAR,
+		WINDOW_CREATE,
 		WINDOW_CLOSE,
+		WINDOW_DESTROY,
+		//WINDOW_QUIT,
 		WINDOW_RESIZE,
 		WINDOW_CONTENTSACLE,
 		WINDOW_POS,
@@ -619,5 +622,36 @@ namespace Shit
 	{
 		GRAPHICS,
 		COMPUTE,
+	};
+
+	enum class CommandPoolCreateFlagBits
+	{
+
+	};
+	ENABLE_BITMASK_OPERATORS(CommandPoolCreateFlagBits);
+
+	enum class CommandBufferLevel
+	{
+		PRIMARY,
+		SECONDARY
+	};
+	enum class QueueFlagBits
+	{
+		GRAPHICS_BIT = 0x1,
+		COMPUTE_BIT = 0x2,
+		TRANSFER_BIT = 0x4,
+		SPARSE_BINDING_BIT = 0x8,
+		PROTECTED_BIT = 0x10,
+	};
+	ENABLE_BITMASK_OPERATORS(QueueFlagBits);
+
+	enum class Result
+	{
+		SUCCESS,
+		NOT_READY,
+		TIME_OUT,
+		EVENT_SET,
+		EVENT_RESET,
+		INCOMPLETE,
 	};
 }

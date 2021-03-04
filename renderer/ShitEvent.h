@@ -37,7 +37,7 @@ namespace Shit
 	};
 	struct KeyEvent
 	{
-		KeyCode key;
+		KeyCode keyCode;
 		PressAction action;
 	};
 	struct CharEvent
@@ -49,7 +49,13 @@ namespace Shit
 		uint32_t count;
 		char **paths;
 	};
+	struct CreateEvent
+	{
+	};
 	struct CloseEvent
+	{
+	};
+	struct QuitEvent
 	{
 	};
 	struct ResizeEvent
@@ -99,7 +105,9 @@ namespace Shit
 			DropEvent drop;
 
 			//window event
+			CreateEvent windowCreate;
 			CloseEvent windowClose;
+			QuitEvent windowQuit;
 			ResizeEvent windowResize;
 			ContentScaleEvent windowConstentScale;
 			PosEvent windowPos;

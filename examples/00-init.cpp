@@ -6,37 +6,45 @@ class Hello
 {
 	RenderSystem *renderSystem;
 	ShitWindow *window;
-	Context *context;
 
 public:
 	void initRenderSystem()
 	{
 		RenderSystemCreateInfo renderSystemCreateInfo{
 			RendererVersion::GL,
-			//RendererVersion::VULKAN,
+			// RendererVersion::VULKAN,
 			RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT};
 
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
+		//1. create window
 		WindowCreateInfo windowCreateInfo{
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}}};
+			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
+			std::bind(&Hello::ProcessEvent, this, std::placeholders::_1)};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
-
-		std::vector<PhysicalDevice> physicalDevices;
-		renderSystem->EnumeratePhysicalDevice(physicalDevices);
-
-		ContextCreateInfo contextCreateInfo{
-			window,
-		};
-		context = renderSystem->CreateContext(contextCreateInfo);
 	}
-	void createScene()
+
+	/**
+	 * @brief process window event, do not write render code here
+	 * 
+	 * @param ev 
+	 */
+	void ProcessEvent(const Event &ev)
 	{
+		switch (ev.type)
+		{
+		case EventType::KEYBOARD:
+			if (ev.key.keyCode == KeyCode::KEY_ESCAPE)
+				ev.pWindow->Close();
+			break;
+		}
 	}
 	void mainLoop()
 	{
-		window->PollEvent();
+		while (window->PollEvent())
+		{
+		}
 	}
 	void cleanUp()
 	{
@@ -44,7 +52,6 @@ public:
 	void run()
 	{
 		initRenderSystem();
-		createScene();
 		mainLoop();
 		cleanUp();
 	}

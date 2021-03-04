@@ -17,6 +17,7 @@ namespace Shit
 #ifdef _WIN32
 
 	static uint32_t shitKey2NativeKeyMap[]{
+		0,
 		VK_SPACE,
 		VK_OEM_7,
 		VK_OEM_COMMA,

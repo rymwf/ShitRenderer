@@ -20,7 +20,7 @@ namespace Shit
 	{
 		mHDC = GetDC(static_cast<WindowWin32 *>(pWindow)->GetHWND());
 		if (!mHDC)
-			THROW("failed to create surface");
+			THROW("failed to create window context");
 
 		PIXELFORMATDESCRIPTOR pfd = {
 			sizeof(PIXELFORMATDESCRIPTOR), // size of this pfd
@@ -51,6 +51,30 @@ namespace Shit
 			THROW("failed to create surface");
 
 		wglMakeCurrent(mHDC, mHRenderContext);
+
+		int majorversion, minorversion;
+		glGetIntegerv(GL_MAJOR_VERSION, &majorversion);
+		glGetIntegerv(GL_MINOR_VERSION, &minorversion);
+
+		SHIT_GL_110 = majorversion * 10 + minorversion >= 11;
+		SHIT_GL_120 = majorversion * 10 + minorversion >= 12;
+		SHIT_GL_121 = majorversion * 10 + minorversion >= 13;
+		SHIT_GL_130 = majorversion * 10 + minorversion >= 13;
+		SHIT_GL_140 = majorversion * 10 + minorversion >= 14;
+		SHIT_GL_150 = majorversion * 10 + minorversion >= 15;
+		SHIT_GL_200 = majorversion * 10 + minorversion >= 20;
+		SHIT_GL_210 = majorversion * 10 + minorversion >= 21;
+		SHIT_GL_300 = majorversion * 10 + minorversion >= 30;
+		SHIT_GL_310 = majorversion * 10 + minorversion >= 31;
+		SHIT_GL_320 = majorversion * 10 + minorversion >= 32;
+		SHIT_GL_330 = majorversion * 10 + minorversion >= 33;
+		SHIT_GL_400 = majorversion * 10 + minorversion >= 40;
+		SHIT_GL_410 = majorversion * 10 + minorversion >= 41;
+		SHIT_GL_420 = majorversion * 10 + minorversion >= 42;
+		SHIT_GL_430 = majorversion * 10 + minorversion >= 43;
+		SHIT_GL_440 = majorversion * 10 + minorversion >= 44;
+		SHIT_GL_450 = majorversion * 10 + minorversion >= 45;
+		SHIT_GL_460 = majorversion * 10 + minorversion >= 46;
 
 		LOADGL
 		LOADWGL

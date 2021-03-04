@@ -10,6 +10,7 @@
 #pragma once
 #include <renderer/ShitShader.h>
 #include "VKPrerequisites.h"
+#include "VKDevice.h"
 
 namespace Shit
 {
@@ -19,7 +20,7 @@ namespace Shit
 		VkShaderModule mHandle;
 
 	public:
-		VKShader(VkDevice device, const ShaderModuleCreateInfo &createInfo) : Shader(createInfo)
+		VKShader(const ShaderCreateInfo &createInfo) : Shader(createInfo)
 		{
 			VkShaderModuleCreateInfo tempCreateInfo{
 				VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -28,8 +29,12 @@ namespace Shit
 				createInfo.code.size(),
 				reinterpret_cast<const uint32_t *>(createInfo.code.data())};
 
-			if (vkCreateShaderModule(device, &tempCreateInfo, nullptr, &mHandle) != VK_SUCCESS)
+			if (vkCreateShaderModule(static_cast<VKDevice *>(createInfo.pDevice)->GetHandle(), &tempCreateInfo, nullptr, &mHandle) != VK_SUCCESS)
 				THROW("failed to create shadermodule");
+		}
+		~VKShader() override
+		{
+			vkDestroyShaderModule(static_cast<VKDevice *>(mpDevice)->GetHandle(), mHandle, nullptr);
 		}
 		VkShaderModule GetHandle() const
 		{

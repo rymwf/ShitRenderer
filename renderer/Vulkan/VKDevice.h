@@ -21,15 +21,12 @@ namespace Shit
 
 		std::vector<VkQueueFamilyProperties> mQueueFamilyProperties;
 
-		VkQueue mGraphicQueue;
-		VkQueue mTransferQueue;
-
 		std::optional<uint32_t> mGraphicQueueFamilyIndex;
 		std::optional<uint32_t> mTransferQueueFamilyIndex;
 
 	public:
 		VKDevice(PhysicalDevice physicalDevice);
-		~VKDevice()
+		~VKDevice() override
 		{
 			vkDestroyDevice(mDevice, nullptr);
 		}
@@ -44,6 +41,8 @@ namespace Shit
 		{
 			return mPhysicalDevice;
 		}
+
+		std::optional<QueueFamilyIndex> GetQueueFamilyIndexByFlag(VkQueueFlags flag, const std::vector<uint32_t> &skipIndices);
 	};
 
 } // namespace Shit

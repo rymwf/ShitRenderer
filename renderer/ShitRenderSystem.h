@@ -13,6 +13,11 @@
 #include "ShitWindow.h"
 #include "ShitDevice.h"
 #include "ShitSwapchain.h"
+#include "ShitShader.h"
+#include "ShitPipeline.h"
+#include "ShitCommandPool.h"
+#include "ShitCommandBuffer.h"
+#include "ShitQueue.h"
 
 namespace Shit
 {
@@ -23,6 +28,11 @@ namespace Shit
 
 		std::vector<std::unique_ptr<ShitWindow>> mWindows;
 		std::vector<std::unique_ptr<Device>> mDevices;
+		std::vector<std::unique_ptr<Shader>> mShaders;
+		std::vector<std::unique_ptr<GraphicsPipeline>> mGraphicsPipelines;
+		std::vector<std::unique_ptr<CommandPool>> mCommandPools;
+		std::vector<std::unique_ptr<CommandBuffer>> mCommandBuffers;
+		std::vector<std::unique_ptr<Queue>> mQueues;
 
 	protected:
 		RenderSystem() {}
@@ -54,11 +64,10 @@ namespace Shit
 		 * create a device include all queue families supported by the physical device
 		 * currently physical device selection is not supported, the method will use the current gpu(opengl) or the best gpu(Vulkan)
 		 * 
-		 * @param pPhyicalDevice not used, can be nullptr
-		 * @param pWindow (opengl, used to create a false context) ,for vulkan canbe nullptr
+		 * @param createInfo 
 		 * @return Device* 
 		 */
-		virtual Device *CreateDevice(PhysicalDevice *pPhyicalDevice, ShitWindow *pWindow) = 0;
+		virtual Device *CreateDevice(const DeviceCreateInfo& createInfo) = 0;
 
 		/**
 		 * @brief TODO: physical device not finished
@@ -66,7 +75,6 @@ namespace Shit
 		 * @param physicalDevices 
 		 */
 		virtual void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) = 0;
-
 
 		/**
 		 * @brief Create a Swapchain object,
@@ -76,8 +84,39 @@ namespace Shit
 		 * @return Swapchain* 
 		 */
 		virtual Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) = 0;
+
+		virtual Shader *CreateShader(const ShaderCreateInfo &createInfo) = 0;
+		virtual void DestroyShader(Shader *pShader) = 0;
+
+		virtual GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) = 0;
+
+		virtual CommandPool *CreateCommandPool([[maybe_unused]] const CommandPoolCreateInfo &createInfo)
+		{
+			LOG("currrent renderer do not support commandpool");
+			return nullptr;
+		}
+		virtual void DestroyCommandPool([[maybe_unused]] CommandPool *commandPool) {}
+
+		virtual CommandBuffer *CreateCommandBuffer(const CommandBufferCreateInfo &createInfo) = 0;
+
+		/**
+		 * @brief Create a Device Queue object
+		 * 
+		 * @param createInfo only device is useful for opengl
+		 * @return Queue* 
+		 */
+		virtual Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) = 0;
+
+		/**
+		 * @brief 
+		 * 
+		 * @param pDevice 
+		 * @param fence 
+		 * @param timeout  nanoseconds
+		 * @return Result 
+		 */
+		virtual Result WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout) = 0;
 	};
 
-	RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo);
-	void DeleteRenderSystem(RenderSystem *pRenderSystem);
+	SHIT_API RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo);
 } // namespace Shit

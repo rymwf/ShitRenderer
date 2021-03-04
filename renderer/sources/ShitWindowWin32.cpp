@@ -14,19 +14,19 @@
 namespace Shit
 {
 	void WindowWin32::Create()
-	{			
+	{
 
-//		DISPLAY_DEVICE lpDisplayDevice;
-//		DEVMODE lpDevMode;
-//		DWORD iDevNum{0};
-//		if (EnumDisplayDevices(nullptr, iDevNum, &lpDisplayDevice, 0))
-//		{
-//			EnumDisplaySettings(lpDisplayDevice.DeviceName, ENUM_CURRENT_SETTINGS, &lpDevMode);
-//		}
+		//		DISPLAY_DEVICE lpDisplayDevice;
+		//		DEVMODE lpDevMode;
+		//		DWORD iDevNum{0};
+		//		if (EnumDisplayDevices(nullptr, iDevNum, &lpDisplayDevice, 0))
+		//		{
+		//			EnumDisplaySettings(lpDisplayDevice.DeviceName, ENUM_CURRENT_SETTINGS, &lpDevMode);
+		//		}
 
 		const char CLASS_NAME[] = "WindowWin32 Class";
 
-		mHInstance=GetModuleHandle(NULL);
+		mHInstance = GetModuleHandle(NULL);
 		WNDCLASS wc = {};
 
 		wc.lpfnWndProc = WindowWin32::WindowProc;
@@ -69,109 +69,113 @@ namespace Shit
 	{
 		WindowWin32 *pThis = NULL;
 		pThis = (WindowWin32 *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-		if (uMsg == WM_CREATE)
+		Event ev{};
+		ev.pWindow = pThis;
+		//if (uMsg == WM_CREATE)
+		//{
+		//}
+		//else if (pThis)
+		//{
+		switch (uMsg)
+		{
+		case WM_CREATE:
 		{
 			CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
 			pThis = (WindowWin32 *)pCreate->lpCreateParams;
 			SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
+
+			ev.type = EventType::WINDOW_CREATE;
+			pThis->mObserver.Notify(ev);
+			break;
 		}
-		else if (pThis)
-		{
-			Event ev{};
-			switch (uMsg)
+		case WM_CLOSE:
+			DestroyWindow(hwnd);
+			ev.type = EventType::WINDOW_CLOSE;
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_DESTROY:
+			ev.type = EventType::WINDOW_DESTROY;
+			pThis->mObserver.Notify(ev);
+			PostQuitMessage(0);
+			break;
+		case WM_SIZE:
+			ev.type = EventType::WINDOW_RESIZE;
+			pThis->mCreateInfo.rect.extent.width = ev.windowResize.width = LOWORD(lParam);
+			pThis->mCreateInfo.rect.extent.height = ev.windowResize.height = HIWORD(lParam);
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_MOUSEMOVE:
+			ev.type = EventType::MOUSEMOVE;
+			ev.mouseMove.xpos = LOWORD(lParam);
+			ev.mouseMove.ypos = HIWORD(lParam);
+			ev.modifier = MapKeyModifier(wParam);
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_MOUSEWHEEL:
+			ev.type = EventType::MOUSEWHEEL;
+			ev.mouseWheel.yoffset = int((wParam >> 31) ? ((wParam >> 16) & 0x7fff) - 0x8000 : HIWORD(wParam)) / WHEEL_DELTA;
+			ev.modifier = MapKeyModifier(LOWORD(wParam));
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_LBUTTONDOWN:
+			ev.type = EventType::MOUSEBUTTON;
+			ev.mouseButton.action = PressAction::DOWN;
+			ev.mouseButton.button = MouseButton::MOUSE_L;
+			ev.modifier = MapKeyModifier(wParam);
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_LBUTTONUP:
+			ev.type = EventType::MOUSEBUTTON;
+			ev.mouseButton.action = PressAction::UP;
+			ev.mouseButton.button = MouseButton::MOUSE_L;
+			ev.modifier = MapKeyModifier(wParam);
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_RBUTTONDOWN:
+			ev.type = EventType::MOUSEBUTTON;
+			ev.mouseButton.action = PressAction::DOWN;
+			ev.mouseButton.button = MouseButton::MOUSE_R;
+			ev.modifier = MapKeyModifier(wParam);
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_RBUTTONUP:
+			ev.type = EventType::MOUSEBUTTON;
+			ev.mouseButton.action = PressAction::UP;
+			ev.mouseButton.button = MouseButton::MOUSE_R;
+			ev.modifier = MapKeyModifier(wParam);
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_KEYDOWN:
+			ev.type = EventType::KEYBOARD;
+			if ((lParam >> 24) & 0xff)
 			{
-			case WM_CLOSE:
-			case WM_DESTROY:
-				ev.type = EventType::WINDOW_CLOSE;
-				ev.pWindow = pThis;
-				pThis->mObserver.Notify(ev);
-				PostQuitMessage(0);
-				return 0;
-			case WM_SIZE:
-				ev.type = EventType::WINDOW_RESIZE;
-				pThis->mCreateInfo.rect.extent.width = ev.windowResize.width = LOWORD(lParam);
-				pThis->mCreateInfo.rect.extent.height = ev.windowResize.height = HIWORD(lParam);
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_MOUSEMOVE:
-				ev.type = EventType::MOUSEMOVE;
-				ev.mouseMove.xpos = LOWORD(lParam);
-				ev.mouseMove.ypos = HIWORD(lParam);
-				ev.modifier = MapKeyModifier(wParam);
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_MOUSEWHEEL:
-				ev.type = EventType::MOUSEWHEEL;
-				ev.mouseWheel.yoffset = int((wParam >> 31) ? ((wParam >> 16) & 0x7fff) - 0x8000 : HIWORD(wParam)) / WHEEL_DELTA;
-				ev.modifier = MapKeyModifier(LOWORD(wParam));
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_LBUTTONDOWN:
-				ev.type = EventType::MOUSEBUTTON;
-				ev.mouseButton.action = PressAction::DOWN;
-				ev.mouseButton.button = MouseButton::MOUSE_L;
-				ev.modifier = MapKeyModifier(wParam);
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_LBUTTONUP:
-				ev.type = EventType::MOUSEBUTTON;
-				ev.mouseButton.action = PressAction::UP;
-				ev.mouseButton.button = MouseButton::MOUSE_L;
-				ev.modifier = MapKeyModifier(wParam);
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_RBUTTONDOWN:
-				ev.type = EventType::MOUSEBUTTON;
-				ev.mouseButton.action = PressAction::DOWN;
-				ev.mouseButton.button = MouseButton::MOUSE_R;
-				ev.modifier = MapKeyModifier(wParam);
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_RBUTTONUP:
-				ev.type = EventType::MOUSEBUTTON;
-				ev.mouseButton.action = PressAction::UP;
-				ev.mouseButton.button = MouseButton::MOUSE_R;
-				ev.modifier = MapKeyModifier(wParam);
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_KEYDOWN:
-				ev.type = EventType::KEYBOARD;
-				if ((lParam >> 24) & 0xff)
-				{
-					ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
-																 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
-																 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
-				}
-				ev.key.key = MapKey(wParam);
-				ev.key.action = PressAction::DOWN;
-				if (wParam == VK_ESCAPE)
-				{
-					ev.type = EventType::WINDOW_CLOSE;
-					pThis->mObserver.Notify(ev);
-					PostQuitMessage(0);
-					return 0;
-				}
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_KEYUP:
-				ev.type = EventType::KEYBOARD;
-				if ((lParam >> 24) & 0xff)
-				{
-					ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
-																 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
-																 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
-				}
-				ev.key.key = MapKey(wParam);
-				ev.key.action = PressAction::UP;
-				pThis->mObserver.Notify(ev);
-				break;
-			case WM_CHAR:
-				ev.type = EventType::CHAR;
-				ev.charInput.codepoint = wParam;
-				pThis->mObserver.Notify(ev);
-				break;
+				ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
+															 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
+															 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
 			}
+			ev.key.keyCode = MapKey(wParam);
+			ev.key.action = PressAction::DOWN;
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_KEYUP:
+			ev.type = EventType::KEYBOARD;
+			if ((lParam >> 24) & 0xff)
+			{
+				ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
+															 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
+															 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
+			}
+			ev.key.keyCode = MapKey(wParam);
+			ev.key.action = PressAction::UP;
+			pThis->mObserver.Notify(ev);
+			break;
+		case WM_CHAR:
+			ev.type = EventType::CHAR;
+			ev.charInput.codepoint = wParam;
+			pThis->mObserver.Notify(ev);
+			break;
 		}
+		//}
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 
@@ -191,16 +195,25 @@ namespace Shit
 		mCreateInfo.rect.offset.y = y;
 		SetWindowPos(mHwnd, HWND_NOTOPMOST, x, y, 0, 0, SWP_NOSIZE);
 	}
-	//void WindowWin32::Close()
-	//{
-	//}
-	void WindowWin32::PollEvent()
+	void WindowWin32::Close()
+	{
+		PostQuitMessage(0);
+	}
+	bool WindowWin32::PollEvent()
 	{
 		MSG msg{};
-		while (GetMessage(&msg, NULL, 0, 0))
+		//while (GetMessage(&msg, NULL, 0, 0))
+		//{
+		//	TranslateMessage(&msg);
+		//	DispatchMessage(&msg);
+		//}
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+			if (msg.message == WM_QUIT)
+				return false;
 		}
+		return true;
 	}
 }

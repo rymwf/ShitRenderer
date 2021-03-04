@@ -35,6 +35,16 @@ namespace Shit
 		}
 	}
 
+	void DeleteRenderSystem(RenderSystem *pRenderSystem)
+	{
+		using RENDERER_DELETE_FUNC = void (*)(const RenderSystem *);
+		auto module = ModuleManager::Get()->GetModule(GetRendererName(pRenderSystem->GetCreateInfo()->version));
+		auto f = (RENDERER_DELETE_FUNC)(module->LoadProc(SHIT_RENDERER_DELETE_FUNC));
+		if (!f)
+			THROW("failed to find rendersystem delele function");
+		f(pRenderSystem);
+	}
+
 	RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo)
 	{
 		using RENDERER_LOAD_FUNC = Shit::RenderSystem *(*)(const RenderSystemCreateInfo &);
@@ -46,16 +56,6 @@ namespace Shit
 		return sRenderSystem.get();
 	}
 
-	void DeleteRenderSystem(RenderSystem *pRenderSystem)
-	{
-		using RENDERER_DELETE_FUNC = void (*)(const RenderSystem *);
-		auto module = ModuleManager::Get()->GetModule(GetRendererName(pRenderSystem->GetCreateInfo()->version));
-		auto f = (RENDERER_DELETE_FUNC)(module->LoadProc(SHIT_RENDERER_DELETE_FUNC));
-		if (!f)
-			THROW("failed to find rendersystem delele function");
-		f(pRenderSystem);
-	}
-
 	ShitWindow *RenderSystem::CreateRenderWindow(const WindowCreateInfo &createInfo)
 	{
 #ifdef _WIN32
@@ -63,7 +63,9 @@ namespace Shit
 #else
 		static_assert(0, "create render Window method not implemented");
 #endif
-		mWindows.back().get()->AttachEventHandle(std::bind(&RenderSystem::ProcessWindowEvent, this, std::placeholders::_1));
+		auto window = mWindows.back().get();
+		window->AttachEventHandle(std::bind(&RenderSystem::ProcessWindowEvent, this, std::placeholders::_1));
+		window->AttachEventHandle(createInfo.eventHandle);
 		CreateSurface(mWindows.back().get());
 		return mWindows.back().get();
 	}

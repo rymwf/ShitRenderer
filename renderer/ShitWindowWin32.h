@@ -31,9 +31,9 @@ namespace Shit
 		void SetSize(uint32_t width, uint32_t height) override;
 		void SetTitle(const char *title) override;
 		void SetPos(int x, int y) override;
+		void Close() override;
 
-		//void Close() override;
-		void PollEvent() override;
+		bool PollEvent() override;
 		HWND GetHWND() const { return mHwnd; }
 		HINSTANCE GetInstance() const { return mHInstance; }
 	};

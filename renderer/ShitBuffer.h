@@ -8,14 +8,18 @@
  * 
  */
 #pragma once
+#include "ShitRendererPrerequisites.h"
 
-namespace Shit{
+namespace Shit
+{
+	class Buffer
+	{
+		BufferCreateInfo mCreateInfo;
 
-	class Buffer{
-
-		public:
-		Buffer(){}
+	public:
+		Buffer(const BufferCreateInfo &createInfo) : mCreateInfo(createInfo)
+		{
+		}
 
 	};
-
-}
+} // namespace Shit

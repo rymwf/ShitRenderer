@@ -86,9 +86,7 @@ namespace Shit
 				if (skipIndices.find(i) != skipIndices.end())
 					continue;
 				if (queueFamilyProperties[i].queueFlags & flag)
-				{
 					return std::optional<uint32_t>(i);
-				}
 			}
 			return std::nullopt;
 		}
@@ -684,6 +682,14 @@ namespace Shit
 		VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
 		VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT,
 	};
+	constexpr VkQueueFlagBits vkQueueFlagBitArray[]{
+		VK_QUEUE_GRAPHICS_BIT,
+		VK_QUEUE_COMPUTE_BIT,
+		VK_QUEUE_TRANSFER_BIT,
+		VK_QUEUE_SPARSE_BINDING_BIT,
+		// Provided by VK_VERSION_1_1
+		VK_QUEUE_PROTECTED_BIT,
+	};
 
 	VkBufferUsageFlags Map(BufferUsageFlagBits flag)
 	{
@@ -710,6 +716,24 @@ namespace Shit
 	VkPresentModeKHR Map(PresentMode mode)
 	{
 		return vkPresentModeArray[static_cast<size_t>(mode)];
+	}
+	VkCommandBufferLevel Map(CommandBufferLevel level)
+	{
+		if (level == CommandBufferLevel::SECONDARY)
+			return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		else
+			return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	}
+	VkQueueFlags Map(QueueFlagBits flag)
+	{
+		int a = static_cast<int>(flag);
+		VkQueueFlags ret{};
+		for (int i = 0; a > 0 && i < 32; ++i, flag >>= 1)
+		{
+			if (a & 1)
+				ret |= vkQueueFlagBitArray[i];
+		}
+		return ret;
 	}
 
 } // namespace Shit

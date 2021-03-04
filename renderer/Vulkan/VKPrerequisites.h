@@ -23,11 +23,21 @@ namespace Shit
 {
 	extern VkInstance vk_instance;
 
+	static inline void destroyVkSurface(VkSurfaceKHR surface)
+	{
+		vkDestroySurfaceKHR(vk_instance, surface, nullptr);
+	}
 	struct WindowAttribute
 	{
 		ShitWindow *pWindow;
-		VkSurfaceKHR surface;
 		std::unique_ptr<Swapchain> swapchain;
+		VkSurfaceKHR surface;
+	};
+
+	struct QueueFamilyIndex
+	{
+		uint32_t index;
+		uint32_t count;
 	};
 
 	namespace VK
@@ -72,4 +82,6 @@ namespace Shit
 	VkFormat Map(ShitFormat format);
 	VkColorSpaceKHR Map(ColorSpace colorSpace);
 	VkPresentModeKHR Map(PresentMode mode);
+	VkCommandBufferLevel Map(CommandBufferLevel level);
+	VkQueueFlags Map(QueueFlagBits flag);
 }

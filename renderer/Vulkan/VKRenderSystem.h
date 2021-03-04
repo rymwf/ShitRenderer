@@ -11,15 +11,20 @@
 #include <renderer/ShitRenderSystem.h>
 #include "VKPrerequisites.h"
 #include "VKSwapchain.h"
+#include "VKShader.h"
+#include "VKCommandPool.h"
+#include "VKCommandBuffer.h"
+#include "VKDevice.h"
+#include "VKQueue.h"
 
 namespace Shit
 {
 	class VKRenderSystem final : public RenderSystem
 	{
 		std::vector<VkLayerProperties> mInstanceLayerProperties;
-
 		std::vector<WindowAttribute> mWindowAttributes;
 
+	private:
 		bool CheckLayerSupport(const char *layerName);
 
 		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
@@ -35,11 +40,6 @@ namespace Shit
 			return end;
 		}
 
-		void DeleteSurface(const ShitWindow *pWindow)
-		{
-			vkDestroySurfaceKHR(vk_instance, GetWindowAttributeIterator(pWindow)->surface, nullptr);
-		}
-
 		void ProcessWindowEvent(const Event &ev) override;
 
 	public:
@@ -47,14 +47,24 @@ namespace Shit
 
 		~VKRenderSystem() override
 		{
-			for (auto &&e : mWindowAttributes)
-				vkDestroySurfaceKHR(vk_instance, e.surface, nullptr);
-			mDevices.clear();
-			vkDestroyInstance(vk_instance, nullptr);
 		}
 
-		Device *CreateDevice(PhysicalDevice *pPhyicalDevice, ShitWindow *pWindow) override;
+		Device *CreateDevice(const DeviceCreateInfo& createInfo) override;
 
 		Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) override;
+
+		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
+		void DestroyShader(Shader* pShader) override;
+
+		GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
+
+		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
+		void DestroyCommandPool(CommandPool *commandPool) override;
+
+		CommandBuffer* CreateCommandBuffer(const CommandBufferCreateInfo &createInfo) override;
+
+		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
+
+		Result WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout) override;
 	};
 }

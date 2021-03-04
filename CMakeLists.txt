@@ -12,6 +12,7 @@ message("-- CMAKE_GENERATOR_PLATFORM:" ${CMAKE_GENERATOR_PLATFORM})
 
 project(ShitRenderer)
 find_package(GLEW CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,7 +53,7 @@ if(GLRENDERER)
 file(GLOB glfile 
 renderer/GL/*.h 
 renderer/GL/*.cpp 
-renderer/GL/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
+#renderer/GL/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
 )
 add_library(GLRenderer SHARED ${glfile} )
 target_link_libraries(GLRenderer PRIVATE
@@ -132,8 +133,10 @@ ${CMAKE_SOURCE_DIR}
 ${CMAKE_SOURCE_DIR}/examples
 ${CMAKE_BINARY_DIR} 
 )
-target_link_libraries(${examplename}
+target_link_libraries(${examplename} PRIVATE
 ${SHIT_OUTPUT_DIR}/ShitRenderer$<$<CONFIG:Debug>:d>.lib
+glm
+GLEW::GLEW
 )
 add_dependencies(${examplename} ShitRenderer)
 #string(REGEX REPLACE "/" "\\\\" STR0 ${CMAKE_SOURCE_DIR}/3rdparty/assimp/build/bin/$(Configuration)/assimp-vc142-mt$<$<CONFIG:Debug>:d>.dll)
@@ -144,7 +147,7 @@ endfunction()
 
 #======================
 newexample(00-init)
-##newexample(01-triangle)
+newexample(01-triangle)
 
 
 

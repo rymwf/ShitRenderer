@@ -63,28 +63,19 @@ namespace Shit
 			&deviceFeatures};
 		if (vkCreateDevice(mPhysicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
 			THROW("create logical device failed");
-
-		mGraphicQueueFamilyIndex = VK::findQueueFamilyIndexByFlag(mQueueFamilyProperties, VK_QUEUE_GRAPHICS_BIT, {});
-
-		uint32_t b{0xffff};
-		if (mGraphicQueueFamilyIndex.has_value())
-		{
-			LOG_VAR(mGraphicQueueFamilyIndex.value());
-			b = mGraphicQueueFamilyIndex.value();
-		}
-		else
-			LOG("current device do not support graphic queue");
-
-		mTransferQueueFamilyIndex = VK::findQueueFamilyIndexByFlag(mQueueFamilyProperties, VK_QUEUE_TRANSFER_BIT, {b});
-		if (mTransferQueueFamilyIndex.has_value())
-			LOG_VAR(mTransferQueueFamilyIndex.value());
-		else
-			LOG("current device do not support a pure transfer queue");
 	}
 
 	std::optional<uint32_t> VKDevice::GetPresentQueueFamilyIndex(VkSurfaceKHR surface)
 	{
 		return VK::findQueueFamilyIndexPresent(mPhysicalDevice, static_cast<uint32_t>(mQueueFamilyProperties.size()), surface);
-		//LOG("there it not surface or current device do not support present queue");
+	}
+
+	std::optional<QueueFamilyIndex> VKDevice::GetQueueFamilyIndexByFlag(VkQueueFlags flag, const std::vector<uint32_t> &skipIndices)
+	{
+		auto index = VK::findQueueFamilyIndexByFlag(mQueueFamilyProperties, VK_QUEUE_TRANSFER_BIT, {});
+		if (index.has_value())
+			return std::optional<QueueFamilyIndex>{{*index, mQueueFamilyProperties[*index].queueCount}};
+		else
+			return std::nullopt;
 	}
 } // namespace Shit

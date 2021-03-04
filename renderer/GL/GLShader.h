@@ -10,28 +10,28 @@
 #pragma once
 #include <renderer/ShitShader.h>
 #include "GLPrerequisites.h"
-namespace Shit{
+namespace Shit
+{
 
-	class GLShader final:public Shader
+	class GLShader final : public Shader
 	{
-			GLuint mHandle;
-		public:
-			GLShader(const ShaderModuleCreateInfo &createInfo) : Shader(createInfo)
+		GLuint mHandle;
+
+	public:
+		GLShader(const ShaderCreateInfo &createInfo) : Shader(createInfo)
+		{
+			mHandle = glCreateShader(Map(createInfo.stage));
+			if (mHandle)
 			{
-				mHandle = glCreateShader(Map(createInfo.stage));
-				if (mHandle)
-				{
-					glShaderBinary(1, &mHandle, GL_SHADER_BINARY_FORMAT_SPIR_V, createInfo.code.data(), createInfo.code.size());
-				}
-				else
-					THROW("failed to create shader");
+				glShaderBinary(1, &mHandle, GL_SHADER_BINARY_FORMAT_SPIR_V, createInfo.code.data(), createInfo.code.size());
 			}
+			else
+				THROW("failed to create shader");
+		}
 
-			GLuint GetHandle() const
-			{
-				return mHandle;
-			}
-	}
-
-
+		GLuint GetHandle() const
+		{
+			return mHandle;
+		}
+	};
 }

@@ -12,10 +12,20 @@
 
 namespace Shit{
 
-	class Pipeline
+	class GraphicsPipeline
 	{
-		public:
+	protected:
+		GraphicsPipelineCreateInfo mCreateInfo;
 
+	public:
+		GraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) : mCreateInfo(createInfo)
+		{
+		}
+		virtual ~GraphicsPipeline(){}
+	};
+
+	class ComputePipeline
+	{
 	};
 }
 

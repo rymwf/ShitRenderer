@@ -8,7 +8,6 @@
  * 
  */
 #include "VKRenderSystem.h"
-#include "VKDevice.h"
 
 #ifdef _WIN32
 #include <renderer/ShitWindowWin32.h>
@@ -16,6 +15,11 @@
 
 namespace Shit
 {
+
+	void DestroyVKInstance(VkInstance instance)
+	{
+		vkDestroyInstance(instance, nullptr);
+	}
 
 	VkInstance vk_instance;
 
@@ -115,6 +119,7 @@ namespace Shit
 			extensionNames.data()};
 		if (vkCreateInstance(&instanceInfo, 0, &vk_instance) != VK_SUCCESS)
 			THROW("create instance failed");
+		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(vk_instance, &DestroyVKInstance);
 	}
 
 	void VKRenderSystem::CreateSurface(ShitWindow *pWindow)
@@ -134,14 +139,14 @@ namespace Shit
 		if (vkCreateWin32SurfaceKHR(vk_instance, &createInfo, nullptr, &surface) != VK_SUCCESS)
 			THROW("failed to create VK surface");
 
-		mWindowAttributes.emplace_back(WindowAttribute{pWindow, surface});
+		mWindowAttributes.emplace_back(WindowAttribute{pWindow, {}, surface});
 	}
 	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
 	{
 		VK::queryPhysicalDevices(vk_instance, physicalDevices);
 	}
 
-	Device *VKRenderSystem::CreateDevice([[maybe_unused]] PhysicalDevice *pPhyicalDevice, [[maybe_unused]] ShitWindow *pWindow)
+	Device *VKRenderSystem::CreateDevice([[maybe_unused]] const DeviceCreateInfo &createInfo)
 	{
 		static PhysicalDevice physicalDevice;
 		physicalDevice = VK::pickPhysicalDevice(vk_instance);
@@ -151,7 +156,7 @@ namespace Shit
 
 	Swapchain *VKRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
 	{
-		auto windowAttribIt = GetWindowAttributeIterator(createInfo.pWindow);
+		auto &&windowAttribIt = GetWindowAttributeIterator(createInfo.pWindow);
 		windowAttribIt->swapchain = std::move(std::make_unique<VKSwapchain>(createInfo, windowAttribIt->surface));
 		return windowAttribIt->swapchain.get();
 	}
@@ -162,10 +167,67 @@ namespace Shit
 		{
 		case EventType::WINDOW_CLOSE:
 			auto it = GetWindowAttributeIterator(ev.pWindow);
-			auto surface = it->surface;
+			it->swapchain.reset();
+			vkDestroySurfaceKHR(vk_instance, it->surface, nullptr);
 			mWindowAttributes.erase(it);
-			vkDestroySurfaceKHR(vk_instance, surface, nullptr);
 			break;
 		}
+	}
+	Shader *VKRenderSystem::CreateShader(const ShaderCreateInfo &createInfo)
+	{
+		mShaders.emplace_back(std::make_unique<VKShader>(createInfo));
+		return mShaders.back().get();
+	}
+	void VKRenderSystem::DestroyShader(Shader *pShader)
+	{
+		for (auto it = mShaders.begin(), end = mShaders.end(); it != end; ++it)
+		{
+			if (it->get() == pShader)
+			{
+				mShaders.erase(it);
+				break;
+			}
+		}
+	}
+	GraphicsPipeline *VKRenderSystem::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
+	{
+		return nullptr;
+	}
+	CommandPool *VKRenderSystem::CreateCommandPool(const CommandPoolCreateInfo &createInfo)
+	{
+		mCommandPools.emplace_back(std::make_unique<VKCommandPool>(createInfo));
+		return mCommandPools.back().get();
+	}
+	void VKRenderSystem::DestroyCommandPool(CommandPool *commandPool)
+	{
+		for (auto it = mCommandPools.begin(), end = mCommandPools.end(); it != end; ++it)
+		{
+			if (it->get() == commandPool)
+			{
+				mCommandPools.erase(it);
+				break;
+			}
+		}
+	}
+	CommandBuffer *VKRenderSystem::CreateCommandBuffer(const CommandBufferCreateInfo &createInfo)
+	{
+		mCommandBuffers.emplace_back(std::make_unique<VKCommandBuffer>(createInfo));
+		return mCommandBuffers.back().get();
+	}
+	Queue *VKRenderSystem::CreateDeviceQueue(const QueueCreateInfo &createInfo)
+	{
+		VKDevice *device = static_cast<VKDevice *>(createInfo.pDevice);
+		auto properties = device->GetQueueFamilyIndexByFlag(Map(createInfo.queueFlags), createInfo.skipQueueFamilyIndices);
+		VkQueue queue;
+		if (properties.has_value())
+			vkGetDeviceQueue(device->GetHandle(), properties->index, min(properties->count, createInfo.queueIndex), &queue);
+		else
+			THROW("failed to create queue");
+		mQueues.emplace_back(std::make_unique<VKQueue>(queue));
+		return mQueues.back().get();
+	}
+	Result VKRenderSystem::WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout)
+	{
+		return Result::SUCCESS;
 	}
 }

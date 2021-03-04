@@ -42,23 +42,46 @@
 #define glIsExtensionSupported(x) glewIsExtensionSupported(x)
 #define wglIsExtensionSupported(x) wglewIsSupported(x)
 
+#define MAX_TEXTURE_IMAGE_UNITS 80 //!< The number of texture units is implementation dependent, but must be at least 80, the value can be get from GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
+#define BUFFER_TARGET_NUM 15
+
 namespace Shit
 {
-	using ProgramHandle = GLuint;
-
 	struct ShitGLVersion
 	{
 		int major;
 		int minor;
 	};
+
+	struct WindowAttribute
+	{
+		ShitWindow *pWindow;
+		std::unique_ptr<Swapchain> pSwapchain;
+	};
+
 	extern ShitGLVersion GLVersion;
 
-	struct ProgramCreateInfo
-	{
-		std::shared_ptr<std::vector<GLuint>> pShaders;
-		bool separable;
-		bool retrievable;
-	};
+
+	extern bool SHIT_GL_110;
+	extern bool SHIT_GL_120;
+	extern bool SHIT_GL_121;
+	extern bool SHIT_GL_130;
+	extern bool SHIT_GL_140;
+	extern bool SHIT_GL_150;
+	extern bool SHIT_GL_200;
+	extern bool SHIT_GL_210;
+	extern bool SHIT_GL_300;
+	extern bool SHIT_GL_310;
+	extern bool SHIT_GL_320;
+	extern bool SHIT_GL_330;
+	extern bool SHIT_GL_400;
+	extern bool SHIT_GL_410;
+	extern bool SHIT_GL_420;
+	extern bool SHIT_GL_430;
+	extern bool SHIT_GL_440;
+	extern bool SHIT_GL_450;
+	extern bool SHIT_GL_460;
+
 
 	namespace GL
 	{
@@ -80,7 +103,5 @@ namespace Shit
 	GLenum Map(BufferMutableStorageUsage usage);
 	GLbitfield Map(BufferMapFlagBits flag);
 	GLbitfield Map(BufferStorageFlagBits flag);
-
-	ProgramHandle CreateProgram(const ProgramCreateInfo &createInfo);
 
 } // namespace Shit

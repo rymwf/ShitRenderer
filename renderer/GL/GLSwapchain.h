@@ -23,7 +23,7 @@ namespace Shit
 	public:
 		GLSwapchainWin32(const SwapchainCreateInfo &createInfo, RendererVersion version, RenderSystemCreateFlagBits flags) : Swapchain(createInfo)
 		{
-			auto pDevice = static_cast<GLDeviceWin32 *>(createInfo.device);
+			auto pDevice = static_cast<GLDeviceWin32 *>(createInfo.pDevice);
 			mHdc = pDevice->GetHDC();
 			pDevice->MakeCurrent();
 
