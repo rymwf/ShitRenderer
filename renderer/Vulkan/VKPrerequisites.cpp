@@ -127,60 +127,6 @@ namespace Shit
 
 			return temp.second;
 		}
-		VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, const std::vector<uint32_t> &queueFamilyIndices)
-		{
-			//show physical device extensions
-			uint32_t extensionPropertyCount;
-			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
-			std::vector<VkExtensionProperties> properties(extensionPropertyCount);
-			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, properties.data());
-
-			std::vector<const char *> extensionNames;
-			extensionNames.reserve(extensionPropertyCount);
-			LOG_VAR(extensionPropertyCount);
-			for (auto &extensionProperty : properties)
-			{
-				LOG_VAR(extensionProperty.extensionName);
-				LOG_VAR(extensionProperty.specVersion);
-				extensionNames.emplace_back(extensionProperty.extensionName);
-			}
-
-			//physical device  features
-			VkPhysicalDeviceFeatures deviceFeatures;
-			vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-
-			deviceFeatures.sampleRateShading = true;
-
-			const float queuePriorities = 1.0;
-			std::vector<VkDeviceQueueCreateInfo> queueInfos;
-			for (auto i : queueFamilyIndices)
-			{
-				queueInfos.emplace_back(
-					VkDeviceQueueCreateInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-											NULL,
-											0,
-											i, //queue family index
-											1, //queue count
-											&queuePriorities});
-			}
-
-			VkDeviceCreateInfo deviceInfo{
-				VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-				NULL,
-				0,
-				static_cast<uint32_t>(queueInfos.size()),
-				queueInfos.data(),
-				0, //deprecated
-				0, //deprecated
-				extensionPropertyCount,
-				extensionNames.data(),
-				&deviceFeatures};
-			VkDevice ret;
-			if (vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &ret) != VK_SUCCESS)
-				THROW("create logical device failed");
-
-			return ret;
-		}
 		void queryPhysicalDeviceGroupInfo(VkInstance instance, std::vector<VkPhysicalDeviceGroupProperties> &physicalDeviceGroupProperties)
 		{
 			uint32_t physicalDeviceGroupCount;
@@ -351,6 +297,32 @@ namespace Shit
 			if (vkCreateFence(logicalDevice, &createInfo, nullptr, &ret) != VK_SUCCESS)
 				THROW("failed to create fence");
 			return ret;
+		}
+		void createBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &outBuffer, VkDeviceMemory &outBufferMemory)
+		{
+			VkBufferCreateInfo createInfo{
+				VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+				nullptr,
+				0,
+				size,
+				usage,
+				VK_SHARING_MODE_EXCLUSIVE,
+			};
+			if (vkCreateBuffer(logicalDevice, &createInfo, nullptr, &outBuffer) != VK_SUCCESS)
+				throw std::runtime_error("failed to create vertex buffer");
+
+			VkMemoryRequirements vertexBufferMemoryRequirements;
+			vkGetBufferMemoryRequirements(logicalDevice, outBuffer, &vertexBufferMemoryRequirements);
+
+			LOG(vertexBufferMemoryRequirements.size);
+			LOG(vertexBufferMemoryRequirements.alignment);
+			LOG(vertexBufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
+
+			auto memoryTypeIndex = findMemoryTypeIndex(physicalDevice, vertexBufferMemoryRequirements.memoryTypeBits, properties); //the index of memory type
+
+			outBufferMemory = allocateMemory(logicalDevice, vertexBufferMemoryRequirements.size, memoryTypeIndex);
+
+			vkBindBufferMemory(logicalDevice, outBuffer, outBufferMemory, 0);
 		}
 		uint32_t findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeIndexFilter, VkMemoryPropertyFlags properties)
 		{
@@ -682,6 +654,13 @@ namespace Shit
 		VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
 		VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT,
 	};
+	constexpr VkMemoryPropertyFlagBits vkMemoryPropertyFlagBitArray[]{
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+		VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT,
+	};
 	constexpr VkQueueFlagBits vkQueueFlagBitArray[]{
 		VK_QUEUE_GRAPHICS_BIT,
 		VK_QUEUE_COMPUTE_BIT,
@@ -695,10 +674,22 @@ namespace Shit
 	{
 		VkBufferUsageFlags ret{};
 		int a = static_cast<int>(flag);
-		for (int i = 0; a > 0 && i < 32; ++i, flag >>= 1)
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
 		{
 			if (a & 1)
 				ret |= vkBufferUsageFlagBitArray[i];
+		}
+		return ret;
+	}
+
+	VkMemoryPropertyFlags Map(MemoryPropertyFlagBits flag)
+	{
+		VkMemoryPropertyFlags ret{};
+		int a = static_cast<int>(flag);
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
+		{
+			if (a & 1)
+				ret |= vkMemoryPropertyFlagBitArray[i];
 		}
 		return ret;
 	}
@@ -728,7 +719,7 @@ namespace Shit
 	{
 		int a = static_cast<int>(flag);
 		VkQueueFlags ret{};
-		for (int i = 0; a > 0 && i < 32; ++i, flag >>= 1)
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
 		{
 			if (a & 1)
 				ret |= vkQueueFlagBitArray[i];

@@ -10,20 +10,20 @@
 #pragma once
 #include <renderer/ShitSemaphore.h>
 #include "VKPrerequisites.h"
-#include "VKDevice.h"
 namespace Shit
 {
 	class VKSemaphore final : public Semaphore
 	{
 		VkSemaphore mHandle;
+		VkDevice mDevice;
 
 	public:
-		VKSemaphore(const SemaphoreCreateInfo &createInfo) : Semaphore(createInfo) {}
+		VKSemaphore(VkDevice device, const SemaphoreCreateInfo &createInfo) : Semaphore(createInfo), mDevice(device) {}
 		~VKSemaphore() override
 		{
-			vkDestroySemaphore(static_cast<VKDevice *>(mCreateInfo.pDevice)->GetHandle(), mHandle, nullptr);
+			vkDestroySemaphore(mDevice, mHandle, nullptr);
 		}
-		VkSemaphore GetHandle() const
+		constexpr VkSemaphore GetHandle() const
 		{
 			return mHandle;
 		}

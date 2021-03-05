@@ -8,11 +8,17 @@
  * 
  */
 #pragma once
-#include "GLPrerequisites.h"
-#include <renderer/ShitNonCopyable.h>
+#include <GL/glew.h>
+#include <stack>
+#include <array>
+#include <vector>
+#include <unordered_map>
+
+#define MAX_TEXTURE_IMAGE_UNITS 80 //!< The number of texture units is implementation dependent, but must be at least 80, the value can be get from GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
+#define BUFFER_TARGET_NUM 15
 namespace Shit
 {
-	class GLStateManager : public NonCopyable
+	class GLStateManager
 	{
 		struct GLDrawBufferState
 		{

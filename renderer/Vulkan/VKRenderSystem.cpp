@@ -122,10 +122,9 @@ namespace Shit
 		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(vk_instance, &DestroyVKInstance);
 	}
 
-	Surface *VKRenderSystem::CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo)
+	std::shared_ptr<Surface> VKRenderSystem::CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow)
 	{
-		createInfo.pWindow->SetSurface(std::make_unique<VKSurface>(createInfo));
-		return createInfo.pWindow->GetSurface();
+		return std::make_shared<VKSurface>(createInfo, pWindow);
 	}
 	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
 	{
@@ -140,68 +139,4 @@ namespace Shit
 		return mDevices.back().get();
 	}
 
-	Swapchain *VKRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
-	{
-		createInfo.pWindow->SetSwapchain(std::make_unique<VKSwapchain>(createInfo, createInfo.pWindow));
-		return createInfo.pWindow->GetSwapchain();
-	}
-
-	void VKRenderSystem::ProcessWindowEvent(const Event &ev)
-	{
-		switch (ev.type)
-		{
-		case EventType::WINDOW_CLOSE:
-			break;
-		}
-	}
-	Shader *VKRenderSystem::CreateShader(const ShaderCreateInfo &createInfo)
-	{
-		mShaders.emplace_back(std::make_unique<VKShader>(createInfo));
-		return mShaders.back().get();
-	}
-	void VKRenderSystem::DestroyShader(Shader *pShader)
-	{
-		for (auto it = mShaders.begin(), end = mShaders.end(); it != end; ++it)
-		{
-			if (it->get() == pShader)
-			{
-				mShaders.erase(it);
-				break;
-			}
-		}
-	}
-	GraphicsPipeline *VKRenderSystem::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
-	{
-		return nullptr;
-	}
-	CommandPool *VKRenderSystem::CreateCommandPool(const CommandPoolCreateInfo &createInfo)
-	{
-		mCommandPools.emplace_back(std::make_unique<VKCommandPool>(createInfo));
-		return mCommandPools.back().get();
-	}
-	void VKRenderSystem::DestroyCommandPool(CommandPool *commandPool)
-	{
-		for (auto it = mCommandPools.begin(), end = mCommandPools.end(); it != end; ++it)
-		{
-			if (it->get() == commandPool)
-			{
-				mCommandPools.erase(it);
-				break;
-			}
-		}
-	}
-	CommandBuffer *VKRenderSystem::CreateCommandBuffer(const CommandBufferCreateInfo &createInfo)
-	{
-		mCommandBuffers.emplace_back(std::make_unique<VKCommandBuffer>(createInfo));
-		return mCommandBuffers.back().get();
-	}
-	Queue *VKRenderSystem::CreateDeviceQueue(const QueueCreateInfo &createInfo)
-	{
-		mQueues.emplace_back(std::make_unique<VKQueue>(createInfo));
-		return mQueues.back().get();
-	}
-	Result VKRenderSystem::WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout)
-	{
-		return Result::SUCCESS;
-	}
 }

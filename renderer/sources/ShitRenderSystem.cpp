@@ -59,14 +59,13 @@ namespace Shit
 	ShitWindow *RenderSystem::CreateRenderWindow(const WindowCreateInfo &createInfo)
 	{
 #ifdef _WIN32
-		mWindows.emplace_back(std::make_unique<WindowWin32>(createInfo));
+		mWindows.emplace_back(std::make_unique<WindowWin32>(createInfo, this));
 #else
 		static_assert(0, "create render Window method not implemented");
 #endif
 		auto window = mWindows.back().get();
-		window->AttachEventHandle(std::bind(&RenderSystem::ProcessWindowEvent, this, std::placeholders::_1));
 		window->AttachEventHandle(createInfo.eventHandle);
-		CreateSurface({mWindows.back().get()});
+		window->CreateSurface({});
 		return mWindows.back().get();
 	}
 

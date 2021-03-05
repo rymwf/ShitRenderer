@@ -8,3 +8,17 @@
  * 
  */
 #pragma once
+#include <renderer/ShitImage.h>
+#include "VKPrerequisites.h"
+namespace Shit
+{
+	class VKImage final : public Image
+	{
+	public:
+
+		~VKImage() override
+		{
+		}
+	};
+
+} // namespace Shit

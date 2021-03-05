@@ -11,11 +11,14 @@
 namespace Shit
 {
 #ifdef _WIN32
-	GLSwapchainWin32::GLSwapchainWin32(const SwapchainCreateInfo &createInfo, RendererVersion version, RenderSystemCreateFlagBits flags) : Swapchain(createInfo)
+	GLSwapchainWin32::GLSwapchainWin32(
+		HDC hdc,
+		const SwapchainCreateInfo &createInfo,
+		RendererVersion version,
+		RenderSystemCreateFlagBits flags)
+		: Swapchain(createInfo), mHdc(hdc)
 	{
-		auto pDevice = static_cast<GLDeviceWin32 *>(createInfo.pDevice);
-		mHdc = pDevice->GetHDC();
-		pDevice->MakeCurrent();
+		//device->MakeCurrent();
 
 		const int attribList[] =
 			{

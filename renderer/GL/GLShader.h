@@ -16,9 +16,10 @@ namespace Shit
 	class GLShader final : public Shader
 	{
 		GLuint mHandle;
+		GLStateManager* mStateManager;
 
 	public:
-		GLShader(const ShaderCreateInfo &createInfo) : Shader(createInfo)
+		GLShader(GLStateManager* stateManger, const ShaderCreateInfo &createInfo) : Shader(createInfo), mStateManager(stateManger)
 		{
 			mHandle = glCreateShader(Map(createInfo.stage));
 			if (mHandle)
@@ -29,7 +30,7 @@ namespace Shit
 				THROW("failed to create shader");
 		}
 
-		GLuint GetHandle() const
+		constexpr GLuint GetHandle() const
 		{
 			return mHandle;
 		}

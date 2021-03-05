@@ -53,6 +53,12 @@ namespace Shit
 	}
 
 	template <typename Enum, typename std::enable_if_t<std::is_enum_v<Enum> && EnableBitMaskOperators<Enum>::enable, bool> = true>
+	bool operator!(Enum rhs)
+	{
+		return !static_cast<bool>(rhs);
+	}
+
+	template <typename Enum, typename std::enable_if_t<std::is_enum_v<Enum> && EnableBitMaskOperators<Enum>::enable, bool> = true>
 	Enum &operator|=(Enum &lhs, Enum rhs)
 	{
 		lhs = static_cast<Enum>(static_cast<std::underlying_type_t<Enum>>(lhs) | static_cast<std::underlying_type_t<Enum>>(rhs));
@@ -520,6 +526,14 @@ namespace Shit
 		COHERENT_BIT = 0x80,
 	};
 	ENABLE_BITMASK_OPERATORS(BufferMapFlagBits);
+
+	enum class MemoryPropertyFlagBits
+	{
+		DEVICE_LOCAL_BIT = 0x1,
+		HOST_VISIBLE_BIT = 0x2,
+		HOST_COHERENT_BIT = 0x4,
+	};
+	ENABLE_BITMASK_OPERATORS(MemoryPropertyFlagBits);
 
 	enum class BufferCreateFlagBits
 	{

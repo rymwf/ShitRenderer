@@ -22,7 +22,7 @@ namespace Shit
 
 	public:
 		static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-		WindowWin32(const WindowCreateInfo &createInfo) : ShitWindow(createInfo)
+		WindowWin32(const WindowCreateInfo &createInfo, RenderSystem *pRenderSystem) : ShitWindow(createInfo, pRenderSystem)
 		{
 			Create();
 		}

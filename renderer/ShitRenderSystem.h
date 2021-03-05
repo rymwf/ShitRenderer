@@ -12,13 +12,6 @@
 #include "ShitNonCopyable.h"
 #include "ShitWindow.h"
 #include "ShitDevice.h"
-#include "ShitSwapchain.h"
-#include "ShitShader.h"
-#include "ShitPipeline.h"
-#include "ShitCommandPool.h"
-#include "ShitCommandBuffer.h"
-#include "ShitQueue.h"
-#include "ShitSurface.h"
 
 namespace Shit
 {
@@ -28,11 +21,6 @@ namespace Shit
 		RenderSystemCreateInfo mCreateInfo;
 
 		std::vector<std::unique_ptr<ShitWindow>> mWindows;
-		std::vector<std::unique_ptr<Shader>> mShaders;
-		std::vector<std::unique_ptr<GraphicsPipeline>> mGraphicsPipelines;
-		std::vector<std::unique_ptr<CommandPool>> mCommandPools;
-		std::vector<std::unique_ptr<CommandBuffer>> mCommandBuffers;
-		std::vector<std::unique_ptr<Queue>> mQueues;
 		std::vector<std::unique_ptr<Device>> mDevices;
 
 	protected:
@@ -40,11 +28,9 @@ namespace Shit
 
 		void DestroyDevice(const Device *pDevice);
 
-		virtual void ProcessWindowEvent(const Event &ev) = 0;
-
-		virtual Surface *CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo)
+		virtual std::shared_ptr<Surface> CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, [[maybe_unused]] ShitWindow *pWindow)
 		{
-			return nullptr;
+			return std::move(nullptr);
 		};
 
 	public:
@@ -54,7 +40,6 @@ namespace Shit
 		}
 		virtual ~RenderSystem()
 		{
-			mWindows.clear();
 		}
 
 		const RenderSystemCreateInfo *GetCreateInfo() const
@@ -72,7 +57,7 @@ namespace Shit
 		 * @param createInfo 
 		 * @return Device* 
 		 */
-		virtual Device *CreateDevice(const DeviceCreateInfo& createInfo) = 0;
+		virtual Device *CreateDevice(const DeviceCreateInfo &createInfo) = 0;
 
 		/**
 		 * @brief TODO: physical device not finished
@@ -81,46 +66,7 @@ namespace Shit
 		 */
 		virtual void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) = 0;
 
-		/**
-		 * @brief Create a Swapchain object,
-		 *  for opengl, just create a render context
-		 * 
-		 * @param createInfo 
-		 * @return Swapchain* 
-		 */
-		virtual Swapchain *CreateSwapchain(const SwapchainCreateInfo &createInfo) = 0;
-
-		virtual Shader *CreateShader(const ShaderCreateInfo &createInfo) = 0;
-		virtual void DestroyShader(Shader *pShader) = 0;
-
-		virtual GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) = 0;
-
-		virtual CommandPool *CreateCommandPool([[maybe_unused]] const CommandPoolCreateInfo &createInfo)
-		{
-			LOG("currrent renderer do not support commandpool");
-			return nullptr;
-		}
-		virtual void DestroyCommandPool([[maybe_unused]] CommandPool *commandPool) {}
-
-		virtual CommandBuffer *CreateCommandBuffer(const CommandBufferCreateInfo &createInfo) = 0;
-
-		/**
-		 * @brief Create a Device Queue object
-		 * 
-		 * @param createInfo only device is useful for opengl
-		 * @return Queue* 
-		 */
-		virtual Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) = 0;
-
-		/**
-		 * @brief 
-		 * 
-		 * @param pDevice 
-		 * @param fence 
-		 * @param timeout  nanoseconds
-		 * @return Result 
-		 */
-		virtual Result WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout) = 0;
+		friend class ShitWindow;
 	};
 
 	SHIT_API RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo);

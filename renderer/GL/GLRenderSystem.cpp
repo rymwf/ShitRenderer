@@ -25,49 +25,4 @@ namespace Shit
 	{
 		LOG("currently GL do not support select gpus");
 	}
-
-	Swapchain *GLRenderSystem::CreateSwapchain(const SwapchainCreateInfo &createInfo)
-	{
-		createInfo.pWindow->SetSwapchain(std::make_unique<GLSwapchainWin32>(createInfo, mCreateInfo.version, mCreateInfo.flags));
-		return createInfo.pWindow->GetSwapchain();
-	}
-	void GLRenderSystem::ProcessWindowEvent([[maybe_unused]] const Event &ev)
-	{
-	}
-	Shader *GLRenderSystem::CreateShader(const ShaderCreateInfo &createInfo)
-	{
-		mShaders.emplace_back(std::make_unique<GLShader>(createInfo));
-		return mShaders.back().get();
-	}
-	void GLRenderSystem::DestroyShader(Shader *pShader)
-	{
-		for (auto it = mShaders.begin(), end = mShaders.end(); it != end; ++it)
-		{
-			if (it->get() == pShader)
-			{
-				mShaders.erase(it);
-				break;
-			}
-		}
-	}
-
-	GraphicsPipeline *GLRenderSystem::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
-	{
-		mGraphicsPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(createInfo));
-		return mGraphicsPipelines.back().get();
-	}
-	CommandBuffer *GLRenderSystem::CreateCommandBuffer(const CommandBufferCreateInfo &createInfo)
-	{
-		mCommandBuffers.emplace_back(std::make_unique<GLCommandBuffer>(createInfo));
-		return mCommandBuffers.back().get();
-	}
-
-	Queue *GLRenderSystem::CreateDeviceQueue(const QueueCreateInfo &createInfo)
-	{
-		return nullptr;
-	}
-	Result GLRenderSystem::WaitForFence(Device *pDevice, Fence *fence, uint64_t timeout)
-	{
-		return Result::SUCCESS;
-	}
 } // namespace Shit

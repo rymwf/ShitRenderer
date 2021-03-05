@@ -16,6 +16,7 @@
 #endif
 
 #include <renderer/ShitRendererPrerequisites.h>
+#include "GLState.h"
 
 #define LOADGL                                                            \
 	{                                                                     \

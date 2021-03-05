@@ -20,15 +20,15 @@ namespace Shit
 		VkSurfaceKHR mHandle;
 
 	public:
-		VKSurface(const SurfaceCreateInfo &createInfo) : Surface(createInfo)
+		VKSurface(const SurfaceCreateInfo &createInfo, ShitWindow *pWindow) : Surface(createInfo)
 		{
 #ifdef _WIN32
 			VkWin32SurfaceCreateInfoKHR info{
 				VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 				nullptr,
 				0,
-				static_cast<WindowWin32 *>(createInfo.pWindow)->GetInstance(),
-				static_cast<WindowWin32 *>(createInfo.pWindow)->GetHWND(),
+				static_cast<WindowWin32 *>(pWindow)->GetInstance(),
+				static_cast<WindowWin32 *>(pWindow)->GetHWND(),
 			};
 #else
 			static_assert(0, "there is no VK surface implementation");
@@ -40,7 +40,7 @@ namespace Shit
 		{
 			vkDestroySurfaceKHR(vk_instance, mHandle, nullptr);
 		}
-		VkSurfaceKHR GetHandle() const
+		constexpr VkSurfaceKHR GetHandle() const
 		{
 			return mHandle;
 		}

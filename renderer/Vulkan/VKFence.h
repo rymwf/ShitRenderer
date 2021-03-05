@@ -10,20 +10,20 @@
 #pragma once
 #include <renderer/ShitFence.h>
 #include "VKPrerequisites.h"
-#include "VKDevice.h"
 namespace Shit
 {
 	class VKFence final : public Fence
 	{
 		VkFence mHandle;
+		VkDevice mDevice;
 
 	public:
-		VKFence(const FenceCreateInfo &createInfo) : Fence(createInfo) {}
+		VKFence(VkDevice device, const FenceCreateInfo &createInfo) : Fence(createInfo), mDevice(device) {}
 		~VKFence() override
 		{
-			vkDestroyFence(static_cast<VKDevice *>(mCreateInfo.pDevice)->GetHandle(), mHandle, nullptr);
+			vkDestroyFence(mDevice, mHandle, nullptr);
 		}
-		VkFence GetHandle() const
+		constexpr VkFence GetHandle() const
 		{
 			return mHandle;
 		}

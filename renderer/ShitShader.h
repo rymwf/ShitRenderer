@@ -16,10 +16,9 @@ namespace Shit
 	{
 	protected:
 		ShaderStageFlagBits mStageFlagBit;
-		Device *mpDevice;
 
 	public:
-		Shader(const ShaderCreateInfo &createInfo) : mStageFlagBit(createInfo.stage), mpDevice(createInfo.pDevice) {}
+		Shader(const ShaderCreateInfo &createInfo) : mStageFlagBit(createInfo.stage) {}
 		virtual ~Shader() {}
 	};
 }

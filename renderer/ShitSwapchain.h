@@ -16,9 +16,14 @@ namespace Shit
 	{
 	protected:
 		SwapchainCreateInfo mCreateInfo;
+		QueueFamilyIndex mPresentQueueFamilyIndex{0, INT_MAX};
 
 	public:
 		Swapchain(const SwapchainCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+		constexpr QueueFamilyIndex GetPresentQueueFamilyIndex() const
+		{
+			return mPresentQueueFamilyIndex;
+		}
 		virtual ~Swapchain() {}
 	};
 } // namespace Shit

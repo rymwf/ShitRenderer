@@ -14,8 +14,12 @@ namespace Shit
 {
 	class GLQueue final : public Queue
 	{
+
+		GLStateManager *mStateManager;
+
 	public:
-		GLQueue() {}
+		GLQueue(GLStateManager *stateManager, const QueueCreateInfo &createInfo)
+			: Queue(createInfo), mStateManager(stateManager) {}
 		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) override
 		{
 		}

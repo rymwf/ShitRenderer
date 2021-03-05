@@ -37,7 +37,6 @@ namespace Shit
 		std::optional<uint32_t> findQueueFamilyIndexByFlag(std::vector<VkQueueFamilyProperties> &queueFamilyProperties, VkQueueFlags flag, const std::unordered_set<uint32_t> &skipIndices);
 		std::optional<uint32_t> findQueueFamilyIndexPresent(VkPhysicalDevice physicalDevice, uint32_t familyNum, VkSurfaceKHR surface);
 		VkPhysicalDevice pickPhysicalDevice(VkInstance instance);
-		VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, const std::vector<uint32_t> &queueFamilyIndices);
 		void querySurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, std::vector<VkSurfaceFormatKHR> &surfaceFormats);
 		void querySurfacePresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, std::vector<VkPresentModeKHR> &presentModes);
 		VkShaderModule createShaderModule(VkDevice logicalDevice, const std::string &code);
@@ -49,6 +48,7 @@ namespace Shit
 		void queryDisplayPlaneProperties(VkPhysicalDevice physicalDevice, std::vector<VkDisplayPlanePropertiesKHR> &displayPlaneProperties);
 		void queryDisplayModeProperties(VkPhysicalDevice physicalDevice, VkDisplayKHR display, std::vector<VkDisplayModePropertiesKHR> &displayModeProperties);
 		VkFence createFence(VkDevice logicalDevice, VkFenceCreateFlags flags);
+		void createBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &outBuffer, VkDeviceMemory &outBufferMemory);
 		uint32_t findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeIndexFilter, VkMemoryPropertyFlags properties);
 		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 		void createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, uint32_t count, VkCommandBufferLevel level, std::vector<VkCommandBuffer> &commandBuffers);
@@ -64,9 +64,11 @@ namespace Shit
 		void queryInstanceLayerProperties(std::vector<VkLayerProperties> &layerProperties);
 		void queryPhysicalDevices(VkInstance instance, std::vector<PhysicalDevice> &physicalDevices);
 		void queryDeviceExtensionProperties(VkPhysicalDevice physicalDevice, std::vector<VkExtensionProperties> &extensionProperies);
+		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 	}
 
 	VkBufferUsageFlags Map(BufferUsageFlagBits flag);
+	VkMemoryPropertyFlags Map(MemoryPropertyFlagBits flag);
 	VkFormat Map(ShitFormat format);
 	VkColorSpaceKHR Map(ColorSpace colorSpace);
 	VkPresentModeKHR Map(PresentMode mode);

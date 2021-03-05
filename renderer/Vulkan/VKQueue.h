@@ -10,19 +10,19 @@
 #pragma once
 #include <renderer/ShitQueue.h>
 #include "VKPrerequisites.h"
-#include "VKDevice.h"
 namespace Shit
 {
 	class VKQueue final : public Queue
 	{
 		VkQueue mHandle;
+		VkDevice mDevice;
 
 	public:
-		VKQueue(const QueueCreateInfo &createInfo) : Queue(createInfo)
+		VKQueue(VkDevice device, const QueueCreateInfo &createInfo) : Queue(createInfo), mDevice(device)
 		{
-			vkGetDeviceQueue(static_cast<VKDevice *>(createInfo.pDevice)->GetHandle(), createInfo.queueFamilyIndex, createInfo.queueIndex, &mHandle);
+			vkGetDeviceQueue(mDevice, createInfo.queueFamilyIndex, createInfo.queueIndex, &mHandle);
 		}
-		VkQueue GetHandle() const
+		constexpr VkQueue GetHandle() const
 		{
 			return mHandle;
 		}

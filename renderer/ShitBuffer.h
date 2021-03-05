@@ -14,12 +14,15 @@ namespace Shit
 {
 	class Buffer
 	{
+	protected:
 		BufferCreateInfo mCreateInfo;
 
 	public:
 		Buffer(const BufferCreateInfo &createInfo) : mCreateInfo(createInfo)
 		{
 		}
-
+		virtual ~Buffer() {}
+		virtual void MapBuffer(uint64_t offset, uint64_t size, void **ppData) = 0;
+		virtual void UnMapBuffer() = 0;
 	};
 } // namespace Shit

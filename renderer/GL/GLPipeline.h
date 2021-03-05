@@ -19,9 +19,10 @@ namespace Shit
 	{
 		GLuint mPipeline;
 		std::vector<GLuint> mPrograms;
+		GLStateManager* mStateManager;
 
 	public:
-		GLGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo);
+		GLGraphicsPipeline(GLStateManager* stateManager, const GraphicsPipelineCreateInfo &createInfo);
 
 		GLuint CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable);
 

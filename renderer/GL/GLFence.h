@@ -15,9 +15,11 @@ namespace Shit
 	class GLFence final : public Fence
 	{
 		GLsync mHandle;
+		GLStateManager* mStateManager;
 
 	public:
-		GLFence(const FenceCreateInfo &createInfo) : Fence(createInfo)
+		GLFence(GLStateManager *stateManager, const FenceCreateInfo &createInfo)
+			: Fence(createInfo), mStateManager(stateManager)
 		{
 			mHandle = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		}

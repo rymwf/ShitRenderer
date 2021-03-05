@@ -12,6 +12,10 @@
 #include "GLPrerequisites.h"
 #include "GLDevice.h"
 
+#ifdef _WIN32
+#include <renderer/ShitWindowWin32.h>
+#endif
+
 namespace Shit
 {
 #ifdef _WIN32
@@ -21,14 +25,14 @@ namespace Shit
 		HDC mHdc;
 
 	public:
-		GLSwapchainWin32(const SwapchainCreateInfo &createInfo, RendererVersion version, RenderSystemCreateFlagBits flags);
+		GLSwapchainWin32(HDC hdc, const SwapchainCreateInfo &createInfo, RendererVersion version, RenderSystemCreateFlagBits flags);
 
 		~GLSwapchainWin32() override
 		{
 			wglDeleteContext(mHglrc);
 		}
 
-		HGLRC GetHandle() const
+		constexpr HGLRC GetHandle() const
 		{
 			return mHglrc;
 		}

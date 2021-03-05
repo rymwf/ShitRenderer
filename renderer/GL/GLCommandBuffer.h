@@ -15,8 +15,10 @@ namespace Shit
 	class GLCommandBuffer final : public CommandBuffer
 	{
 		std::vector<uint8_t> mBuffer;
+		GLStateManager* mStateManager;
 
 	public:
-		GLCommandBuffer(const CommandBufferCreateInfo &createInfo) : CommandBuffer(createInfo) {}
+		GLCommandBuffer(GLStateManager *stateManager, const CommandBufferCreateInfo &createInfo)
+			: CommandBuffer(createInfo), mStateManager(stateManager) {}
 	};
 } // namespace Shit

@@ -22,11 +22,12 @@ namespace Shit
 		WindowCreateInfo mCreateInfo;
 		Observer<const Event &> mObserver;
 
-		std::unique_ptr<Surface> mpSurface;
-		std::unique_ptr<Swapchain> mpSwapchain;
+		std::shared_ptr<Surface> mpSurface;
+		std::shared_ptr<Swapchain> mpSwapchain;
+		RenderSystem *mpRenderSystem;
 
 	public:
-		ShitWindow(const WindowCreateInfo &createInfo) : mCreateInfo(createInfo){};
+		ShitWindow(const WindowCreateInfo &createInfo, RenderSystem *pRenderSystem) : mCreateInfo(createInfo), mpRenderSystem(pRenderSystem) {}
 		const WindowCreateInfo *GetCreateInfo()
 		{
 			return &mCreateInfo;
@@ -43,15 +44,14 @@ namespace Shit
 		{
 			mObserver.Attach(eventHandler);
 		}
-		void SetSurface(std::unique_ptr<Surface> &&surface)
+		Surface *CreateSurface(const SurfaceCreateInfo &createInfo);
+
+		void SetSwapchain(const std::shared_ptr<Swapchain> &swapchain)
 		{
-			mpSurface = std::move(surface);
+			mpSwapchain = swapchain;
 		}
-		void SetSwapchain(std::unique_ptr<Swapchain> &&swapchain)
-		{
-			mpSwapchain = std::move(swapchain);
-		}
-		Surface* GetSurface() const
+
+		Surface *GetSurface() const
 		{
 			return mpSurface.get();
 		}

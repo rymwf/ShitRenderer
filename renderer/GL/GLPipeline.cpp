@@ -10,7 +10,8 @@
 #include "GLPipeline.h"
 namespace Shit
 {
-	GLGraphicsPipeline::GLGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) : GraphicsPipeline(createInfo)
+	GLGraphicsPipeline::GLGraphicsPipeline(GLStateManager *stateManager, const GraphicsPipelineCreateInfo &createInfo)
+		: GraphicsPipeline(createInfo), mStateManager(stateManager)
 	{
 		if (SHIT_GL_410)
 			glGenProgramPipelines(1, &mPipeline);

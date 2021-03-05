@@ -126,13 +126,10 @@ namespace Shit
 
 	struct SurfaceCreateInfo
 	{
-		ShitWindow *pWindow;
 	};
 
 	struct SwapchainCreateInfo
 	{
-		Device *pDevice;	 
-		ShitWindow *pWindow; //!<one window can only have one swapchain
 		uint32_t minImageCount;
 		ShitFormat format;		   //!<no use for opengl, opengl is always RGBA
 		ColorSpace colorSpace;	   //!<sRGB
@@ -143,7 +140,6 @@ namespace Shit
 
 	struct ShaderCreateInfo
 	{
-		Device *pDevice;
 		ShaderStageFlagBits stage;
 		std::string code;
 	};
@@ -158,7 +154,7 @@ namespace Shit
 	{
 		ShaderStageFlagBits stage;
 		Shader *pShader;
-		const char* entryName;
+		const char *entryName;
 		std::shared_ptr<SpecializationInfo> pSpecializationInfo;
 	};
 
@@ -186,7 +182,6 @@ namespace Shit
 	};
 	struct GraphicsPipelineCreateInfo
 	{
-		Device *pDevice;
 		std::shared_ptr<std::vector<PipelineShaderStageCreateInfo>> pStages;
 		std::shared_ptr<VertexInputStateCreateInfo> pVertexInputState;
 		//PipelineLayout layout;
@@ -194,14 +189,10 @@ namespace Shit
 
 	struct BufferCreateInfo
 	{
-		Device *pDevice;
 		BufferCreateFlagBits flags;
 		uint32_t size;
-		union
-		{
-			BufferStorageFlagBits storageFlags;
-			BufferMutableStorageUsage storageUsage;
-		};
+		BufferUsageFlagBits usage;
+		MemoryPropertyFlagBits memoryPropertyFlags;
 	};
 
 	struct QueueFamilyIndex
@@ -212,20 +203,17 @@ namespace Shit
 
 	struct CommandPoolCreateInfo
 	{
-		Device *pDevice;
 		CommandPoolCreateFlagBits flags;
 		uint32_t queueFamilyIndex;
 	};
 	struct CommandBufferCreateInfo
 	{
-		Device *pDevice;
 		CommandPool *pCommandPool;
 		CommandBufferLevel level;
 	};
 
 	struct QueueCreateInfo
 	{
-		Device *pDevice;
 		uint32_t queueFamilyIndex;
 		uint32_t queueIndex;
 		std::vector<uint32_t> skipQueueFamilyIndices;
@@ -240,12 +228,14 @@ namespace Shit
 
 	struct FenceCreateInfo
 	{
-		Device* pDevice;
 	};
 
 	struct SemaphoreCreateInfo
 	{
-		Device* pDevice;
+	};
+
+	struct ImageCreateInfo
+	{
 	};
 
 } // namespace Shit

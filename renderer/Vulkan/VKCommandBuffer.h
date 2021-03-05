@@ -11,16 +11,16 @@
 #include <renderer/ShitCommandBuffer.h>
 #include "VKPrerequisites.h"
 #include "VKCommandPool.h"
-#include "VKDevice.h"
 namespace Shit
 {
 
 	class VKCommandBuffer final : public CommandBuffer
 	{
 		VkCommandBuffer mHandle;
+		VkDevice mDevice;
 
 	public:
-		VKCommandBuffer(const CommandBufferCreateInfo &createInfo) : CommandBuffer(createInfo)
+		VKCommandBuffer(VkDevice device, const CommandBufferCreateInfo &createInfo) : CommandBuffer(createInfo), mDevice(device)
 		{
 			VkCommandBufferAllocateInfo allocateInfo{
 				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -28,10 +28,10 @@ namespace Shit
 				static_cast<VKCommandPool *>(createInfo.pCommandPool)->GetHandle(),
 				Map(createInfo.level),
 				1};
-			if (vkAllocateCommandBuffers(static_cast<VKDevice *>(createInfo.pDevice)->GetHandle(), &allocateInfo, &mHandle) != VK_SUCCESS)
+			if (vkAllocateCommandBuffers(mDevice, &allocateInfo, &mHandle) != VK_SUCCESS)
 				THROW("failed to create command buffer");
 		}
-		VkCommandBuffer GetHandle()
+		constexpr VkCommandBuffer GetHandle()
 		{
 			return mHandle;
 		}
