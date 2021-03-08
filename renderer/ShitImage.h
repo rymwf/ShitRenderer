@@ -11,15 +11,30 @@
 #include "ShitRendererPrerequisites.h"
 namespace Shit
 {
-
 	class Image
 	{
 	protected:
+		bool mIsSwapchainImage{};
 		ImageCreateInfo mCreateInfo;
+		Image(const ImageCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+		Image() = default;
 
 	public:
-		Image(const ImageCreateInfo &createInfo) : mCreateInfo(createInfo) {}
 		virtual ~Image() {}
+		constexpr const ImageCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
+	};
+
+	class ImageView
+	{
+	protected:
+		ImageViewCreateInfo mCreateInfo;
+		ImageView(const ImageViewCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+
+	public:
+		virtual ~ImageView() {}
 	};
 
 }

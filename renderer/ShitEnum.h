@@ -363,6 +363,7 @@ namespace Shit
 		TESS_CONTROL_BIT = 0x00000008,
 		TESS_EVALUATION_BIT = 0x00000010,
 		COMPUTE_BIT = 0x00000020,
+		ALL_GRAPHICS = 0x0000001F,
 		ALL_BITS = 0x7FFFFFFF,
 	};
 	ENABLE_BITMASK_OPERATORS(ShaderStageFlagBits);
@@ -455,6 +456,38 @@ namespace Shit
 		S8_UINT,
 	};
 
+	inline uint32_t GetFormatSize(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::R8_UNORM:
+		case ShitFormat::R8_SRGB:
+		case ShitFormat::S8_UINT:
+			return 1;
+		case ShitFormat::RG8_UNORM:
+		case ShitFormat::RG8_SRGB:
+		case ShitFormat::D16_UNORM:
+			return 2;
+		case ShitFormat::RGB8_UNORM:
+		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::BGR8_UNORM:
+		case ShitFormat::BGR8_SRGB:
+		case ShitFormat::D24_UNORM:
+			return 3;
+		case ShitFormat::RGBA8_UNORM:
+		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::BGRA8_UNORM:
+		case ShitFormat::BGRA8_SRGB:
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D24_UNORM_S8_UINT:
+			return 4;
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+			return 5;
+		default:
+			return 0;
+		}
+	}
+
 	enum class PresentMode
 	{
 		IMMEDIATE,
@@ -530,7 +563,7 @@ namespace Shit
 	enum class MemoryPropertyFlagBits
 	{
 		DEVICE_LOCAL_BIT = 0x1,
-		HOST_VISIBLE_BIT = 0x2,
+		HOST_VISIBLE_BIT = 0x2, //
 		HOST_COHERENT_BIT = 0x4,
 	};
 	ENABLE_BITMASK_OPERATORS(MemoryPropertyFlagBits);
@@ -543,8 +576,7 @@ namespace Shit
 
 	enum class ImageCreateFlagBits
 	{
-		MUTABLE_FORMAT_BIT = 0x1, //!< cannot use image view
-		RENDER_BUFFER_BIT = 0x2
+		MUTABLE_FORMAT_BIT = 0x1, //!< not used in opengl
 	};
 	ENABLE_BITMASK_OPERATORS(ImageCreateFlagBits);
 
@@ -565,6 +597,39 @@ namespace Shit
 		TYPE_2D_ARRAY,
 		TYPE_CUBE_ARRAY,
 	};
+	enum class ImageTiling
+	{
+		OPTIMAL,
+		LINEAR,
+	};
+
+	enum class ImageLayout
+	{
+		NONE,
+		GENERAL,
+		COLOR_ATTACHMENT,
+		DEPTH_STENCIL_ATTACHMENT,
+		DEPTH_STENCIL_READ_ONLY,
+		SHADER_READ_ONLY,
+		TRANSFER_SRC,
+		TRANSFER_DST,
+		DEPTH_READ_ONLY_STENCIL_ATTACHMENT,
+		DEPTH_ATTACHMENT_STENCIL_READ_ONLY,
+		PRESENT_SRC,
+	};
+
+	enum class ImageUsageFlagBits
+	{
+		TRANSFER_SRC_BIT = 0x1,
+		TRANSFER_DST_BIT = 0x2,
+		SAMPLED_BIT = 0x4,
+		STORAGE_BIT = 0x8,
+		COLOR_ATTACHMENT_BIT = 0x10,
+		DEPTH_STENCIL_ATTACHMENT_BIT = 0x20,
+		TRANSIENT_ATTACHMENT_BIT = 0x40, //rendererbuffer for opengl
+		INPUT_ATTACHMENT_BIT = 0x80
+	};
+	ENABLE_BITMASK_OPERATORS(ImageUsageFlagBits);
 
 	enum class SampleCountFlagBits
 	{
@@ -640,6 +705,8 @@ namespace Shit
 
 	enum class CommandPoolCreateFlagBits
 	{
+		TRANSIENT_BIT = 0x1,
+		RESET_COMMAND_BUFFER_BIT = 0x2,
 	};
 	ENABLE_BITMASK_OPERATORS(CommandPoolCreateFlagBits);
 
@@ -648,6 +715,12 @@ namespace Shit
 		PRIMARY,
 		SECONDARY
 	};
+	enum class CommandBufferUsageFlagBits
+	{
+		ONE_TIME_SUBMIT_BIT = 0x1,
+	};
+	ENABLE_BITMASK_OPERATORS(CommandBufferUsageFlagBits);
+
 	enum class QueueFlagBits
 	{
 		GRAPHICS_BIT = 0x1,
@@ -666,5 +739,10 @@ namespace Shit
 		EVENT_SET,
 		EVENT_RESET,
 		INCOMPLETE,
+	};
+	enum class SubpassContents
+	{
+		INLINE,
+		SECONDARY_COMMAND_BUFFERS
 	};
 }

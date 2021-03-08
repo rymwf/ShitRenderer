@@ -20,5 +20,23 @@ namespace Shit
 
 	public:
 		virtual ~CommandBuffer() {}
+
+		constexpr const CommandBufferCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
+
+		virtual void Begin(const CommandBufferBeginInfo &beginInfo) {}
+		virtual void End() {}
+		virtual void ExecuteSecondaryCommandBuffer(const std::vector<CommandBuffer *> &secondaryCommandBuffers) {}
+		virtual void BeginRenderPass(const RenderPassBeginInfo &beginInfo, const SubpassBeginInfo &subpassBeginInfo) {}
+		virtual void EndRenderPass() {}
+		virtual void NextSubpass(const SubpassBeginInfo &subpassBeginInfo) {}
+
+		virtual void CopyBuffer(const CopyBufferInfo &copyInfo) = 0;
+		virtual void CopyImage(const CopyImageInfo &copyInfo) = 0;
+		virtual void CopyBufferToImage(const CopyBufferToImageInfo &copyInfo) = 0;
+		virtual void CopyImageToBuffer(const CopyImageToBufferInfo &copyInfo) = 0;
+		virtual void BlitImage(const BlitImageInfo &blitInfo) = 0;
 	};
 }

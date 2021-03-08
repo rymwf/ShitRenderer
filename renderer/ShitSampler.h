@@ -1,5 +1,5 @@
 /**
- * @file ShitSurface.h
+ * @file ShitSampler.h
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -11,15 +11,15 @@
 #include "ShitRendererPrerequisites.h"
 namespace Shit
 {
-	class Surface
+	class Sampler
 	{
 	protected:
-		SurfaceCreateInfo mCreateInfo;
+		SamplerCreateInfo mCreateInfo;
 
 	public:
-		Surface(const SurfaceCreateInfo &createInfo) : mCreateInfo(createInfo) {}
-		virtual ~Surface() {}
-		constexpr const SurfaceCreateInfo *GetCreateInfoPtr() const
+		Sampler(const SamplerCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+		virtual ~Sampler() {}
+		constexpr const SamplerCreateInfo *GetCreateInfoPtr() const
 		{
 			return &mCreateInfo;
 		}

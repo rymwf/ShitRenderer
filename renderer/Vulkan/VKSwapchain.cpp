@@ -15,9 +15,12 @@ namespace Shit
 		const SwapchainCreateInfo &createInfo,
 		VkSurfaceKHR surface,
 		VkSurfaceFormatKHR surfaceFormat,
-		VkPresentModeKHR presentMode)
+		VkPresentModeKHR presentMode,
+		QueueFamilyIndex presentQueueFamilyIndex)
 		: Swapchain(createInfo), mDevice(device)
 	{
+		mPresentQueueFamilyIndex = presentQueueFamilyIndex;
+
 		VkSwapchainCreateInfoKHR swapchainInfo{
 			VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 			NULL,
@@ -41,5 +44,16 @@ namespace Shit
 
 		if (vkCreateSwapchainKHR(mDevice, &swapchainInfo, nullptr, &mHandle) != VK_SUCCESS)
 			THROW("failed to create swapchain");
+
+		uint32_t swapchainImageCount;
+		vkGetSwapchainImagesKHR(mDevice, mHandle, &swapchainImageCount, nullptr);
+		LOG(swapchainImageCount);
+		std::vector<VkImage> swapchainImages;
+		swapchainImages.resize(swapchainImageCount);
+		vkGetSwapchainImagesKHR(mDevice, mHandle, &swapchainImageCount, swapchainImages.data());
+		for (auto e : swapchainImages)
+		{
+			mImages.emplace_back(std::make_unique<VKImage>(mDevice, e, true));
+		}
 	}
 } // namespace Shit

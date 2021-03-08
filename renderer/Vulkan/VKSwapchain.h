@@ -11,6 +11,7 @@
 #include <renderer/ShitSwapchain.h>
 #include "VKPrerequisites.h"
 #include "VKSurface.h"
+#include "VKImage.h"
 
 namespace Shit
 {
@@ -28,7 +29,9 @@ namespace Shit
 			const SwapchainCreateInfo &createInfo,
 			VkSurfaceKHR surface,
 			VkSurfaceFormatKHR surfaceFormat,
-			VkPresentModeKHR presentMode);
+			VkPresentModeKHR presentMode,
+			QueueFamilyIndex presentQueueFamilyIndex
+			);
 
 		constexpr VkPresentModeKHR GetPresentMode() const
 		{

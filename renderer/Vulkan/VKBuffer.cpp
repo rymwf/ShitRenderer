@@ -8,16 +8,20 @@
  * 
  */
 #include "VKBuffer.h"
+#include "VKQueue.h"
+#include "VKCommandPool.h"
+#include "VKDevice.h"
+
 namespace Shit
 {
-	VKBuffer::VKBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const BufferCreateInfo &createInfo, void *pData)
+	VKBuffer::VKBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const BufferCreateInfo &createInfo)
 		: Buffer(createInfo), mDevice(device), mPhysicalDevice(physicalDevice)
 	{
 		VK::createBuffer(
 			mPhysicalDevice,
 			device,
 			createInfo.size,
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT | Map(createInfo.usage),
+			Map(createInfo.usage),
 			Map(createInfo.memoryPropertyFlags),
 			mHandle,
 			mMemory);
@@ -48,7 +52,8 @@ namespace Shit
 		vkMapMemory(mDevice, stagingBufferMemory, 0, mCreateInfo.size, 0, &data);
 		memcpy(data, pData, static_cast<size_t>(mCreateInfo.size));
 		vkUnmapMemory(mDevice, stagingBufferMemory);
-		//
+
+		//copy buffer to buffer
 
 	}
 } // namespace Shit

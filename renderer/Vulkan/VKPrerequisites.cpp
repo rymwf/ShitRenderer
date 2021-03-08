@@ -669,6 +669,238 @@ namespace Shit
 		// Provided by VK_VERSION_1_1
 		VK_QUEUE_PROTECTED_BIT,
 	};
+	constexpr VkImageCreateFlagBits vkImageCreateFlagBitArray[]{
+		VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT};
+
+	constexpr VkImageType vkImageTypeArray[]{
+		VK_IMAGE_TYPE_1D,
+		VK_IMAGE_TYPE_2D,
+		VK_IMAGE_TYPE_3D,
+	};
+	constexpr VkImageViewType vkImageViewTypeArray[]{
+		VK_IMAGE_VIEW_TYPE_1D,
+		VK_IMAGE_VIEW_TYPE_2D,
+		VK_IMAGE_VIEW_TYPE_3D,
+		VK_IMAGE_VIEW_TYPE_CUBE,
+		VK_IMAGE_VIEW_TYPE_1D_ARRAY,
+		VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+		VK_IMAGE_VIEW_TYPE_CUBE_ARRAY,
+	};
+	constexpr VkImageTiling vkImageTilingArray[]{
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_TILING_LINEAR
+	};
+	constexpr VkImageUsageFlagBits vkImageUsageFlagBitArray[]{
+		VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+		VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_IMAGE_USAGE_STORAGE_BIT,
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+		VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT};
+	constexpr VkImageLayout vkImageLayoutArray[]{
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	};
+	constexpr VkCommandPoolCreateFlagBits vkCommandPoolCreateFlagBitArray[]{
+		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+	};
+	constexpr VkFilter vkFilterArray[]{
+		VK_FILTER_NEAREST,
+		VK_FILTER_LINEAR,
+		// Provided by VK_IMG_filter_cubic
+		VK_FILTER_CUBIC_IMG,
+		// Provided by VK_EXT_filter_cubic
+		VK_FILTER_CUBIC_EXT,
+	};
+	constexpr VkDescriptorType vkDescriptorTypeArray[]{
+		VK_DESCRIPTOR_TYPE_SAMPLER,
+		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+		VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT};
+
+	constexpr VkShaderStageFlagBits vkShaderStageFlagBitArray[]{
+		VK_SHADER_STAGE_VERTEX_BIT,
+		VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+		VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+		VK_SHADER_STAGE_GEOMETRY_BIT,
+		VK_SHADER_STAGE_FRAGMENT_BIT,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		VK_SHADER_STAGE_ALL_GRAPHICS,
+		VK_SHADER_STAGE_ALL};
+
+	constexpr VkSamplerMipmapMode vkSamplerMipmapModeArray[]{
+		VK_SAMPLER_MIPMAP_MODE_NEAREST,
+		VK_SAMPLER_MIPMAP_MODE_LINEAR};
+
+	constexpr VkSamplerAddressMode vkSamplerAddressModeArray[]{
+		VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		//// Provided by VK_VERSION_1_2, VK_KHR_sampler_mirror_clamp_to_edge
+		//VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE ,
+		//VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE_KHR,
+	};
+	constexpr VkCompareOp vkCompareOpArray[]{
+		VK_COMPARE_OP_NEVER,
+		VK_COMPARE_OP_LESS,
+		VK_COMPARE_OP_EQUAL,
+		VK_COMPARE_OP_LESS_OR_EQUAL,
+		VK_COMPARE_OP_GREATER,
+		VK_COMPARE_OP_NOT_EQUAL,
+		VK_COMPARE_OP_GREATER_OR_EQUAL,
+		VK_COMPARE_OP_ALWAYS};
+
+	constexpr VkAttachmentLoadOp vkAttachmentLoadOpArray[]{
+		VK_ATTACHMENT_LOAD_OP_LOAD,
+		VK_ATTACHMENT_LOAD_OP_CLEAR,
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		VK_ATTACHMENT_LOAD_OP_MAX_ENUM
+	};
+	constexpr VkAttachmentStoreOp vkAttachmentStoreOpArray[]{
+		VK_ATTACHMENT_STORE_OP_STORE,
+		VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		VK_ATTACHMENT_STORE_OP_NONE_QCOM,
+		VK_ATTACHMENT_STORE_OP_MAX_ENUM};
+	constexpr VkComponentSwizzle vkComponentSwizzleArray[]{
+		VK_COMPONENT_SWIZZLE_IDENTITY,
+		VK_COMPONENT_SWIZZLE_ZERO,
+		VK_COMPONENT_SWIZZLE_ONE,
+		VK_COMPONENT_SWIZZLE_R,
+		VK_COMPONENT_SWIZZLE_G,
+		VK_COMPONENT_SWIZZLE_B,
+		VK_COMPONENT_SWIZZLE_A,
+		VK_COMPONENT_SWIZZLE_MAX_ENUM
+	};
+	constexpr VkPipelineBindPoint vkPipelineBindPointArray[]{
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		VK_PIPELINE_BIND_POINT_COMPUTE,
+		VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+		VK_PIPELINE_BIND_POINT_RAY_TRACING_NV,
+		VK_PIPELINE_BIND_POINT_MAX_ENUM};
+	constexpr VkCommandBufferUsageFlagBits vkCommandBufferUsageFlagBitsArray[]{
+		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
+		VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+		VK_COMMAND_BUFFER_USAGE_FLAG_BITS_MAX_ENUM};
+	constexpr VkSubpassContents vkSubpassContentsArray[]{
+		VK_SUBPASS_CONTENTS_INLINE,
+		VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
+	};
+	VkSubpassContents Map(SubpassContents contents)
+	{
+		return vkSubpassContentsArray[static_cast<size_t>(contents)];
+	}
+
+	VkPipelineBindPoint Map(PipelineBindPoint bindPoint)
+	{
+		return vkPipelineBindPointArray[static_cast<size_t>(bindPoint)];
+	}
+	VkComponentSwizzle Map(ComponentSwizzle swizzle)
+	{
+		return vkComponentSwizzleArray[static_cast<size_t>(swizzle)];
+	}
+	VkAttachmentLoadOp Map(AttachmentLoadOp op)
+	{
+		return vkAttachmentLoadOpArray[static_cast<size_t>(op)];
+	}
+	VkAttachmentStoreOp Map(AttachmentStoreOp op)
+	{
+		return vkAttachmentStoreOpArray[static_cast<size_t>(op)];
+	}
+	VkCompareOp Map(CompareOp op)
+	{
+		return vkCompareOpArray[static_cast<size_t>(op)];
+	}
+	VkSamplerAddressMode Map(SamplerWrapMode mode)
+	{
+		return vkSamplerAddressModeArray[static_cast<size_t>(mode)];
+	}
+	VkSamplerMipmapMode Map(SamplerMipmapMode mode)
+	{
+		return vkSamplerMipmapModeArray[static_cast<size_t>(mode)];
+	}
+	VkShaderStageFlags Map(ShaderStageFlagBits flag)
+	{
+		return static_cast<VkShaderStageFlagBits>(flag);
+	}
+	VkDescriptorType Map(DescriptorType type)
+	{
+		return vkDescriptorTypeArray[static_cast<size_t>(type)];
+	}
+
+	VkFilter Map(Filter filter)
+	{
+		return vkFilterArray[static_cast<size_t>(filter)];
+	}
+	VkCommandPoolCreateFlags Map(CommandPoolCreateFlagBits flag)
+	{
+		VkCommandPoolCreateFlags ret{};
+		int a = static_cast<int>(flag);
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
+		{
+			if (a & 1)
+				ret |= vkCommandPoolCreateFlagBitArray[i];
+		}
+		return ret;
+	}
+
+	VkImageCreateFlags Map(ImageCreateFlagBits flag)
+	{
+		VkImageCreateFlags ret{};
+		int a = static_cast<int>(flag);
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
+		{
+			if (a & 1)
+				ret |= vkImageCreateFlagBitArray[i];
+		}
+		return ret;
+	}
+	VkImageType Map(ImageType type)
+	{
+		return vkImageTypeArray[static_cast<size_t>(type)];
+	}
+	VkImageViewType Map(ImageViewType type)
+	{
+		return vkImageViewTypeArray[static_cast<size_t>(type)];
+	}
+	VkImageTiling Map(ImageTiling tiling)
+	{
+		return vkImageTilingArray[static_cast<size_t>(tiling)];
+	}
+	VkImageUsageFlags Map(ImageUsageFlagBits flag)
+	{
+		VkImageUsageFlags ret{};
+		int a = static_cast<int>(flag);
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
+		{
+			if (a & 1)
+				ret |= vkImageUsageFlagBitArray[i];
+		}
+		return ret;
+	}
+	VkImageLayout Map(ImageLayout layout)
+	{
+		return vkImageLayoutArray[static_cast<size_t>(layout)];
+	}
 
 	VkBufferUsageFlags Map(BufferUsageFlagBits flag)
 	{
@@ -727,4 +959,21 @@ namespace Shit
 		return ret;
 	}
 
+	VkImageAspectFlags GetImageAspectFromFormat(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::D16_UNORM:
+		case ShitFormat::D24_UNORM:
+		case ShitFormat::D32_SFLOAT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+		case ShitFormat::D24_UNORM_S8_UINT:
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+			return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		case ShitFormat::S8_UINT:
+			return VK_IMAGE_ASPECT_STENCIL_BIT;
+		default:
+			return VK_IMAGE_ASPECT_COLOR_BIT;
+		}
+	}
 } // namespace Shit

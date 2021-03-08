@@ -10,22 +10,41 @@
 #pragma once
 #include "ShitRendererPrerequisites.h"
 
-namespace Shit{
+namespace Shit
+{
+
+	class PipelineLayout
+	{
+	protected:
+		PipelineLayoutCreateInfo mCreateInfo;
+		PipelineLayout(const PipelineLayoutCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+
+	public:
+		virtual ~PipelineLayout() {}
+		constexpr const PipelineLayoutCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
+	};
 
 	class GraphicsPipeline
 	{
 	protected:
 		GraphicsPipelineCreateInfo mCreateInfo;
 
-	public:
 		GraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) : mCreateInfo(createInfo)
 		{
 		}
-		virtual ~GraphicsPipeline(){}
+
+	public:
+		virtual ~GraphicsPipeline() {}
+		constexpr const GraphicsPipelineCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 
 	class ComputePipeline
 	{
 	};
 }
-

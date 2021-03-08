@@ -13,7 +13,6 @@
 #include <unordered_set>
 #include <vector>
 #include <stdexcept>
-#include <string>
 #include <optional>
 #include <stack>
 #include <utility>
@@ -70,6 +69,17 @@ namespace Shit
 	class CommandBuffer;
 	class Fence;
 	class Surface;
+	class RenderPass;
+	class Buffer;
+	class BufferView;
+	class Image;
+	class ImageView;
+	class Sampler;
+	class DescriptorSetLayout;
+	class DescriptorSet;
+	class PipelineLayout;
+	class Framebuffer;
+
 
 	using PhysicalDevice = void *;
 
@@ -100,6 +110,12 @@ namespace Shit
 	{
 		Offset2D offset;
 		Extent2D extent;
+	};
+
+	struct Rect3D
+	{
+		Offset3D offset;
+		Extent3D extent;
 	};
 
 	struct RenderSystemCreateInfo
@@ -186,15 +202,13 @@ namespace Shit
 		std::shared_ptr<VertexInputStateCreateInfo> pVertexInputState;
 		//PipelineLayout layout;
 	};
-
 	struct BufferCreateInfo
 	{
 		BufferCreateFlagBits flags;
-		uint32_t size;
+		uint64_t size;
 		BufferUsageFlagBits usage;
 		MemoryPropertyFlagBits memoryPropertyFlags;
 	};
-
 	struct QueueFamilyIndex
 	{
 		uint32_t index;
@@ -204,19 +218,22 @@ namespace Shit
 	struct CommandPoolCreateInfo
 	{
 		CommandPoolCreateFlagBits flags;
-		uint32_t queueFamilyIndex;
+		QueueFamilyIndex queueFamilyIndex;
 	};
 	struct CommandBufferCreateInfo
 	{
-		CommandPool *pCommandPool;
 		CommandBufferLevel level;
+		uint32_t count;
 	};
-
+	struct CommandBufferBeginInfo
+	{
+		CommandBufferUsageFlagBits usage;
+		Framebuffer *pFramebuffer; //optional, when use secondary cmdbuffer, this can be set
+	};
 	struct QueueCreateInfo
 	{
 		uint32_t queueFamilyIndex;
 		uint32_t queueIndex;
-		std::vector<uint32_t> skipQueueFamilyIndices;
 	};
 
 	struct SubmitInfo
@@ -236,6 +253,287 @@ namespace Shit
 
 	struct ImageCreateInfo
 	{
+		ImageCreateFlagBits flags;
+		ImageType imageType;
+		ShitFormat format;
+		Extent3D extent;
+		uint32_t mipLevels;
+		uint32_t arrayLayers;
+		SampleCountFlagBits samples;
+		ImageTiling tiling;			   //no use for opengl
+		ImageUsageFlagBits usageFlags; //seems to be meaningless 
+		MemoryPropertyFlagBits memoryPropertyFlags;
 	};
 
+	struct ImageSubData
+	{
+		ShitFormat format; //data format
+		DataType dataType;
+		uint32_t mipLevel;
+		Rect3D rect;
+		void *data;
+	};
+
+	union ClearColorValue
+	{
+		float float32[4];
+		int32_t int32[4];
+		uint32_t uint32[4];
+	};
+
+	struct ClearDepthStencilValue
+	{
+		float depth;
+		uint32_t stencil;
+	};
+
+	struct ClearValue
+	{
+		ClearColorValue color;
+		ClearDepthStencilValue depthStencil;
+	};
+
+	struct BorderColor
+	{
+		DataType dataType;
+		ClearColorValue color;
+	};
+
+	struct SamplerCreateInfo
+	{
+		Filter magFilter;
+		Filter minFilter;
+		SamplerMipmapMode mipmapMode;
+		SamplerWrapMode wrapModeU;
+		SamplerWrapMode wrapModeV;
+		SamplerWrapMode wrapModeW;
+		float mipLodBias;
+		bool anisotopyEnable;
+		bool compareEnable;
+		CompareOp compareOp;
+		float minLod;
+		float maxLod;
+		BorderColor borderColor;
+	};
+
+	struct BufferCopy
+	{
+		uint64_t srcOffset;
+		uint64_t dstOffset;
+		uint64_t size;
+	};
+	struct CopyBufferInfo
+	{
+		Buffer *pSrcBuffer;
+		Buffer *pDstBuffer;
+		std::vector<BufferCopy> regions;
+	};
+
+	struct ImageSubresourceLayer
+	{
+		uint32_t mipLevel;
+		uint32_t baseArrayLayer;
+		uint32_t layerCount;
+	};
+
+	struct ImageCopy{
+		ImageSubresourceLayer srcSubresource;
+		Offset3D srcOffset;
+		ImageSubresourceLayer dstSubresource;
+		Offset3D dstOffset;
+		Extent3D extent;
+	};
+
+	struct CopyImageInfo
+	{
+		Image* pSrcImage;
+		Image* pDstImage;
+		std::vector<ImageCopy> regions;
+	};
+
+	struct BufferImageCopy
+	{
+		uint64_t bufferOffset;
+		uint32_t bufferRowLength;
+		uint32_t bufferImageHeight;
+		ImageSubresourceLayer imageSubresource;
+		Offset3D imageOffset;
+		Extent3D imageExtent;
+	};
+	struct CopyBufferToImageInfo
+	{
+		Buffer *pSrcBuffer;
+		Image *pDstImage;
+		std::vector<BufferImageCopy> regions;
+	};
+	struct CopyImageToBufferInfo
+	{
+		Image *pSrcImage;
+		Buffer *pDstBuffer;
+		std::vector<BufferImageCopy> regions;
+	};
+	struct ImageBlit
+	{
+		ImageSubresourceLayer srcSubresource;
+		std::array<Offset3D, 2> srcOffsets;
+		ImageSubresourceLayer dstSubresource;
+		std::array<Offset3D, 2> dstOffsets;
+	};
+	struct BlitImageInfo
+	{
+		Image *pSrcImage;
+		Image *pDstImage;
+		std::vector<ImageBlit> regions;
+		Filter filter;
+	};
+
+	struct DescriptorSetLayoutBinding
+	{
+		uint32_t binding; //shader binding
+		DescriptorType descriptorType;
+		uint32_t descriptorCount;		//array
+		ShaderStageFlagBits stageFlags; //Vulkan
+		std::vector<Sampler *> immutableSamplers;
+	};
+
+	struct DescriptorSetLayoutCreateInfo
+	{
+		std::vector<DescriptorSetLayoutBinding> descriptorSetLayoutBindings;
+	};
+
+	struct ComponentMapping
+	{
+		ComponentSwizzle r;
+		ComponentSwizzle g;
+		ComponentSwizzle b;
+		ComponentSwizzle a;
+	};
+	struct ImageSubresourceRange
+	{
+	//	ImageAspectFlags aspectMask;
+		uint32_t baseMipLevel;
+		uint32_t levelCount;
+		uint32_t baseArrayLayer;
+		uint32_t layerCount;
+	};
+
+	struct ImageViewCreateInfo
+	{
+		Image* pImage;
+		ImageViewType viewType;
+		ShitFormat format;
+		ComponentMapping components;
+		ImageSubresourceRange subresourceRange;
+	};
+
+	struct DescriptorImageInfo
+	{
+		Sampler* pSampler;
+		ImageView* pImageView;
+	};
+	struct DescriptorBufferInfo
+	{
+		Buffer* pBuffer;
+		uint32_t offset;
+		uint32_t range;
+	};
+
+	struct WriteDescriptorSet
+	{
+		DescriptorSet* pDstSet;
+		uint32_t dstBinding;
+		uint32_t dstArrayElement;
+		DescriptorType descriptorType;
+		std::vector<DescriptorImageInfo> imagesInfo;
+		ImageViewType viewType;
+		bool multisample;
+		std::vector<DescriptorBufferInfo> buffersInfo;
+		std::vector<BufferView *> texelBufferView; //TODO: buffer texture
+	};
+	struct CopyDescriptorSet
+	{
+		//TODO:
+	};
+
+	//vulkan only
+	struct PushConstantRange
+	{
+		ShaderStageFlagBits stageFlags;
+		uint32_t offset;
+		uint32_t size;
+	};
+
+	struct PipelineLayoutCreateInfo
+	{
+		std::vector<DescriptorSetLayout*> setLayouts; 
+		std::vector<PushConstantRange> pushConstantRanges;
+	};
+
+	struct DrawIndirectCommand
+	{
+		uint32_t vertexCount;
+		uint32_t instanceCount;
+		uint32_t firstVertex;
+		uint32_t firstInstance;
+	};
+
+	struct DrawIndexedIndirectCommand
+	{
+		uint32_t indexCount;
+		uint32_t instanceCount;
+		uint32_t firstIndex;
+		int32_t vertexOffset;
+		uint32_t firstInstance;
+	};
+
+	struct AttachmentDescription
+	{
+		ShitFormat format;
+		SampleCountFlagBits samples;
+		AttachmentLoadOp loadOp;   //glclear
+		AttachmentStoreOp storeOp; //opengl default store
+		AttachmentLoadOp stencilLoadOp;
+		AttachmentStoreOp stencilStoreOp;
+		ImageLayout finalLayout;
+	};
+
+	struct AttachmentReference
+	{
+		uint32_t attachment;
+		ImageLayout layout;
+	};
+
+	struct SubpassDescription
+	{
+		PipelineBindPoint pipelineBindPoint;
+		std::vector<AttachmentReference> colorAttachments;
+		std::optional<AttachmentReference> resolveAttachment;
+		std::optional<AttachmentReference> depthStencilAttachment;
+	};
+
+	struct RenderPassCreateInfo
+	{
+		std::vector<AttachmentDescription> attachments;
+		std::vector<SubpassDescription> subpasses;
+		//	std::vector<SubpassDependencies> spSubpassDependencies;	//TODO:spSubpassDependencies
+	};
+
+	struct FramebufferCreateInfo
+	{
+		RenderPass *pRenderPass;
+		std::vector<ImageView *> attachments;
+		Extent2D extent;
+		uint32_t layers;
+	};
+	struct RenderPassBeginInfo
+	{
+		RenderPass *pRenderPass;
+		Framebuffer *pFramebuffer;
+		Rect2D renderArea;
+		std::vector<ClearValue> clearValues;
+	};
+	struct SubpassBeginInfo
+	{
+		SubpassContents contents;
+	};
 } // namespace Shit

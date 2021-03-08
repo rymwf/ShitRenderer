@@ -67,6 +67,24 @@ namespace Shit
 		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 	}
 
+	VkSubpassContents Map(SubpassContents contents);
+	VkPipelineBindPoint Map(PipelineBindPoint bindPoint);
+	VkComponentSwizzle Map(ComponentSwizzle swizzle);
+	VkAttachmentLoadOp Map(AttachmentLoadOp op);
+	VkAttachmentStoreOp Map(AttachmentStoreOp op);
+	VkCompareOp Map(CompareOp op);
+	VkSamplerAddressMode Map(SamplerWrapMode mode);
+	VkSamplerMipmapMode Map(SamplerMipmapMode mode);
+	VkShaderStageFlags Map(ShaderStageFlagBits flag);
+	VkDescriptorType Map(DescriptorType type);
+	VkFilter Map(Filter filter);
+	VkCommandPoolCreateFlags Map(CommandPoolCreateFlagBits flag);
+	VkImageCreateFlags Map(ImageCreateFlagBits flag);
+	VkImageType Map(ImageType type);
+	VkImageViewType Map(ImageViewType type);
+	VkImageTiling Map(ImageTiling tiling);
+	VkImageUsageFlags Map(ImageUsageFlagBits flag);
+	VkImageLayout Map(ImageLayout layout);
 	VkBufferUsageFlags Map(BufferUsageFlagBits flag);
 	VkMemoryPropertyFlags Map(MemoryPropertyFlagBits flag);
 	VkFormat Map(ShitFormat format);
@@ -74,4 +92,5 @@ namespace Shit
 	VkPresentModeKHR Map(PresentMode mode);
 	VkCommandBufferLevel Map(CommandBufferLevel level);
 	VkQueueFlags Map(QueueFlagBits flag);
+	VkImageAspectFlags GetImageAspectFromFormat(ShitFormat format);
 }

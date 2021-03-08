@@ -268,6 +268,19 @@ namespace Shit
 		}
 
 	}
+	constexpr GLenum glDataTypeArray[]{
+		GL_BYTE,
+		GL_UNSIGNED_BYTE,
+		GL_SHORT,
+		GL_UNSIGNED_SHORT,
+		GL_INT,
+		GL_UNSIGNED_INT,
+		GL_FLOAT,
+		GL_HALF_FLOAT,
+		GL_DOUBLE,
+		GL_INT_2_10_10_10_REV,
+		GL_UNSIGNED_INT_2_10_10_10_REV,
+		GL_UNSIGNED_INT_10F_11F_11F_REV};
 
 	constexpr GLenum glFormatArray[][2]{
 		{GL_NONE, GL_NONE},
@@ -308,7 +321,7 @@ namespace Shit
 		GL_COPY_READ_BUFFER,
 		GL_COPY_WRITE_BUFFER,
 		GL_TEXTURE_BUFFER,
-		0,//storage texel
+		0, //storage texel
 		GL_UNIFORM_BUFFER,
 		GL_SHADER_STORAGE_BUFFER,
 		GL_ELEMENT_ARRAY_BUFFER,
@@ -345,6 +358,48 @@ namespace Shit
 		GL_STATIC_READ,
 		GL_STATIC_COPY,
 	};
+	constexpr GLenum glImageTypeArray[]{
+		GL_TEXTURE_1D_ARRAY,
+		GL_TEXTURE_2D_ARRAY,
+		GL_TEXTURE_3D,
+	};
+	constexpr GLenum glImageViewTypeArray[]{
+		GL_TEXTURE_1D,
+		GL_TEXTURE_2D,
+		GL_TEXTURE_3D,
+		GL_TEXTURE_CUBE_MAP,
+		GL_TEXTURE_1D_ARRAY,
+		GL_TEXTURE_2D_ARRAY,
+		GL_TEXTURE_CUBE_MAP_ARRAY,
+	};
+	constexpr GLenum glFilterArray[]{
+		GL_NEAREST,
+		GL_LINEAR,
+	};
+
+	constexpr GLenum glSamplerWrapModeArray[]{
+		GL_REPEAT,
+		GL_MIRRORED_REPEAT,
+		GL_CLAMP_TO_EDGE,
+		GL_CLAMP_TO_BORDER,
+	};
+	constexpr GLenum glCompareOpArray[]{
+		GL_NEVER,
+		GL_LESS,
+		GL_EQUAL,
+		GL_LEQUAL,
+		GL_GREATER,
+		GL_NOTEQUAL,
+		GL_GEQUAL,
+		GL_ALWAYS};
+	constexpr GLenum glComponentSwizzleArray[]{
+		GL_NONE,
+		GL_ZERO,
+		GL_ONE,
+		GL_RED,
+		GL_GREEN,
+		GL_BLUE,
+		GL_ALPHA};
 
 	GLenum Map(ShaderStageFlagBits flag)
 	{
@@ -376,11 +431,11 @@ namespace Shit
 		return shaderType;
 	}
 
-	GLenum MapInternalFormat(ShitFormat format)
+	GLint MapInternalFormat(ShitFormat format)
 	{
 		return glFormatArray[static_cast<size_t>(format)][0];
 	}
-	GLenum MapExternalFormat(ShitFormat format)
+	GLint MapExternalFormat(ShitFormat format)
 	{
 		return glFormatArray[static_cast<size_t>(format)][1];
 	}
@@ -395,6 +450,43 @@ namespace Shit
 	GLbitfield Map(BufferStorageFlagBits flag)
 	{
 		return static_cast<GLbitfield>(flag);
+	}
+	GLenum Map(SamplerWrapMode wrapMode)
+	{
+		return glSamplerWrapModeArray[static_cast<size_t>(wrapMode)];
+	}
+	GLenum Map(CompareOp op)
+	{
+		return glCompareOpArray[static_cast<size_t>(op)];
+	}
+	GLenum Map(Filter filter)
+	{
+		return glFilterArray[static_cast<size_t>(filter)];
+	}
+	GLenum Map(ImageType imageType, SampleCountFlagBits sampleCountFlag)
+	{
+		if (sampleCountFlag > SampleCountFlagBits::BIT_1)
+			return GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
+		else
+			return glImageTypeArray[static_cast<size_t>(imageType)];
+	}
+	GLenum Map(ImageViewType viewType, SampleCountFlagBits sampleCountFlag)
+	{
+		if (sampleCountFlag > SampleCountFlagBits::BIT_1)
+		{
+			if (viewType == ImageViewType::TYPE_2D)
+				return GL_TEXTURE_2D_MULTISAMPLE;
+			else if (viewType == ImageViewType::TYPE_2D_ARRAY)
+				return GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
+			else
+				throw std::runtime_error("wrong image view type");
+		}
+		else
+			return glImageViewTypeArray[static_cast<size_t>(viewType)];
+	}
+	GLenum Map(DataType dataType)
+	{
+		return glDataTypeArray[static_cast<size_t>(dataType)];
 	}
 
 } // namespace Shit

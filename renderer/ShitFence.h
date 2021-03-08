@@ -19,5 +19,9 @@ namespace Shit
 
 	public:
 		virtual ~Fence() {}
+		constexpr const FenceCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 } // namespace Shit

@@ -18,6 +18,11 @@
 #include "VKQueue.h"
 #include "VKBuffer.h"
 #include "VKImage.h"
+#include "VKDescriptor.h"
+#include "VKSampler.h"
+#include "VKPipeline.h"
+#include "VKRenderPass.h"
+#include "VKFramebuffer.h"
 
 namespace Shit
 {
@@ -29,9 +34,6 @@ namespace Shit
 
 		std::vector<VkQueueFamilyProperties> mQueueFamilyProperties;
 
-		std::optional<uint32_t> mGraphicQueueFamilyIndex;
-		std::optional<uint32_t> mTransferQueueFamilyIndex;
-
 	public:
 		VKDevice(PhysicalDevice physicalDevice);
 		~VKDevice() override
@@ -41,6 +43,9 @@ namespace Shit
 		{
 			return mDevice;
 		}
+
+		CommandBuffer* GetOneTimeCommandBuffer();
+		void ExecuteOneTimeCommandBuffer(CommandBuffer *commandBuffer);
 
 		std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex(ShitWindow *pWindow) override;
 
@@ -54,20 +59,28 @@ namespace Shit
 		Swapchain* CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
-		void DestroyShader(Shader *pShader) override;
 
 		GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
 
 		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
-		void DestroyCommandPool(CommandPool *commandPool) override;
-
-		CommandBuffer *CreateCommandBuffer(const CommandBufferCreateInfo &createInfo) override;
 
 		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
 
 		Result WaitForFence(Fence *fence, uint64_t timeout) override;
 
 		Buffer *CreateBuffer(const BufferCreateInfo &createInfo, void *pData) override;
+
+		Image *CreateImage(const ImageCreateInfo &createInfo, void *pData) override;
+
+		ImageView *CreateImageView(const ImageViewCreateInfo &createInfo) override;
+
+		DescriptorSetLayout *CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo) override;
+
+		PipelineLayout *CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo) override;
+
+		RenderPass *CreateRenderPass(const RenderPassCreateInfo &createInfo) override;
+
+		Framebuffer *CreateFramebuffer(const FramebufferCreateInfo &createInfo) override;
 	};
 
 } // namespace Shit

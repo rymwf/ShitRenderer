@@ -19,5 +19,9 @@ namespace Shit
 
 	public:
 		virtual ~Semaphore() {}
+		constexpr const SemaphoreCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 } // namespace Shit

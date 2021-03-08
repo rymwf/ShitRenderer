@@ -22,7 +22,7 @@ namespace Shit
 		void SetData(void* pData);
 
 	public:
-		VKBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const BufferCreateInfo &createInfo, void *pData);
+		VKBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const BufferCreateInfo &createInfo);
 		~VKBuffer() override
 		{
 			vkFreeMemory(mDevice, mMemory, nullptr);

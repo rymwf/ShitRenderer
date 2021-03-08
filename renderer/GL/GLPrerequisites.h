@@ -92,11 +92,18 @@ namespace Shit
 		void listGLInfo();
 	}
 
-	GLenum MapInternalFormat(ShitFormat format);
+	GLint MapInternalFormat(ShitFormat format);
+	GLint MapExternalFormat(ShitFormat format);
 	GLenum Map(ShaderStageFlagBits flag);
 	GLenum Map(BufferUsageFlagBits flag);
 	GLenum Map(BufferMutableStorageUsage usage);
 	GLbitfield Map(BufferMapFlagBits flag);
 	GLbitfield Map(BufferStorageFlagBits flag);
+	GLenum Map(SamplerWrapMode wrapMode);
+	GLenum Map(CompareOp op);
+	GLenum Map(Filter filter);
+	GLenum Map(ImageType imageType, SampleCountFlagBits sampleCountFlag);
+	GLenum Map(ImageViewType viewType, SampleCountFlagBits sampleCountFlag);
+	GLenum Map(DataType dataType);
 
 } // namespace Shit

@@ -20,5 +20,11 @@ namespace Shit
 	public:
 		GLCommandBuffer(GLStateManager *stateManager, const CommandBufferCreateInfo &createInfo)
 			: CommandBuffer(createInfo), mStateManager(stateManager) {}
+
+		void CopyBuffer(const CopyBufferInfo &copyInfo) override;
+		void CopyImage(const CopyImageInfo &copyInfo) override;
+		void CopyBufferToImage(const CopyBufferToImageInfo &copyInfo) override;
+		void CopyImageToBuffer(const CopyImageToBufferInfo &copyInfo) override;
+		void BlitImage(const BlitImageInfo &blitInfo) override;
 	};
 } // namespace Shit

@@ -21,5 +21,9 @@ namespace Shit
 	public:
 		virtual ~Queue() {}
 		virtual void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) = 0;
+		constexpr const QueueCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 } // namespace Shit

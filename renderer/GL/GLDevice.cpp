@@ -16,51 +16,46 @@
 namespace Shit
 {
 
-	Shader *GLDevice::CreateShader( const ShaderCreateInfo &createInfo)
+	Shader *GLDevice::CreateShader(const ShaderCreateInfo &createInfo)
 	{
 		mShaders.emplace_back(std::make_unique<GLShader>(&mStateManager, createInfo));
 		return mShaders.back().get();
 	}
 
-	void GLDevice::DestroyShader(Shader *pShader)
-	{
-		for (auto it = mShaders.begin(), end = mShaders.end(); it != end; ++it)
-		{
-			if (it->get() == pShader)
-			{
-				mShaders.erase(it);
-				break;
-			}
-		}
-	}
-
-	GraphicsPipeline *GLDevice::CreateGraphicsPipeline( const GraphicsPipelineCreateInfo &createInfo)
+	GraphicsPipeline *GLDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
 	{
 		mGraphicsPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(&mStateManager, createInfo));
 		return mGraphicsPipelines.back().get();
 	}
-	CommandBuffer *GLDevice::CreateCommandBuffer( const CommandBufferCreateInfo &createInfo)
-	{
-		mCommandBuffers.emplace_back(std::make_unique<GLCommandBuffer>(&mStateManager, createInfo));
-		return mCommandBuffers.back().get();
-	}
 
-	Queue *GLDevice::CreateDeviceQueue( const QueueCreateInfo &createInfo)
+	Queue *GLDevice::CreateDeviceQueue(const QueueCreateInfo &createInfo)
 	{
 		return nullptr;
 	}
-	Result GLDevice::WaitForFence( Fence *fence, uint64_t timeout)
+	Result GLDevice::WaitForFence(Fence *fence, uint64_t timeout)
 	{
 		return Result::SUCCESS;
 	}
-	Buffer *GLDevice::CreateBuffer( const BufferCreateInfo &createInfo,void* pData)
+	Buffer *GLDevice::CreateBuffer(const BufferCreateInfo &createInfo, void *pData)
 	{
 		mBuffers.emplace_back(std::make_unique<GLBuffer>(&mStateManager, createInfo, pData));
 		return mBuffers.back().get();
 	}
+
+	Image *GLDevice::CreateImage(const ImageCreateInfo &createInfo, void *pData)
+	{
+		mImages.emplace_back(std::make_unique<GLImage>(&mStateManager, createInfo));
+		return mImages.back().get();
+	}
+	DescriptorSetLayout *GLDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo)
+	{
+		mDescriptorSetLayouts.emplace_back(std::make_unique<GLDescriptorSetLayout>(createInfo));
+		return mDescriptorSetLayouts.back().get();
+	}
+
 #ifdef _WIN32
 
-	Swapchain* GLDeviceWin32::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	Swapchain *GLDeviceWin32::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
 		pWindow->SetSwapchain(std::make_shared<GLSwapchainWin32>(mHDC, createInfo, mRenderSystemCreatInfo.version, mRenderSystemCreatInfo.flags));
 		return pWindow->GetSwapchain();

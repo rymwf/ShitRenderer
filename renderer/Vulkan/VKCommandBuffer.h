@@ -10,7 +10,6 @@
 #pragma once
 #include <renderer/ShitCommandBuffer.h>
 #include "VKPrerequisites.h"
-#include "VKCommandPool.h"
 namespace Shit
 {
 
@@ -18,25 +17,29 @@ namespace Shit
 	{
 		VkCommandBuffer mHandle;
 		VkDevice mDevice;
+		VkCommandPool mCommandPool;
 
 	public:
-		VKCommandBuffer(VkDevice device, const CommandBufferCreateInfo &createInfo) : CommandBuffer(createInfo), mDevice(device)
-		{
-			VkCommandBufferAllocateInfo allocateInfo{
-				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-				nullptr,
-				static_cast<VKCommandPool *>(createInfo.pCommandPool)->GetHandle(),
-				Map(createInfo.level),
-				1};
-			if (vkAllocateCommandBuffers(mDevice, &allocateInfo, &mHandle) != VK_SUCCESS)
-				THROW("failed to create command buffer");
-		}
+		VKCommandBuffer(VkDevice device, VkCommandPool commandPool, const CommandBufferCreateInfo &createInfo);
 		constexpr VkCommandBuffer GetHandle()
 		{
 			return mHandle;
 		}
 		~VKCommandBuffer() override
 		{
+			vkFreeCommandBuffers(mDevice, mCommandPool, 1, &mHandle);
 		}
+		void Begin(const CommandBufferBeginInfo &beginInfo) override;
+		void End() override;
+		void ExecuteSecondaryCommandBuffer(const std::vector<CommandBuffer *> &secondaryCommandBuffers) override;
+		void BeginRenderPass(const RenderPassBeginInfo &beginInfo, const SubpassBeginInfo &subpassBeginInfo) override;
+		void EndRenderPass() override;
+		void NextSubpass(const SubpassBeginInfo &subpassBeginInfo) override;
+
+		void CopyBuffer(const CopyBufferInfo &copyInfo) override;
+		void CopyImage(const CopyImageInfo &copyInfo) override;
+		void CopyBufferToImage(const CopyBufferToImageInfo &copyInfo) override;
+		void CopyImageToBuffer(const CopyImageToBufferInfo &copyInfo) override;
+		void BlitImage(const BlitImageInfo &blitInfo) override;
 	};
 }

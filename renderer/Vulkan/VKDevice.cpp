@@ -65,6 +65,15 @@ namespace Shit
 			&deviceFeatures};
 		if (vkCreateDevice(mPhysicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
 			THROW("create logical device failed");
+
+		//create a transfer command pool for memory transfer operation
+		auto transferQueueFamilyIndex = GetQueueFamilyIndexByFlag(
+			QueueFlagBits::TRANSFER_BIT | QueueFlagBits::GRAPHICS_BIT | QueueFlagBits::COMPUTE_BIT,
+			{});
+		mpOneTimeCommandPool = CreateCommandPool(
+			{CommandPoolCreateFlagBits::TRANSIENT_BIT,
+			 transferQueueFamilyIndex.value()});
+		mpOneTimeCommandQueue = CreateDeviceQueue({transferQueueFamilyIndex->index, 0});
 	}
 
 	std::optional<QueueFamilyIndex> VKDevice::GetPresentQueueFamilyIndex(ShitWindow *pWindow)
@@ -87,7 +96,7 @@ namespace Shit
 		else
 			return std::nullopt;
 	}
-	Swapchain* VKDevice::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	Swapchain *VKDevice::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
 		VkSurfaceKHR surface = static_cast<VKSurface *>(pWindow->GetSurface())->GetHandle();
 
@@ -127,7 +136,13 @@ namespace Shit
 				break;
 			}
 		}
-		pWindow->SetSwapchain(std::make_shared<VKSwapchain>(mDevice, createInfo, surface, surfaceFormat, presentMode));
+		pWindow->SetSwapchain(std::make_shared<VKSwapchain>(
+			mDevice,
+			createInfo,
+			surface,
+			surfaceFormat,
+			presentMode,
+			presentQueueFamilyIndex.value()));
 		return pWindow->GetSwapchain();
 	}
 
@@ -135,17 +150,6 @@ namespace Shit
 	{
 		mShaders.emplace_back(std::make_unique<VKShader>(mDevice, createInfo));
 		return mShaders.back().get();
-	}
-	void VKDevice::DestroyShader(Shader *pShader)
-	{
-		for (auto it = mShaders.begin(), end = mShaders.end(); it != end; ++it)
-		{
-			if (it->get() == pShader)
-			{
-				mShaders.erase(it);
-				break;
-			}
-		}
 	}
 	GraphicsPipeline *VKDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
 	{
@@ -155,22 +159,6 @@ namespace Shit
 	{
 		mCommandPools.emplace_back(std::make_unique<VKCommandPool>(mDevice, createInfo));
 		return mCommandPools.back().get();
-	}
-	void VKDevice::DestroyCommandPool(CommandPool *commandPool)
-	{
-		for (auto it = mCommandPools.begin(), end = mCommandPools.end(); it != end; ++it)
-		{
-			if (it->get() == commandPool)
-			{
-				mCommandPools.erase(it);
-				break;
-			}
-		}
-	}
-	CommandBuffer *VKDevice::CreateCommandBuffer(const CommandBufferCreateInfo &createInfo)
-	{
-		mCommandBuffers.emplace_back(std::make_unique<VKCommandBuffer>(mDevice, createInfo));
-		return mCommandBuffers.back().get();
 	}
 	Queue *VKDevice::CreateDeviceQueue(const QueueCreateInfo &createInfo)
 	{
@@ -183,7 +171,141 @@ namespace Shit
 	}
 	Buffer *VKDevice::CreateBuffer(const BufferCreateInfo &createInfo, void *pData)
 	{
-		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, mPhysicalDevice, createInfo, pData));
+		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, mPhysicalDevice, createInfo));
+
+		if (pData)
+		{
+			if (static_cast<bool>(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))
+			{
+				Buffer *buffer = mBuffers.back().get();
+				void *data;
+				buffer->MapBuffer(0, createInfo.size, &data);
+				memcpy(data, pData, static_cast<size_t>(createInfo.size));
+				buffer->UnMapBuffer();
+			}
+			else if (static_cast<bool>(createInfo.usage & BufferUsageFlagBits::TRANSFER_DST_BIT))
+			{
+				BufferCreateInfo stagingBufferCreateInfo{
+					{},
+					createInfo.size,
+					BufferUsageFlagBits::TRANSFER_SRC_BIT,
+					MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::DEVICE_LOCAL_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
+				};
+				VKBuffer stagingbuffer{mDevice, mPhysicalDevice, stagingBufferCreateInfo};
+				void *data;
+				stagingbuffer.MapBuffer(0, createInfo.size, &data);
+				memcpy(data, pData, static_cast<size_t>(createInfo.size));
+				stagingbuffer.UnMapBuffer();
+
+				auto commandBuffer = GetOneTimeCommandBuffer();
+				commandBuffer->CopyBuffer({&stagingbuffer,
+										   mBuffers.back().get(),
+										   {{0,
+											 0,
+											 createInfo.size}}});
+				ExecuteOneTimeCommandBuffer(commandBuffer);
+			}
+			else
+			{
+				THROW("buffer should be created with a BufferUsageFlagBits::TRANSFER_DST_BIT or MemoryPropertyFlagBits::HOST_VISIBLE_BIT");
+			}
+		}
 		return mBuffers.back().get();
+	}
+	CommandBuffer *VKDevice::GetOneTimeCommandBuffer()
+	{
+		static std::vector<CommandBuffer *> cmdBuffers;
+		if (cmdBuffers.empty())
+			mpOneTimeCommandPool->CreateCommandBuffers({CommandBufferLevel::PRIMARY, 1}, cmdBuffers);
+		return cmdBuffers.back();
+	}
+	void VKDevice::ExecuteOneTimeCommandBuffer(CommandBuffer *pCommandBuffer)
+	{
+		mpOneTimeCommandQueue->Submit({{{}, {pCommandBuffer}}}, nullptr);
+	}
+	Image *VKDevice::CreateImage(const ImageCreateInfo &createInfo, void *pData)
+	{
+		mImages.emplace_back(std::make_unique<VKImage>(mDevice, mPhysicalDevice, createInfo));
+		if (pData)
+		{
+			uint64_t size = createInfo.extent.width * createInfo.extent.height * createInfo.extent.depth * GetFormatSize(createInfo.format);
+
+			BufferCreateInfo stagingBufferCreateInfo{
+				{},
+				size,
+				BufferUsageFlagBits::TRANSFER_SRC_BIT,
+				MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::DEVICE_LOCAL_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
+			};
+
+			VKBuffer stagingbuffer{mDevice, mPhysicalDevice, stagingBufferCreateInfo};
+			void *data;
+			stagingbuffer.MapBuffer(0, size, &data);
+			memcpy(data, pData, static_cast<size_t>(size));
+			stagingbuffer.UnMapBuffer();
+
+			auto commandBuffer = GetOneTimeCommandBuffer();
+
+			Image *image = mImages.back().get();
+			VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(createInfo.format);
+
+			//1. transfer layout from undefined to transder destination
+			VkImageMemoryBarrier barrier{
+				VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				nullptr,
+				0,
+				VK_ACCESS_TRANSFER_WRITE_BIT,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_QUEUE_FAMILY_IGNORED,
+				VK_QUEUE_FAMILY_IGNORED,
+				static_cast<VKImage *>(image)->GetHandle(),
+				{aspectFlags,
+				 0,
+				 createInfo.mipLevels,
+				 0,
+				 createInfo.arrayLayers}};
+			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(commandBuffer)->GetHandle(),
+								 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+								 VK_PIPELINE_STAGE_TRANSFER_BIT,
+								 0,
+								 0, nullptr,
+								 0, nullptr,
+								 1, &barrier);
+			commandBuffer->CopyBufferToImage({&stagingbuffer,
+											  mImages.back().get(),
+											  {{0,
+												0,
+												0,
+												{0, 0, createInfo.arrayLayers},
+												{},
+												createInfo.extent}}});
+			ExecuteOneTimeCommandBuffer(commandBuffer);
+		}
+		return mImages.back().get();
+	}
+	ImageView *VKDevice::CreateImageView(const ImageViewCreateInfo &createInfo)
+	{
+		mImageViews.emplace_back(std::make_unique<VKImageView>(mDevice, createInfo));
+		return mImageViews.back().get();
+	}
+	DescriptorSetLayout *VKDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo)
+	{
+		mDescriptorSetLayouts.emplace_back(std::make_unique<VKDescriptorSetLayout>(mDevice, createInfo));
+		return mDescriptorSetLayouts.back().get();
+	}
+	PipelineLayout *VKDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo)
+	{
+		mPipelineLayouts.emplace_back(std::make_unique<VKPipelineLayout>(mDevice, createInfo));
+		return mPipelineLayouts.back().get();
+	}
+	RenderPass *VKDevice::CreateRenderPass(const RenderPassCreateInfo &createInfo)
+	{
+		mRenderPasses.emplace_back(std::make_unique<VKRenderPass>(mDevice, createInfo));
+		return mRenderPasses.back().get();
+	}
+	Framebuffer *VKDevice::CreateFramebuffer(const FramebufferCreateInfo &createInfo)
+	{
+		mFramebuffer.emplace_back(std::make_unique<VKFramebuffer>(mDevice, createInfo));
+		return mFramebuffer.back().get();
 	}
 } // namespace Shit

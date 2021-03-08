@@ -17,6 +17,8 @@
 #include "GLCommandBuffer.h"
 #include "GLBuffer.h"
 #include "GLImage.h"
+#include "GLDescriptor.h"
+#include "GLSampler.h"
 
 namespace Shit
 {
@@ -40,17 +42,18 @@ namespace Shit
 		virtual void MakeCurrent() const = 0;
 
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
-		void DestroyShader(Shader *pShader) override;
 
 		GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
-
-		CommandBuffer *CreateCommandBuffer(const CommandBufferCreateInfo &createInfo) override;
 
 		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
 
 		Result WaitForFence(Fence *fence, uint64_t timeout) override;
 
 		Buffer *CreateBuffer(const BufferCreateInfo &createInfo, void *pData) override;
+
+		Image *CreateImage(const ImageCreateInfo &createInfo, void *pData) override;
+
+		DescriptorSetLayout *CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo) override;
 	};
 
 #ifdef _WIN32
