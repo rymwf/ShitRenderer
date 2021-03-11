@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <functional>
 #include <type_traits>
+#include <variant>
 
 #include "ShitEnum.h"
 #include "config.h"
@@ -79,9 +80,7 @@ namespace Shit
 	class DescriptorSet;
 	class PipelineLayout;
 	class Framebuffer;
-
-
-	using PhysicalDevice = void *;
+	class Pipeline;
 
 	//common object types
 	struct Offset2D
@@ -124,13 +123,14 @@ namespace Shit
 		RenderSystemCreateFlagBits flags;
 	};
 
+	struct PhysicalDevice
+	{
+		void *pPhysicalDevice;
+	};
+
 	struct DeviceCreateInfo
 	{
-		union
-		{
-			PhysicalDevice *pPhysicalDevice; //no use for opengl
-			ShitWindow *pWindow;			 //no use for vulkan
-		};
+		PhysicalDevice physicalDevice; //use shitwindow for vulkan
 	};
 
 	struct WindowCreateInfo
@@ -165,13 +165,12 @@ namespace Shit
 		std::vector<uint32_t> constantIDs;
 		std::vector<uint32_t> constantValues;
 	};
-
 	struct PipelineShaderStageCreateInfo
 	{
 		ShaderStageFlagBits stage;
 		Shader *pShader;
 		const char *entryName;
-		std::shared_ptr<SpecializationInfo> pSpecializationInfo;
+		SpecializationInfo specializationInfo;
 	};
 
 	struct VertexAttributeDescription
@@ -196,11 +195,30 @@ namespace Shit
 		std::vector<VertexBindingDescription> vertexBindingDescriptions;
 		std::vector<VertexAttributeDescription> vertexAttributeDescriptions;
 	};
+
+	struct Viewport
+	{
+		float x;
+		float y;
+		float width;
+		float height;
+		float minDepth;
+		float maxDepth;
+	};
+	struct PipelineViewportStateCreateInfo
+	{
+		std::vector<Viewport> viewports;
+		std::vector<Rect2D> scissors;
+	};
 	struct GraphicsPipelineCreateInfo
 	{
-		std::shared_ptr<std::vector<PipelineShaderStageCreateInfo>> pStages;
-		std::shared_ptr<VertexInputStateCreateInfo> pVertexInputState;
-		//PipelineLayout layout;
+		std::vector<PipelineShaderStageCreateInfo> stages;
+		VertexInputStateCreateInfo vertexInputState;
+		PipelineViewportStateCreateInfo viewport;
+
+		PipelineLayout *pLayout;
+		RenderPass *pRenderPass;
+		uint32_t subpass;
 	};
 	struct BufferCreateInfo
 	{
@@ -236,13 +254,6 @@ namespace Shit
 		uint32_t queueIndex;
 	};
 
-	struct SubmitInfo
-	{
-		std::vector<Semaphore *> waitSempahores; //wait pipeline stage is color attachment output
-		std::vector<CommandBuffer *> commandBuffers;
-		std::vector<Semaphore *> signalSempahores;
-	};
-
 	struct FenceCreateInfo
 	{
 	};
@@ -274,12 +285,7 @@ namespace Shit
 		void *data;
 	};
 
-	union ClearColorValue
-	{
-		float float32[4];
-		int32_t int32[4];
-		uint32_t uint32[4];
-	};
+	using ClearColorValue = std::variant<std::array<float, 4>, std::array<int32_t, 4>, std::array<uint32_t, 4>>;
 
 	struct ClearDepthStencilValue
 	{
@@ -287,17 +293,7 @@ namespace Shit
 		uint32_t stencil;
 	};
 
-	struct ClearValue
-	{
-		ClearColorValue color;
-		ClearDepthStencilValue depthStencil;
-	};
-
-	struct BorderColor
-	{
-		DataType dataType;
-		ClearColorValue color;
-	};
+	using ClearValue = std::variant<ClearColorValue, ClearDepthStencilValue>;
 
 	struct SamplerCreateInfo
 	{
@@ -313,7 +309,7 @@ namespace Shit
 		CompareOp compareOp;
 		float minLod;
 		float maxLod;
-		BorderColor borderColor;
+		ClearColorValue borderColor;
 	};
 
 	struct BufferCopy
@@ -410,7 +406,6 @@ namespace Shit
 	};
 	struct ImageSubresourceRange
 	{
-	//	ImageAspectFlags aspectMask;
 		uint32_t baseMipLevel;
 		uint32_t levelCount;
 		uint32_t baseArrayLayer;
@@ -452,7 +447,7 @@ namespace Shit
 	};
 	struct CopyDescriptorSet
 	{
-		//TODO:
+		//TODO:CopyDescriptorSet
 	};
 
 	//vulkan only
@@ -484,6 +479,22 @@ namespace Shit
 		uint32_t firstIndex;
 		int32_t vertexOffset;
 		uint32_t firstInstance;
+	};
+	struct DrawIndirectInfo
+	{
+		Buffer *pBuffer;
+		uint64_t offset;
+		uint32_t drawCount;
+		uint32_t stride;
+	};
+	struct DrawIndirectCountInfo
+	{
+		Buffer *pBuffer;
+		uint64_t offset;
+		Buffer *pCountBuffer; //!< read a single GLsizei(GL)/uint32_t(VK) type value
+		uint64_t countBufferOffset;
+		uint32_t maxDrawCount;
+		uint32_t stride;
 	};
 
 	struct AttachmentDescription
@@ -536,4 +547,35 @@ namespace Shit
 	{
 		SubpassContents contents;
 	};
+	struct GetNextImageInfo
+	{
+		uint64_t timeout;
+		Semaphore* pSemaphore;	//must be unsigal, will be signaled after operation
+		Fence* pFence;
+	};
+	struct SubmitInfo
+	{
+		std::vector<Semaphore *> waitSempahores; //! wait pipeline stage is color attachment output, will be unsignaled
+		std::vector<CommandBuffer *> commandBuffers;
+		std::vector<Semaphore *> signalSempahores;
+	};
+	struct PresentInfo
+	{
+		std::vector<Semaphore*> waitSemaphores;
+		std::vector<Swapchain*> swapchains;
+		std::vector<uint32_t> imageIndices;
+	};
+	struct BindVertexBufferInfo
+	{
+		uint32_t firstBinding;
+		std::vector<Buffer *> buffers;
+		std::vector<uint64_t> offsets;
+	};
+	struct BindIndexBufferInfo
+	{
+		Buffer *pBuffer;
+		uint64_t offset;
+		IndexType indexType;
+	};
+
 } // namespace Shit

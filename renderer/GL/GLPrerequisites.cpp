@@ -415,17 +415,17 @@ namespace Shit
 		case ShaderStageFlagBits::GEOMETRY_BIT:
 			shaderType = GL_GEOMETRY_SHADER;
 			break;
-		case ShaderStageFlagBits::TESS_CONTROL_BIT:
+		case ShaderStageFlagBits::TESSELLATION_CONTROL_BIT:
 			shaderType = GL_TESS_CONTROL_SHADER;
 			break;
-		case ShaderStageFlagBits::TESS_EVALUATION_BIT:
+		case ShaderStageFlagBits::TESSELLATION_EVALUATION_BIT:
 			shaderType = GL_TESS_EVALUATION_SHADER;
 			break;
 		case ShaderStageFlagBits::COMPUTE_BIT:
 			shaderType = GL_COMPUTE_SHADER;
 			break;
-		case ShaderStageFlagBits::ALL_BITS:
-			THROW("GL do not contain shader stage all bits");
+		default:
+			THROW("GL do not contain shader stage:" + std::to_string(int(flag)));
 			break;
 		}
 		return shaderType;

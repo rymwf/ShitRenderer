@@ -25,11 +25,14 @@ class Hello
 	Swapchain *swapchain;
 	std::vector<ImageView *> swapchainImageViews;
 	std::vector<Image *> swapchainImages;
-	std::vector<Framebuffer*> framebuffers;
+	std::vector<Framebuffer *> framebuffers;
 
 	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
 	Queue *graphicsQueue;
+	Queue *presentQueue;
+	Semaphore *imageAvailableSemaphore;
+	Semaphore *renderFinishedSemaphore;
 
 	Shader *vertShader;
 	Shader *fragShader;
@@ -37,6 +40,10 @@ class Hello
 	DescriptorSetLayout *descriptorSetLayout;
 	PipelineLayout *pipelineLayout;
 	RenderPass *renderPass;
+	Pipeline *pipeline;
+
+	Buffer* drawIndirectCmdsBuffer;
+	Buffer* drawCountBuffer;
 
 public:
 	void initRenderSystem()
@@ -55,8 +62,10 @@ public:
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
-		DeviceCreateInfo deviceCreateInfo;
-		deviceCreateInfo.pWindow = window;
+		DeviceCreateInfo deviceCreateInfo{};
+		if ((rendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
+			deviceCreateInfo.physicalDevice = PhysicalDevice{window};
+
 		device = renderSystem->CreateDevice(deviceCreateInfo);
 
 		//3
@@ -90,11 +99,13 @@ public:
 		createDescriptors();
 
 		createSwapchains();
-		createPipeline();
 		createRenderPasses();
 		createFramebuffers();
+		createPipeline();
 
+		createDrawCommandBuffers();
 		createCommandBuffers();
+		createSyncObjects();
 	}
 	/**
 	 * @brief process window event, do not write render code here
@@ -131,6 +142,25 @@ public:
 
 	void drawFrame()
 	{
+		static uint32_t currentFrame{};
+		uint32_t imageIndex{};
+		GetNextImageInfo nextImageInfo{
+			UINT64_MAX,
+			imageAvailableSemaphore};
+		swapchain->GetNextImage(nextImageInfo, imageIndex);
+
+		std::vector<SubmitInfo> submitInfos{
+			{{imageAvailableSemaphore},
+			 {commandBuffers[imageIndex]},
+			 {renderFinishedSemaphore}}};
+		graphicsQueue->Submit(submitInfos, nullptr);
+
+		PresentInfo presentInfo{
+			{renderFinishedSemaphore},
+			{swapchain},
+			{imageIndex}};
+		presentQueue->Present(presentInfo);
+		presentQueue->WaitIdle();
 	}
 
 	void createShaders()
@@ -183,6 +213,12 @@ public:
 
 		LOG_VAR(presentQueueFamilyIndex.index);
 		LOG_VAR(presentQueueFamilyIndex.count);
+
+		QueueCreateInfo queueCreateInfo{
+			presentQueueFamilyIndex.index,
+			0,
+		};
+		presentQueue = device->CreateDeviceQueue(queueCreateInfo);
 	}
 	void createDescriptors()
 	{
@@ -197,11 +233,11 @@ public:
 			 AttachmentStoreOp::DONT_CARE,
 			 AttachmentLoadOp::DONT_CARE,
 			 AttachmentStoreOp::DONT_CARE,
-			 ImageLayout::COLOR_ATTACHMENT}};
+			 ImageLayout::PRESENT_SRC}};
 
 		std::vector<AttachmentReference> colorAttachments{
 			{0, //the index of attachment description
-			 ImageLayout::COLOR_ATTACHMENT},
+			 ImageLayout::COLOR_ATTACHMENT_OPTIMAL},
 		};
 
 		std::vector<SubpassDescription> subPasses{
@@ -217,22 +253,33 @@ public:
 	void createPipeline()
 	{
 		pipelineLayout = device->CreatePipelineLayout({});
-
-		PipelineShaderStageCreateInfo shaderStageCreateInfo{
-			ShaderStageFlagBits::VERTEX_BIT,
-			vertShader,
-			"main",
+		std::vector<PipelineShaderStageCreateInfo> shaderStageCreateInfos{
+			PipelineShaderStageCreateInfo{
+				ShaderStageFlagBits::VERTEX_BIT,
+				vertShader,
+				"main",
+			},
+			PipelineShaderStageCreateInfo{
+				ShaderStageFlagBits::FRAGMENT_BIT,
+				fragShader,
+				"main",
+			},
 		};
+		PipelineViewportStateCreateInfo viewportStateCreateInfo{
+			{{0, 0, 800, 600, 0, 1}}, {{{0, 0}, {800, 600}}}};
 		GraphicsPipelineCreateInfo pipelineCreateInfo{
-			std::make_shared<std::vector<PipelineShaderStageCreateInfo>>(
-				std::vector<PipelineShaderStageCreateInfo>{shaderStageCreateInfo}),
-		};
+			std::move(shaderStageCreateInfos),
+			{},
+			std::move(viewportStateCreateInfo),
+			pipelineLayout,
+			renderPass,
+			0};
 
 		QueueCreateInfo queueCreateInfo{};
 
 		graphicsQueue = device->CreateDeviceQueue(queueCreateInfo);
 
-		device->CreateGraphicsPipeline(pipelineCreateInfo);
+		pipeline = device->CreateGraphicsPipeline(pipelineCreateInfo);
 	}
 	void createFramebuffers()
 	{
@@ -241,7 +288,7 @@ public:
 			{},
 			{800, 600},
 			1};
-		for(auto&& e:swapchainImageViews)
+		for (auto &&e : swapchainImageViews)
 		{
 			framebufferCreateInfo.attachments = {e};
 			framebuffers.emplace_back(device->CreateFramebuffer(framebufferCreateInfo));
@@ -249,9 +296,68 @@ public:
 	}
 	void createCommandBuffers()
 	{
+		int count = swapchainImageViews.size();
 		CommandBufferCreateInfo cmdBufferCreateInfo{
-			CommandBufferLevel::PRIMARY};
+			CommandBufferLevel::PRIMARY, count};
 		commandPool->CreateCommandBuffers(cmdBufferCreateInfo, commandBuffers);
+
+		CommandBufferBeginInfo cmdBufferBeginInfo{};
+		RenderPassBeginInfo renderPassBeginInfo{
+			renderPass,
+			nullptr,
+			Rect2D{
+				{},
+				swapchain->GetCreateInfoPtr()->imageExtent},
+			{ClearValue{
+				std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f}}}};
+		SubpassBeginInfo subpassBeginInfo{
+			SubpassContents::INLINE};
+
+		for (int i = 0; i < count; ++i)
+		{
+			renderPassBeginInfo.pFramebuffer = framebuffers[i];
+			commandBuffers[i]->Begin(cmdBufferBeginInfo);
+			commandBuffers[i]->BeginRenderPass(renderPassBeginInfo, subpassBeginInfo);
+			commandBuffers[i]->BindPipeline(PipelineBindPoint::GRAPHICS, pipeline);
+
+			//DrawIndirectCountInfo drawCmdInfo{
+			//	drawIndirectCmdsBuffer,
+			//	0,
+			//	drawCountBuffer,
+			//	0,
+			//	1,
+			//	sizeof(DrawIndirectCommand)};
+			//commandBuffers[i]->DrawIndirectCount(drawCmdInfo);
+			DrawIndirectInfo drawCmdInfo{
+				drawIndirectCmdsBuffer,
+				0,
+				1,
+				sizeof(DrawIndirectCommand)};
+			commandBuffers[i]->DrawIndirect(drawCmdInfo);
+			//commandBuffers[i]->Draw({3, 1, 0, 0});
+
+			commandBuffers[i]->EndRenderPass();
+			commandBuffers[i]->End();
+		}
+	}
+
+	void createSyncObjects()
+	{
+		imageAvailableSemaphore = device->CreateDeviceSemaphore({});
+		renderFinishedSemaphore = device->CreateDeviceSemaphore({});
+	}
+	void createDrawCommandBuffers()
+	{
+		std::vector<DrawIndirectCommand> drawIndirectCmds{{3, 1, 0, 0}};
+		BufferCreateInfo bufferCreateInfo{
+			{},
+			sizeof(DrawIndirectCommand) * drawIndirectCmds.size(),
+			BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+		drawIndirectCmdsBuffer = device->CreateBuffer(bufferCreateInfo, drawIndirectCmds.data());
+		bufferCreateInfo.size = sizeof(uint32_t);
+		uint32_t drawCount = 1;
+		drawCountBuffer = device->CreateBuffer(bufferCreateInfo, &drawCount);
 	}
 };
 

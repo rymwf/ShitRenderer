@@ -18,7 +18,15 @@ namespace Shit
 		VkDevice mDevice;
 
 	public:
-		VKSemaphore(VkDevice device, const SemaphoreCreateInfo &createInfo) : Semaphore(createInfo), mDevice(device) {}
+		VKSemaphore(VkDevice device, const SemaphoreCreateInfo &createInfo)
+			: Semaphore(createInfo), mDevice(device)
+		{
+			VkSemaphoreCreateInfo info{
+				VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			};
+			if (vkCreateSemaphore(mDevice, &info, nullptr, &mHandle) != VK_SUCCESS)
+				THROW("failed to create semaphore");
+		}
 		~VKSemaphore() override
 		{
 			vkDestroySemaphore(mDevice, mHandle, nullptr);

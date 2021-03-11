@@ -65,7 +65,8 @@ namespace Shit
 #endif
 		auto window = mWindows.back().get();
 		window->AttachEventHandle(createInfo.eventHandle);
-		window->CreateSurface({});
+		mSurfaces.emplace_back(std::move(CreateSurface({}, window)));
+		window->SetSurface(mSurfaces.back().get());	
 		return mWindows.back().get();
 	}
 

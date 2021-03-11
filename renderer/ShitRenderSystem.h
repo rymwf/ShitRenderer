@@ -22,13 +22,14 @@ namespace Shit
 
 		std::vector<std::unique_ptr<ShitWindow>> mWindows;
 		std::vector<std::unique_ptr<Device>> mDevices;
+		std::vector<std::unique_ptr<Surface>> mSurfaces;
 
 	protected:
 		RenderSystem() {}
 
 		void DestroyDevice(const Device *pDevice);
 
-		virtual std::shared_ptr<Surface> CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, [[maybe_unused]] ShitWindow *pWindow)
+		virtual std::unique_ptr<Surface> CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, [[maybe_unused]] ShitWindow *pWindow)
 		{
 			return std::move(nullptr);
 		};
@@ -65,8 +66,6 @@ namespace Shit
 		 * @param physicalDevices 
 		 */
 		virtual void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) = 0;
-
-		friend class ShitWindow;
 	};
 
 	SHIT_API RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo);

@@ -32,7 +32,14 @@ namespace Shit
 			VkPresentModeKHR presentMode,
 			QueueFamilyIndex presentQueueFamilyIndex
 			);
-
+		constexpr VkSurfaceFormatKHR GetSurfaceFormat() const
+		{
+			return mSurfaceFormat;
+		}
+		constexpr VkSwapchainKHR GetHandle() const
+		{
+			return mHandle;
+		}
 		constexpr VkPresentModeKHR GetPresentMode() const
 		{
 			return mPresentMode;
@@ -41,6 +48,8 @@ namespace Shit
 		{
 			vkDestroySwapchainKHR(mDevice, mHandle, nullptr);
 		}
+		void GetNextImage(const GetNextImageInfo &info, uint32_t& index) const override;
+
 	};
 
 }

@@ -21,6 +21,8 @@ namespace Shit
 	public:
 		virtual ~Queue() {}
 		virtual void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) = 0;
+		virtual void Present(const PresentInfo &presentInfo){};
+		virtual void WaitIdle(){};
 		constexpr const QueueCreateInfo *GetCreateInfoPtr() const
 		{
 			return &mCreateInfo;

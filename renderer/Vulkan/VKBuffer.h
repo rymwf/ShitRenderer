@@ -19,8 +19,6 @@ namespace Shit
 		VkDevice mDevice;
 		VkPhysicalDevice mPhysicalDevice;
 
-		void SetData(void* pData);
-
 	public:
 		VKBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const BufferCreateInfo &createInfo);
 		~VKBuffer() override

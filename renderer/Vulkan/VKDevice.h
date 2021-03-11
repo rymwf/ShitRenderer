@@ -10,19 +10,6 @@
 #pragma once
 #include <renderer/ShitDevice.h>
 #include "VKPrerequisites.h"
-#include "VKSwapchain.h"
-#include "VKShader.h"
-#include "VKCommandPool.h"
-#include "VKCommandBuffer.h"
-#include "VKDevice.h"
-#include "VKQueue.h"
-#include "VKBuffer.h"
-#include "VKImage.h"
-#include "VKDescriptor.h"
-#include "VKSampler.h"
-#include "VKPipeline.h"
-#include "VKRenderPass.h"
-#include "VKFramebuffer.h"
 
 namespace Shit
 {
@@ -44,8 +31,7 @@ namespace Shit
 			return mDevice;
 		}
 
-		CommandBuffer* GetOneTimeCommandBuffer();
-		void ExecuteOneTimeCommandBuffer(CommandBuffer *commandBuffer);
+		void ExecuteOneTimeCommands(const std::function<void(CommandBuffer*)> &func);
 
 		std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex(ShitWindow *pWindow) override;
 
@@ -60,7 +46,7 @@ namespace Shit
 
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
 
-		GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
+		Pipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
 
 		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
 
@@ -81,6 +67,10 @@ namespace Shit
 		RenderPass *CreateRenderPass(const RenderPassCreateInfo &createInfo) override;
 
 		Framebuffer *CreateFramebuffer(const FramebufferCreateInfo &createInfo) override;
+
+		Semaphore *CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo) override;
+
+		Fence *CreateFence(const FenceCreateInfo &createInfo) override;
 	};
 
 } // namespace Shit

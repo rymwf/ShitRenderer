@@ -122,9 +122,9 @@ namespace Shit
 		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(vk_instance, &DestroyVKInstance);
 	}
 
-	std::shared_ptr<Surface> VKRenderSystem::CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow)
+	std::unique_ptr<Surface> VKRenderSystem::CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow)
 	{
-		return std::make_shared<VKSurface>(createInfo, pWindow);
+		return std::make_unique<VKSurface>(createInfo, pWindow);
 	}
 	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
 	{
@@ -134,7 +134,7 @@ namespace Shit
 	Device *VKRenderSystem::CreateDevice([[maybe_unused]] const DeviceCreateInfo &createInfo)
 	{
 		static PhysicalDevice physicalDevice;
-		physicalDevice = VK::pickPhysicalDevice(vk_instance);
+		physicalDevice.pPhysicalDevice = VK::pickPhysicalDevice(vk_instance);
 		mDevices.emplace_back(std::make_unique<VKDevice>(physicalDevice));
 		return mDevices.back().get();
 	}

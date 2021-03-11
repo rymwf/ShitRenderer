@@ -40,11 +40,11 @@ namespace Shit
 			glSamplerParameteri(mHandle, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 			glSamplerParameteri(mHandle, GL_TEXTURE_COMPARE_FUNC, Map(createInfo.compareOp));
 		}
-		if (createInfo.borderColor.dataType == DataType::INT)
-			glSamplerParameterIiv(mHandle, GL_TEXTURE_BORDER_COLOR, createInfo.borderColor.color.int32);
-		else if (createInfo.borderColor.dataType == DataType::UNSIGNED_INT)
-			glSamplerParameterIuiv(mHandle, GL_TEXTURE_BORDER_COLOR, createInfo.borderColor.color.uint32);
-		else if (createInfo.borderColor.dataType == DataType::FLOAT)
-			glSamplerParameterfv(mHandle, GL_TEXTURE_BORDER_COLOR, createInfo.borderColor.color.float32);
+		if (createInfo.borderColor.index() == 0)
+			glSamplerParameterfv(mHandle, GL_TEXTURE_BORDER_COLOR, std::get<0>(createInfo.borderColor).data());
+		else if (createInfo.borderColor.index() == 1)
+			glSamplerParameterIiv(mHandle, GL_TEXTURE_BORDER_COLOR, std::get<1>(createInfo.borderColor).data());
+		else if (createInfo.borderColor.index() == 2)
+			glSamplerParameterIuiv(mHandle, GL_TEXTURE_BORDER_COLOR, std::get<2>(createInfo.borderColor).data());
 	}
 }

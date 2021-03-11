@@ -24,7 +24,7 @@ namespace Shit
 
 		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
 
-		std::shared_ptr<Surface> CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow) override;
+		std::unique_ptr<Surface> CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow) override;
 
 	public:
 		VKRenderSystem(const RenderSystemCreateInfo &createInfo);

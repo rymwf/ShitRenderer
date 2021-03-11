@@ -12,6 +12,8 @@
 #include "VKImage.h"
 #include "VKFramebuffer.h"
 #include "VKRenderPass.h"
+#include "VKPipeline.h"
+#include "VKBuffer.h"
 namespace Shit
 {
 	VKCommandBuffer::VKCommandBuffer(VkDevice device, VkCommandPool commandPool, const CommandBufferCreateInfo &createInfo)
@@ -27,6 +29,10 @@ namespace Shit
 			1};
 		if (vkAllocateCommandBuffers(mDevice, &allocateInfo, &mHandle) != VK_SUCCESS)
 			THROW("failed to create command buffer");
+	}
+	void VKCommandBuffer::Reset(CommandBufferResetFlatBits flags)
+	{
+		vkResetCommandBuffer(mHandle, Map(flags));
 	}
 	void VKCommandBuffer::Begin(const CommandBufferBeginInfo &beginInfo)
 	{
@@ -63,8 +69,12 @@ namespace Shit
 	}
 	void VKCommandBuffer::BeginRenderPass(const RenderPassBeginInfo &beginInfo, const SubpassBeginInfo &subpassBeginInfo)
 	{
-		std::vector<VkClearValue> clearValues(beginInfo.clearValues.size());
-		memcpy(clearValues.data(), beginInfo.clearValues.data(), sizeof(ClearValue) * beginInfo.clearValues.size());
+		auto count = beginInfo.clearValues.size();
+		std::vector<VkClearValue> clearValues(count);
+		while (count-- > 0)
+		{
+			memcpy(&clearValues[count], &beginInfo.clearValues[count], sizeof(VkClearValue));
+		}
 		VkRenderPassBeginInfo info{
 			VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 			nullptr,
@@ -74,6 +84,7 @@ namespace Shit
 			static_cast<uint32_t>(clearValues.size()),
 			clearValues.data()};
 		memcpy(&info.renderArea, &beginInfo.renderArea, sizeof(VkRect2D));
+
 		vkCmdBeginRenderPass(mHandle, &info, Map(subpassBeginInfo.contents));
 	}
 	void VKCommandBuffer::EndRenderPass()
@@ -83,6 +94,10 @@ namespace Shit
 	void VKCommandBuffer::NextSubpass(const SubpassBeginInfo &subpassBeginInfo)
 	{
 		vkCmdNextSubpass(mHandle, Map(subpassBeginInfo.contents));
+	}
+	void VKCommandBuffer::BindPipeline(PipelineBindPoint bindPoint, Pipeline *pPipeline)
+	{
+		vkCmdBindPipeline(mHandle, Map(bindPoint), dynamic_cast<VKPipeline *>(pPipeline)->GetHandle());
 	}
 	void VKCommandBuffer::CopyBuffer(const CopyBufferInfo &copyInfo)
 	{
@@ -244,4 +259,92 @@ namespace Shit
 			regions.data(),
 			Map(blitInfo.filter));
 	}
+	void VKCommandBuffer::BindVertexBuffer(const BindVertexBufferInfo &info)
+	{
+		std::vector<VkBuffer> buffers;
+		for (auto &&e : info.buffers)
+			buffers.emplace_back(static_cast<VKBuffer *>(e)->GetHandle());
+		vkCmdBindVertexBuffers(
+			mHandle,
+			info.firstBinding,
+			static_cast<uint32_t>(info.buffers.size()),
+			buffers.data(),
+			info.offsets.data());
+	}
+	void VKCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
+	{
+		vkCmdBindIndexBuffer(
+			mHandle,
+			static_cast<VKBuffer *>(info.pBuffer)->GetHandle(),
+			info.offset,
+			Map(info.indexType));
+	}
+	void VKCommandBuffer::Draw(const DrawIndirectCommand &info)
+	{
+		vkCmdDraw(
+			mHandle,
+			info.vertexCount,
+			info.instanceCount,
+			info.firstVertex,
+			info.firstInstance);
+	}
+	void VKCommandBuffer::DrawIndirect(const DrawIndirectInfo &info)
+	{
+		vkCmdDrawIndirect(
+			mHandle,
+			static_cast<VKBuffer *>(info.pBuffer)->GetHandle(),
+			info.offset,
+			info.drawCount,
+			info.stride);
+	}
+	void VKCommandBuffer::DrawIndirectCount(const DrawIndirectCountInfo &info)
+	{
+#if SHIT_VK_VERSION_ATLEAST(1, 2, 0)
+		vkCmdDrawIndirectCount(
+			mHandle,
+			static_cast<VKBuffer *>(info.pBuffer)->GetHandle(),
+			info.offset,
+			static_cast<VKBuffer *>(info.pCountBuffer)->GetHandle(),
+			info.countBufferOffset,
+			info.maxDrawCount,
+			info.stride);
+#else
+	//exenstion
+	THROW("draw indirect count is not supported");
+#endif
+	}
+	void VKCommandBuffer::DrawIndexed(const DrawIndexedIndirectCommand &info)
+	{
+		vkCmdDrawIndexed(
+			mHandle,
+			info.indexCount,
+			info.instanceCount,
+			info.firstIndex,
+			info.vertexOffset,
+			info.firstInstance);
+	}
+	void VKCommandBuffer::DrawIndexedIndirect(const DrawIndirectInfo &info)
+	{
+		vkCmdDrawIndexedIndirect(
+			mHandle,
+			static_cast<VKBuffer *>(info.pBuffer)->GetHandle(),
+			info.offset,
+			info.drawCount,
+			info.stride);
+	}
+	void VKCommandBuffer::DrawIndexedIndirectCount(const DrawIndirectCountInfo &info)
+	{
+#if SHIT_VK_VERSION_ATLEAST(1, 2, 0)
+		vkCmdDrawIndexedIndirectCount(
+			mHandle,
+			static_cast<VKBuffer *>(info.pBuffer)->GetHandle(),
+			info.offset,
+			static_cast<VKBuffer *>(info.pCountBuffer)->GetHandle(),
+			info.countBufferOffset,
+			info.maxDrawCount,
+			info.stride);
+#else
+#endif
+	}
+
 } // namespace Shi

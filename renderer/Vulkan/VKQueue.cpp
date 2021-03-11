@@ -11,10 +11,11 @@
 #include "VKSemaphore.h"
 #include "VKCommandBuffer.h"
 #include "VKFence.h"
+#include "VKSwapchain.h"
 
 namespace Shit
 {
-	void VKQueue::Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence)
+	void VKQueue::Submit(const std::vector<SubmitInfo> &submitInfos, Fence *pFence)
 	{
 		std::vector<VkSemaphore> waitSemaphores{};
 		std::vector<VkPipelineStageFlags> waitDstStageMask{};
@@ -50,7 +51,37 @@ namespace Shit
 					static_cast<uint32_t>(signalSemaphores.size()),
 					signalSemaphores.data()});
 		}
-		if (VK_SUCCESS != vkQueueSubmit(mHandle, static_cast<uint32_t>(infos.size()), infos.data(), static_cast<VKFence *>(fence)->GetHandle()))
+		if (VK_SUCCESS != vkQueueSubmit(mHandle, static_cast<uint32_t>(infos.size()), infos.data(), pFence ? static_cast<VKFence *>(pFence)->GetHandle() : VK_NULL_HANDLE))
 			THROW("failed to submit command");
+	}
+	void VKQueue::Present(const PresentInfo &presentInfo)
+	{
+		std::vector<VkSemaphore> waitSemaphores;
+		for (auto &&a : presentInfo.waitSemaphores)
+		{
+			waitSemaphores.emplace_back(static_cast<VKSemaphore *>(a)->GetHandle());
+		}
+		std::vector<VkSwapchainKHR> swapchains;
+		for (auto &&a : presentInfo.swapchains)
+		{
+			swapchains.emplace_back(static_cast<VKSwapchain*>(a)->GetHandle());
+		}
+		//std::vector<VkResult> results(swapchains.size());
+		VkPresentInfoKHR info{
+			VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+			nullptr,
+			static_cast<uint32_t>(waitSemaphores.size()),
+			waitSemaphores.data(),
+			static_cast<uint32_t>(swapchains.size()),
+			swapchains.data(),
+			presentInfo.imageIndices.data(),
+		};
+			//results.data()};
+		if (vkQueuePresentKHR(mHandle, &info) != VK_SUCCESS)
+			THROW("failed to present");
+	}
+	void VKQueue::WaitIdle()
+	{
+		vkQueueWaitIdle(mHandle);
 	}
 } // namespace Shit

@@ -27,7 +27,13 @@ namespace Shit
 		}
 	};
 
-	class GraphicsPipeline
+	class Pipeline
+	{
+	public:
+		virtual ~Pipeline() {}
+	};
+
+	class GraphicsPipeline : public virtual Pipeline
 	{
 	protected:
 		GraphicsPipelineCreateInfo mCreateInfo;
@@ -44,7 +50,8 @@ namespace Shit
 		}
 	};
 
-	class ComputePipeline
+	class ComputePipeline : public virtual Pipeline
 	{
+	public:
 	};
 }

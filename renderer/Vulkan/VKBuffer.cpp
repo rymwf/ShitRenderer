@@ -17,14 +17,29 @@ namespace Shit
 	VKBuffer::VKBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const BufferCreateInfo &createInfo)
 		: Buffer(createInfo), mDevice(device), mPhysicalDevice(physicalDevice)
 	{
-		VK::createBuffer(
-			mPhysicalDevice,
-			device,
+		VkBufferCreateInfo info{
+			VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			nullptr,
+			0,
 			createInfo.size,
 			Map(createInfo.usage),
-			Map(createInfo.memoryPropertyFlags),
-			mHandle,
-			mMemory);
+			VK_SHARING_MODE_EXCLUSIVE,
+		};
+		if (vkCreateBuffer(mDevice, &info, nullptr, &mHandle) != VK_SUCCESS)
+			THROW("failed to create vertex buffer");
+
+		VkMemoryRequirements vertexBufferMemoryRequirements;
+		vkGetBufferMemoryRequirements(mDevice, mHandle, &vertexBufferMemoryRequirements);
+
+		LOG_VAR(vertexBufferMemoryRequirements.size);
+		LOG_VAR(vertexBufferMemoryRequirements.alignment);
+		LOG_VAR(vertexBufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
+
+		auto memoryTypeIndex = VK::findMemoryTypeIndex(physicalDevice, vertexBufferMemoryRequirements.memoryTypeBits, Map(createInfo.memoryPropertyFlags)); //the index of memory type
+
+		mMemory= VK::allocateMemory(mDevice, vertexBufferMemoryRequirements.size, memoryTypeIndex);
+
+		vkBindBufferMemory(mDevice, mHandle, mMemory, 0);
 	}
 	void VKBuffer::MapBuffer(uint64_t offset, uint64_t size, void **ppData)
 	{
@@ -33,27 +48,5 @@ namespace Shit
 	void VKBuffer::UnMapBuffer()
 	{
 		vkUnmapMemory(mDevice, mMemory);
-	}
-	void VKBuffer::SetData(void *pData)
-	{
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		VK::createBuffer(
-			mPhysicalDevice,
-			mDevice,
-			mCreateInfo.size,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			stagingBuffer,
-			stagingBufferMemory);
-
-		void *data;
-		vkMapMemory(mDevice, stagingBufferMemory, 0, mCreateInfo.size, 0, &data);
-		memcpy(data, pData, static_cast<size_t>(mCreateInfo.size));
-		vkUnmapMemory(mDevice, stagingBufferMemory);
-
-		//copy buffer to buffer
-
 	}
 } // namespace Shit

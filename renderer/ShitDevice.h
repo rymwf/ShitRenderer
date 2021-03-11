@@ -22,6 +22,8 @@
 #include "ShitDescriptor.h"
 #include "ShitRenderPass.h"
 #include "ShitFramebuffer.h"
+#include "ShitSemaphore.h"
+#include "ShitFence.h"
 
 namespace Shit
 {
@@ -29,9 +31,9 @@ namespace Shit
 	class Device
 	{
 	protected:
-		std::vector<std::unique_ptr<CommandPool>> mCommandPools;
 		std::vector<std::unique_ptr<Queue>> mQueues;
-		std::vector<std::unique_ptr<GraphicsPipeline>> mGraphicsPipelines;
+		std::vector<std::unique_ptr<CommandPool>> mCommandPools;
+		std::vector<std::unique_ptr<Pipeline>> mPipelines;
 		std::vector<std::unique_ptr<Shader>> mShaders;
 		std::vector<std::unique_ptr<Buffer>> mBuffers;
 		std::vector<std::unique_ptr<Image>> mImages;
@@ -41,6 +43,9 @@ namespace Shit
 		std::vector<std::unique_ptr<PipelineLayout>> mPipelineLayouts;
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;
 		std::vector<std::unique_ptr<Framebuffer>> mFramebuffer;
+		std::vector<std::unique_ptr<Semaphore>> mSemaphores;
+		std::vector<std::unique_ptr<Fence>> mFences;
+		std::vector<std::unique_ptr<Swapchain>> mSwapchains;
 
 		CommandPool *mpOneTimeCommandPool;
 		Queue *mpOneTimeCommandQueue;
@@ -74,7 +79,7 @@ namespace Shit
 			}
 		}
 
-		virtual GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) = 0;
+		virtual Pipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) = 0;
 
 		virtual CommandPool *CreateCommandPool([[maybe_unused]] [[maybe_unused]] const CommandPoolCreateInfo &createInfo)
 		{
@@ -154,6 +159,14 @@ namespace Shit
 			return nullptr;
 		}
 		virtual Framebuffer *CreateFramebuffer(const FramebufferCreateInfo &createInfo)
+		{
+			return nullptr;
+		}
+		virtual Semaphore *CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo)
+		{
+			return nullptr;
+		}
+		virtual Fence* CreateFence(const FenceCreateInfo& createInfo)
 		{
 			return nullptr;
 		}

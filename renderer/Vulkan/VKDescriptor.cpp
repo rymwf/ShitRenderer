@@ -26,7 +26,7 @@ namespace Shit
 					e.binding,
 					Map(e.descriptorType),
 					e.descriptorCount,
-					Map(e.stageFlags),
+					static_cast<VkShaderStageFlags>(Map(e.stageFlags)),
 					samplers.data()});
 		}
 		VkDescriptorSetLayoutCreateInfo info{

@@ -43,7 +43,7 @@ namespace Shit
 
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
 
-		GraphicsPipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
+		Pipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
 
 		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
 

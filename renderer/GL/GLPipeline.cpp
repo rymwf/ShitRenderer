@@ -19,24 +19,16 @@ namespace Shit
 			THROW("failed to create pipelines");
 		glBindProgramPipeline(mPipeline);
 
-		for (auto &&stageCreateInfo : *createInfo.pStages)
+		for (auto &&stageCreateInfo : createInfo.stages)
 		{
 			auto shader = static_cast<GLShader *>(stageCreateInfo.pShader)->GetHandle();
-			GLuint specSize{};
-			GLuint *idData{}, *valueData{};
-			if (stageCreateInfo.pSpecializationInfo)
-			{
-				specSize = stageCreateInfo.pSpecializationInfo->constantIDs.size();
-				idData = stageCreateInfo.pSpecializationInfo->constantIDs.data();
-				valueData = stageCreateInfo.pSpecializationInfo->constantValues.data();
-			}
 			//equal to compilation
 			glSpecializeShader(
 				shader,
 				stageCreateInfo.entryName,
-				specSize,
-				idData,
-				valueData);
+				stageCreateInfo.specializationInfo.constantIDs.size(),
+				stageCreateInfo.specializationInfo.constantIDs.data(),
+				stageCreateInfo.specializationInfo.constantValues.data());
 
 			// Specialization is equivalent to compilation.
 			GLint isCompiled = 0;

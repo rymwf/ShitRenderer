@@ -298,32 +298,6 @@ namespace Shit
 				THROW("failed to create fence");
 			return ret;
 		}
-		void createBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &outBuffer, VkDeviceMemory &outBufferMemory)
-		{
-			VkBufferCreateInfo createInfo{
-				VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-				nullptr,
-				0,
-				size,
-				usage,
-				VK_SHARING_MODE_EXCLUSIVE,
-			};
-			if (vkCreateBuffer(logicalDevice, &createInfo, nullptr, &outBuffer) != VK_SUCCESS)
-				throw std::runtime_error("failed to create vertex buffer");
-
-			VkMemoryRequirements vertexBufferMemoryRequirements;
-			vkGetBufferMemoryRequirements(logicalDevice, outBuffer, &vertexBufferMemoryRequirements);
-
-			LOG(vertexBufferMemoryRequirements.size);
-			LOG(vertexBufferMemoryRequirements.alignment);
-			LOG(vertexBufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
-
-			auto memoryTypeIndex = findMemoryTypeIndex(physicalDevice, vertexBufferMemoryRequirements.memoryTypeBits, properties); //the index of memory type
-
-			outBufferMemory = allocateMemory(logicalDevice, vertexBufferMemoryRequirements.size, memoryTypeIndex);
-
-			vkBindBufferMemory(logicalDevice, outBuffer, outBufferMemory, 0);
-		}
 		uint32_t findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeIndexFilter, VkMemoryPropertyFlags properties)
 		{
 			VkPhysicalDeviceMemoryProperties memoryProperties;
@@ -345,7 +319,7 @@ namespace Shit
         LOG_VAR(memoryProperties.memoryTypes[i].heapIndex);
         LOG_VAR(memoryProperties.memoryTypes[i].propertyFlags);
 #endif
-				if (typeIndexFilter & (1 << i) && properties & memoryProperties.memoryTypes[i].propertyFlags)
+				if ((typeIndexFilter & (1 << i)) && (properties & memoryProperties.memoryTypes[i].propertyFlags) == properties)
 					return i;
 			}
 			THROW("failed to find suitable memory type");
@@ -364,7 +338,12 @@ namespace Shit
 				THROW("failed to allocate vertex memory");
 			return allocatedMemory;
 		}
-		void createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, uint32_t count, VkCommandBufferLevel level, std::vector<VkCommandBuffer> &commandBuffers)
+		void createCommandBuffers(
+			VkDevice logicalDevice,
+			VkCommandPool commandPool,
+			uint32_t count,
+			VkCommandBufferLevel level,
+			std::vector<VkCommandBuffer> &commandBuffers)
 		{
 			commandBuffers.resize(count);
 			VkCommandBufferAllocateInfo allocateInfo{
@@ -709,8 +688,23 @@ namespace Shit
 		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+		VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-	};
+		VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
+		VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV,
+		VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+		VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR,
+		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR,
+		VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR,
+		VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR,
+		VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR,
+		VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL_KHR,
+		VK_IMAGE_LAYOUT_MAX_ENUM};
 	constexpr VkCommandPoolCreateFlagBits vkCommandPoolCreateFlagBitArray[]{
 		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
 		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -744,7 +738,16 @@ namespace Shit
 		VK_SHADER_STAGE_FRAGMENT_BIT,
 		VK_SHADER_STAGE_COMPUTE_BIT,
 		VK_SHADER_STAGE_ALL_GRAPHICS,
-		VK_SHADER_STAGE_ALL};
+		VK_SHADER_STAGE_ALL,
+		VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+		VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
+		VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,
+		VK_SHADER_STAGE_MISS_BIT_KHR,
+		VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
+		VK_SHADER_STAGE_CALLABLE_BIT_KHR,
+		VK_SHADER_STAGE_TASK_BIT_NV,
+		VK_SHADER_STAGE_MESH_BIT_NV,
+	};
 
 	constexpr VkSamplerMipmapMode vkSamplerMipmapModeArray[]{
 		VK_SAMPLER_MIPMAP_MODE_NEAREST,
@@ -805,6 +808,30 @@ namespace Shit
 		VK_SUBPASS_CONTENTS_INLINE,
 		VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
 	};
+	constexpr VkIndexType vkIndexTypeArray[]{
+		VK_INDEX_TYPE_NONE_KHR,// Provided by VK_KHR_ray_tracing
+		VK_INDEX_TYPE_UINT8_EXT, // Provided by VK_EXT_index_type_uint8
+		VK_INDEX_TYPE_UINT16,
+		VK_INDEX_TYPE_UINT32,
+	};
+	constexpr VkCommandBufferResetFlagBits vkCommandBufferResetFlagBitsArray[]{
+		VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT,
+	};
+	VkCommandBufferResetFlags Map(CommandBufferResetFlatBits flag)
+	{
+		VkCommandBufferResetFlags ret{};
+		int a = static_cast<int>(flag);
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
+		{
+			if (a & 1)
+				ret |= vkCommandBufferResetFlagBitsArray[i];
+		}
+		return ret;
+	}
+	VkIndexType Map(IndexType type)
+	{
+		return vkIndexTypeArray[static_cast<size_t>(type)];
+	}
 	VkSubpassContents Map(SubpassContents contents)
 	{
 		return vkSubpassContentsArray[static_cast<size_t>(contents)];
@@ -838,7 +865,7 @@ namespace Shit
 	{
 		return vkSamplerMipmapModeArray[static_cast<size_t>(mode)];
 	}
-	VkShaderStageFlags Map(ShaderStageFlagBits flag)
+	VkShaderStageFlagBits Map(ShaderStageFlagBits flag)
 	{
 		return static_cast<VkShaderStageFlagBits>(flag);
 	}

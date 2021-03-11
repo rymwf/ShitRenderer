@@ -11,8 +11,6 @@
 #include "ShitRendererPrerequisites.h"
 #include "ShitEvent.h"
 #include "ShitObserver.h"
-#include "ShitSurface.h"
-#include "ShitSwapchain.h"
 
 namespace Shit
 {
@@ -22,10 +20,14 @@ namespace Shit
 		WindowCreateInfo mCreateInfo;
 		Observer<const Event &> mObserver;
 
-		std::shared_ptr<Surface> mpSurface;
-		std::shared_ptr<Swapchain> mpSwapchain;
+		Surface* mpSurface;
+		Swapchain* mpSwapchain;
 		RenderSystem *mpRenderSystem;
 
+		void SetSurface(Surface *pSurface)
+		{
+			mpSurface = pSurface;
+		}
 	public:
 		ShitWindow(const WindowCreateInfo &createInfo, RenderSystem *pRenderSystem) : mCreateInfo(createInfo), mpRenderSystem(pRenderSystem) {}
 		const WindowCreateInfo *GetCreateInfo()
@@ -44,20 +46,18 @@ namespace Shit
 		{
 			mObserver.Attach(eventHandler);
 		}
-		Surface *CreateSurface(const SurfaceCreateInfo &createInfo);
-
-		void SetSwapchain(const std::shared_ptr<Swapchain> &swapchain)
+		void SetSwapchain(Swapchain *pSwapchain)
 		{
-			mpSwapchain = swapchain;
+			mpSwapchain = pSwapchain;
 		}
-
 		Surface *GetSurface() const
 		{
-			return mpSurface.get();
+			return mpSurface;
 		}
 		Swapchain *GetSwapchain() const
 		{
-			return mpSwapchain.get();
+			return mpSwapchain;
 		}
+		friend class RenderSystem;
 	};
 }

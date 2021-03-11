@@ -11,10 +11,4 @@
 #include "ShitRenderSystem.h"
 namespace Shit
 {
-	Surface *ShitWindow::CreateSurface(const SurfaceCreateInfo &createInfo)
-	{
-		mpSurface = mpRenderSystem->CreateSurface(createInfo, this);
-		return mpSurface.get();
-	}
-
 } // namespace Shit

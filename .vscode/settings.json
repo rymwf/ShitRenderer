@@ -77,6 +77,16 @@
 		"xtree": "cpp",
 		"xutility": "cpp",
 		"*.rh": "cpp",
-		"iostream": "cpp"
+		"iostream": "cpp",
+		"*.ipp": "cpp",
+		"stack": "cpp",
+		"coroutine": "cpp",
+		"resumable": "cpp",
+		"fstream": "cpp",
+		"cwctype": "cpp",
+		"numeric": "cpp",
+		"random": "cpp",
+		"strstream": "cpp",
+		"valarray": "cpp"
 	}
 }

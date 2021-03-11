@@ -48,7 +48,6 @@ namespace Shit
 		void queryDisplayPlaneProperties(VkPhysicalDevice physicalDevice, std::vector<VkDisplayPlanePropertiesKHR> &displayPlaneProperties);
 		void queryDisplayModeProperties(VkPhysicalDevice physicalDevice, VkDisplayKHR display, std::vector<VkDisplayModePropertiesKHR> &displayModeProperties);
 		VkFence createFence(VkDevice logicalDevice, VkFenceCreateFlags flags);
-		void createBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &outBuffer, VkDeviceMemory &outBufferMemory);
 		uint32_t findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeIndexFilter, VkMemoryPropertyFlags properties);
 		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 		void createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, uint32_t count, VkCommandBufferLevel level, std::vector<VkCommandBuffer> &commandBuffers);
@@ -67,6 +66,8 @@ namespace Shit
 		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 	}
 
+	VkCommandBufferResetFlags Map(CommandBufferResetFlatBits flag);
+	VkIndexType Map(IndexType type);
 	VkSubpassContents Map(SubpassContents contents);
 	VkPipelineBindPoint Map(PipelineBindPoint bindPoint);
 	VkComponentSwizzle Map(ComponentSwizzle swizzle);
@@ -75,7 +76,7 @@ namespace Shit
 	VkCompareOp Map(CompareOp op);
 	VkSamplerAddressMode Map(SamplerWrapMode mode);
 	VkSamplerMipmapMode Map(SamplerMipmapMode mode);
-	VkShaderStageFlags Map(ShaderStageFlagBits flag);
+	VkShaderStageFlagBits Map(ShaderStageFlagBits flag);
 	VkDescriptorType Map(DescriptorType type);
 	VkFilter Map(Filter filter);
 	VkCommandPoolCreateFlags Map(CommandPoolCreateFlagBits flag);

@@ -11,6 +11,7 @@
 				"build",
 				"--target",
 				"all_build",
+				//"-v"
 				//"${fileDirname}\\${fileBasenameNoExtension}.exe",
 				//"${file}"
 			],
@@ -25,6 +26,58 @@
 				"isDefault": true
 			},
 			"detail": "compiler: cl.exe",
-		}
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: cl.exe clean",
+			"command": "cmake",
+			"args": [
+				//"-DCMAKE_TOOLCHAIN_FILE=D:\\Workspace\\3rdparty\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+				"--build",
+				"build",
+				"--target",
+				"clean",
+				"-v"
+				//"${fileDirname}\\${fileBasenameNoExtension}.exe",
+				//"${file}"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group":{
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: cl.exe",
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: cl.exe build cmake win32",
+			"command": "cmake",
+			"args": [
+				"-B",
+				"build",
+				"-A",
+				"Win32",
+				"-DCMAKE_TOOLCHAIN_FILE=D:\\Workspace\\3rdparty\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+				//"-v"
+				//"${fileDirname}\\${fileBasenameNoExtension}.exe",
+				//"${file}"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group":{
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: cl.exe",
+		},
 	]
 }

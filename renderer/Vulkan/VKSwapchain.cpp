@@ -8,6 +8,8 @@
  * 
  */
 #include "VKSwapchain.h"
+#include "VKSemaphore.h"
+#include "VKFence.h"
 namespace Shit
 {
 	VKSwapchain::VKSwapchain(
@@ -47,7 +49,7 @@ namespace Shit
 
 		uint32_t swapchainImageCount;
 		vkGetSwapchainImagesKHR(mDevice, mHandle, &swapchainImageCount, nullptr);
-		LOG(swapchainImageCount);
+		LOG_VAR(swapchainImageCount);
 		std::vector<VkImage> swapchainImages;
 		swapchainImages.resize(swapchainImageCount);
 		vkGetSwapchainImagesKHR(mDevice, mHandle, &swapchainImageCount, swapchainImages.data());
@@ -55,5 +57,12 @@ namespace Shit
 		{
 			mImages.emplace_back(std::make_unique<VKImage>(mDevice, e, true));
 		}
+	}
+	void VKSwapchain::GetNextImage(const GetNextImageInfo &info, uint32_t &index) const
+	{
+		vkAcquireNextImageKHR(mDevice, mHandle, info.timeout,
+							  info.pSemaphore ? static_cast<VKSemaphore *>(info.pSemaphore)->GetHandle() : VK_NULL_HANDLE,
+							  info.pFence ? static_cast<VKFence *>(info.pFence)->GetHandle() : VK_NULL_HANDLE,
+							  &index);
 	}
 } // namespace Shit

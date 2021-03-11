@@ -27,5 +27,9 @@ namespace Shit
 			return mHandle;
 		}
 		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) override;
+
+		void Present(const PresentInfo &presentInfo) override;
+
+		void WaitIdle() override;
 	};
 } // namespace Shit

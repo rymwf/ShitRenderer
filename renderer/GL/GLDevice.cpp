@@ -22,10 +22,10 @@ namespace Shit
 		return mShaders.back().get();
 	}
 
-	GraphicsPipeline *GLDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
+	Pipeline *GLDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
 	{
-		mGraphicsPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(&mStateManager, createInfo));
-		return mGraphicsPipelines.back().get();
+		mPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(&mStateManager, createInfo));
+		return mPipelines.back().get();
 	}
 
 	Queue *GLDevice::CreateDeviceQueue(const QueueCreateInfo &createInfo)
@@ -57,7 +57,8 @@ namespace Shit
 
 	Swapchain *GLDeviceWin32::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
-		pWindow->SetSwapchain(std::make_shared<GLSwapchainWin32>(mHDC, createInfo, mRenderSystemCreatInfo.version, mRenderSystemCreatInfo.flags));
+		mSwapchains.emplace_back(std::make_unique<GLSwapchainWin32>(mHDC, createInfo, mRenderSystemCreatInfo.version, mRenderSystemCreatInfo.flags));
+		pWindow->SetSwapchain(mSwapchains.back().get());
 		return pWindow->GetSwapchain();
 	}
 	GLDeviceWin32::GLDeviceWin32(ShitWindow *pWindow, const RenderSystemCreateInfo &createInfo) : GLDevice(createInfo)

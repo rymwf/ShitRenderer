@@ -38,21 +38,8 @@ namespace Shit
 			VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT,
 			nullptr,
 		};
-		if (createInfo.borderColor.dataType == DataType::INT)
-		{
-			borderColor.format = VK_FORMAT_R32G32B32A32_SINT;
-			memcpy(borderColor.customBorderColor.int32, createInfo.borderColor.color.int32, 32);
-		}
-		else if (createInfo.borderColor.dataType == DataType::UNSIGNED_INT)
-		{
-			borderColor.format = VK_FORMAT_R32G32B32A32_UINT;
-			memcpy(borderColor.customBorderColor.uint32, createInfo.borderColor.color.uint32, 32);
-		}
-		else if (createInfo.borderColor.dataType == DataType::FLOAT)
-		{
-			borderColor.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			memcpy(borderColor.customBorderColor.float32, createInfo.borderColor.color.float32, 32);
-		}
+		memcpy(&borderColor.customBorderColor, &createInfo.borderColor, 32);
+
 		info.pNext = &borderColor;
 		if (vkCreateSampler(mDevice, &info, nullptr, &mHandle) != VK_SUCCESS)
 			THROW("failed to create sampler");

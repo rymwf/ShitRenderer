@@ -89,7 +89,6 @@ namespace Shit
 			break;
 		}
 		case WM_CLOSE:
-			DestroyWindow(hwnd);
 			ev.type = EventType::WINDOW_CLOSE;
 			pThis->mObserver.Notify(ev);
 			break;
@@ -197,7 +196,8 @@ namespace Shit
 	}
 	void WindowWin32::Close()
 	{
-		PostQuitMessage(0);
+		//PostQuitMessage(0);
+		PostMessage(mHwnd, WM_CLOSE, 0, 0);
 	}
 	bool WindowWin32::PollEvent()
 	{
@@ -207,7 +207,7 @@ namespace Shit
 		//	TranslateMessage(&msg);
 		//	DispatchMessage(&msg);
 		//}
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
