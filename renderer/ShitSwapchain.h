@@ -37,8 +37,6 @@ namespace Shit
 			for (auto &&e : mImages)
 				images.emplace_back(e.get());
 		}
-		virtual void GetNextImage(const GetNextImageInfo &info, uint32_t& index) const
-		{
-		}
+		virtual uint32_t GetNextImage(const GetNextImageInfo &info) = 0;
 	};
 } // namespace Shit

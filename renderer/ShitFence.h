@@ -23,5 +23,7 @@ namespace Shit
 		{
 			return &mCreateInfo;
 		}
+		virtual void Reset() = 0;
+		virtual Result WaitFor(uint64_t timeout) = 0;
 	};
 } // namespace Shit

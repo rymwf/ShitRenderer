@@ -19,15 +19,15 @@ using namespace Shit;
 
 #define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders"
 
-//#ifdef NDEBUG
-//#define LOG(str)
-//#define LOG_VAR(str)
-//#else
-//#define LOG(str) \
-//	std::cout << __FILE__ << " " << __LINE__ << ":  " << str << std::endl
-//#define LOG_VAR(str) \
-//	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl
-//#endif
+///#ifdef NDEBUG
+///#define LOG(str)
+///#define LOG_VAR(str)
+///#else
+///#define LOG(str) \
+///	std::cout << __FILE__ << " " << __LINE__ << ":  " << str << std::endl
+///#define LOG_VAR(str) \
+///	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl
+///#endif
 
 std::string readFile(const char *filename)
 {
@@ -73,7 +73,6 @@ struct Vertex
 	static VertexBindingDescription getVertexBindingDescription(uint32_t binding)
 	{
 		return {
-			binding,
 			sizeof(Vertex),
 			0,
 		};

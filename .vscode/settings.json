@@ -87,6 +87,11 @@
 		"numeric": "cpp",
 		"random": "cpp",
 		"strstream": "cpp",
-		"valarray": "cpp"
+		"valarray": "cpp",
+		"bit": "cpp",
+		"clocale": "cpp",
+		"stop_token": "cpp",
+		"execution": "cpp",
+		"queue": "cpp"
 	}
 }

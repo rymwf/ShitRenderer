@@ -10,14 +10,20 @@
 #include "GLPipeline.h"
 namespace Shit
 {
-	GLGraphicsPipeline::GLGraphicsPipeline(GLStateManager *stateManager, const GraphicsPipelineCreateInfo &createInfo)
-		: GraphicsPipeline(createInfo), mStateManager(stateManager)
+	void GLGraphicsPipeline::CreateVertexArray()
+	{
+		glGenVertexArrays(1, &mVAO);
+		if (mVAO == 0)
+			THROW("failed to create vertex array object");
+	}
+	GLGraphicsPipeline::GLGraphicsPipeline(GLStateManager *pStateManager, const GraphicsPipelineCreateInfo &createInfo)
+		: GraphicsPipeline(createInfo), GLPipeline(pStateManager)
 	{
 		if (SHIT_GL_410)
-			glGenProgramPipelines(1, &mPipeline);
+			glGenProgramPipelines(1, &mHandle);
 		else
 			THROW("failed to create pipelines");
-		glBindProgramPipeline(mPipeline);
+		mpStateManager->BindPipeline(mHandle);
 
 		for (auto &&stageCreateInfo : createInfo.stages)
 		{
@@ -48,14 +54,15 @@ namespace Shit
 				glDeleteShader(shader);
 
 				// Use the infoLog as you see fit.
-				throw std::runtime_error("failed to specialize shader");
+				THROW("failed to specialize shader");
 			}
 			auto program = CreateProgram({shader}, true, false);
 			mPrograms.emplace_back(program);
-			glUseProgramStages(mPipeline, Map(stageCreateInfo.stage), program);
+			glUseProgramStages(mHandle, MapShaderStageFlags(stageCreateInfo.stage), program);
 		}
+		CreateVertexArray();
 	}
-	GLuint GLGraphicsPipeline::CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable)
+	GLuint GLPipeline::CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable)
 	{
 		GLuint ret = glCreateProgram();
 		if (ret)
@@ -85,4 +92,12 @@ namespace Shit
 			THROW("failed to create program");
 		return ret;
 	}
+
+	//======================================
+
+	GLComputePipeline::GLComputePipeline(GLStateManager *pStateManager, const ComputePipelineCreateInfo &createInfo)
+		: ComputePipeline(createInfo), GLPipeline(pStateManager)
+	{
+	}
+
 } // namespace Shit

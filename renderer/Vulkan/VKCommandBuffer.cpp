@@ -58,22 +58,22 @@ namespace Shit
 	{
 		vkEndCommandBuffer(mHandle);
 	}
-	void VKCommandBuffer::ExecuteSecondaryCommandBuffer(const std::vector<CommandBuffer *> &secondaryCommandBuffers)
+	void VKCommandBuffer::ExecuteSecondaryCommandBuffer(const ExecuteSecondaryCommandBufferInfo &secondaryCommandBufferInfo)
 	{
 		std::vector<VkCommandBuffer> cmdBuffers;
-		for (auto &&e : secondaryCommandBuffers)
-			cmdBuffers.emplace_back(static_cast<VKCommandBuffer *>(e)->GetHandle());
+		for (uint32_t i = 0; i < secondaryCommandBufferInfo.count; ++i)
+			cmdBuffers.emplace_back(static_cast<VKCommandBuffer *>(&secondaryCommandBufferInfo.pCommandBuffers[i])->GetHandle());
 		vkCmdExecuteCommands(mHandle,
 							 static_cast<uint32_t>(cmdBuffers.size()),
 							 cmdBuffers.data());
 	}
-	void VKCommandBuffer::BeginRenderPass(const RenderPassBeginInfo &beginInfo, const SubpassBeginInfo &subpassBeginInfo)
+	void VKCommandBuffer::BeginRenderPass(const RenderPassBeginInfo &beginInfo)
 	{
-		auto count = beginInfo.clearValues.size();
+		auto count = beginInfo.clearValueCount;
 		std::vector<VkClearValue> clearValues(count);
 		while (count-- > 0)
 		{
-			memcpy(&clearValues[count], &beginInfo.clearValues[count], sizeof(VkClearValue));
+			memcpy(&clearValues[count], &beginInfo.pClearValues[count], sizeof(VkClearValue));
 		}
 		VkRenderPassBeginInfo info{
 			VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -85,19 +85,23 @@ namespace Shit
 			clearValues.data()};
 		memcpy(&info.renderArea, &beginInfo.renderArea, sizeof(VkRect2D));
 
-		vkCmdBeginRenderPass(mHandle, &info, Map(subpassBeginInfo.contents));
+		vkCmdBeginRenderPass(mHandle, &info, Map(beginInfo.contents));
 	}
 	void VKCommandBuffer::EndRenderPass()
 	{
 		vkCmdEndRenderPass(mHandle);
 	}
-	void VKCommandBuffer::NextSubpass(const SubpassBeginInfo &subpassBeginInfo)
+	void VKCommandBuffer::NextSubpass(SubpassContents subpassContents)
 	{
-		vkCmdNextSubpass(mHandle, Map(subpassBeginInfo.contents));
+		vkCmdNextSubpass(mHandle, Map(subpassContents));
 	}
-	void VKCommandBuffer::BindPipeline(PipelineBindPoint bindPoint, Pipeline *pPipeline)
+	void VKCommandBuffer::BindPipeline(const BindPipelineInfo &info)
 	{
-		vkCmdBindPipeline(mHandle, Map(bindPoint), dynamic_cast<VKPipeline *>(pPipeline)->GetHandle());
+		auto pPipeline = dynamic_cast<VKPipeline *>(info.pPipeline);
+		if (pPipeline)
+			vkCmdBindPipeline(mHandle, Map(info.bindPoint), pPipeline->GetHandle());
+		else
+			THROW("pipeline is null");
 	}
 	void VKCommandBuffer::CopyBuffer(const CopyBufferInfo &copyInfo)
 	{
@@ -105,43 +109,43 @@ namespace Shit
 			mHandle,
 			static_cast<VKBuffer *>(copyInfo.pSrcBuffer)->GetHandle(),
 			static_cast<VKBuffer *>(copyInfo.pDstBuffer)->GetHandle(),
-			static_cast<uint32_t>(copyInfo.regions.size()),
-			reinterpret_cast<const VkBufferCopy *>(copyInfo.regions.data()));
+			copyInfo.regionCount,
+			reinterpret_cast<const VkBufferCopy *>(copyInfo.pRegions));
 	}
 	void VKCommandBuffer::CopyImage(const CopyImageInfo &copyInfo)
 	{
 		VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(copyInfo.pSrcImage->GetCreateInfoPtr()->format);
 
 		std::vector<VkImageCopy> regions;
-		for (auto &&e : copyInfo.regions)
+		for (uint32_t i = 0; i < copyInfo.regionCount; ++i)
 		{
 			regions.emplace_back(
 				VkImageCopy{VkImageSubresourceLayers{
 								aspectFlags,
-								e.srcSubresource.mipLevel,
-								e.srcSubresource.baseArrayLayer,
-								e.srcSubresource.layerCount,
+								copyInfo.pRegions[i].srcSubresource.mipLevel,
+								copyInfo.pRegions[i].srcSubresource.baseArrayLayer,
+								copyInfo.pRegions[i].srcSubresource.layerCount,
 							},
 							VkOffset3D{
-								e.srcOffset.x,
-								e.srcOffset.y,
-								e.srcOffset.z,
+								copyInfo.pRegions[i].srcOffset.x,
+								copyInfo.pRegions[i].srcOffset.y,
+								copyInfo.pRegions[i].srcOffset.z,
 							},
 							VkImageSubresourceLayers{
 								aspectFlags,
-								e.dstSubresource.mipLevel,
-								e.dstSubresource.baseArrayLayer,
-								e.dstSubresource.layerCount,
+								copyInfo.pRegions[i].dstSubresource.mipLevel,
+								copyInfo.pRegions[i].dstSubresource.baseArrayLayer,
+								copyInfo.pRegions[i].dstSubresource.layerCount,
 							},
 							VkOffset3D{
-								e.dstOffset.x,
-								e.dstOffset.y,
-								e.dstOffset.z,
+								copyInfo.pRegions[i].dstOffset.x,
+								copyInfo.pRegions[i].dstOffset.y,
+								copyInfo.pRegions[i].dstOffset.z,
 							},
 							VkExtent3D{
-								e.extent.width,
-								e.extent.height,
-								e.extent.depth,
+								copyInfo.pRegions[i].extent.width,
+								copyInfo.pRegions[i].extent.height,
+								copyInfo.pRegions[i].extent.depth,
 							}});
 		}
 		vkCmdCopyImage(
@@ -157,27 +161,27 @@ namespace Shit
 	{
 		VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(copyInfo.pDstImage->GetCreateInfoPtr()->format);
 		std::vector<VkBufferImageCopy> regions;
-		for (auto &&e : copyInfo.regions)
+		for (uint32_t i = 0; i < copyInfo.regionCount; ++i)
 		{
 			regions.emplace_back(
-				VkBufferImageCopy{e.bufferOffset,
-								  e.bufferRowLength,
-								  e.bufferImageHeight,
+				VkBufferImageCopy{copyInfo.pRegions[i].bufferOffset,
+								  copyInfo.pRegions[i].bufferRowLength,
+								  copyInfo.pRegions[i].bufferImageHeight,
 								  VkImageSubresourceLayers{
 									  aspectFlags,
-									  e.imageSubresource.mipLevel,
-									  e.imageSubresource.baseArrayLayer,
-									  e.imageSubresource.layerCount,
+									  copyInfo.pRegions[i].imageSubresource.mipLevel,
+									  copyInfo.pRegions[i].imageSubresource.baseArrayLayer,
+									  copyInfo.pRegions[i].imageSubresource.layerCount,
 								  },
 								  VkOffset3D{
-									  e.imageOffset.x,
-									  e.imageOffset.y,
-									  e.imageOffset.z,
+									  copyInfo.pRegions[i].imageOffset.x,
+									  copyInfo.pRegions[i].imageOffset.y,
+									  copyInfo.pRegions[i].imageOffset.z,
 								  },
 								  VkExtent3D{
-									  e.imageExtent.width,
-									  e.imageExtent.height,
-									  e.imageExtent.depth,
+									  copyInfo.pRegions[i].imageExtent.width,
+									  copyInfo.pRegions[i].imageExtent.height,
+									  copyInfo.pRegions[i].imageExtent.depth,
 								  }});
 		}
 		vkCmdCopyBufferToImage(
@@ -193,27 +197,27 @@ namespace Shit
 		VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(copyInfo.pSrcImage->GetCreateInfoPtr()->format);
 
 		std::vector<VkBufferImageCopy> regions;
-		for (auto &&e : copyInfo.regions)
+		for (uint32_t i = 0; i < copyInfo.regionCount; ++i)
 		{
 			regions.emplace_back(
-				VkBufferImageCopy{e.bufferOffset,
-								  e.bufferRowLength,
-								  e.bufferImageHeight,
+				VkBufferImageCopy{copyInfo.pRegions[i].bufferOffset,
+								  copyInfo.pRegions[i].bufferRowLength,
+								  copyInfo.pRegions[i].bufferImageHeight,
 								  VkImageSubresourceLayers{
 									  aspectFlags,
-									  e.imageSubresource.mipLevel,
-									  e.imageSubresource.baseArrayLayer,
-									  e.imageSubresource.layerCount,
+									  copyInfo.pRegions[i].imageSubresource.mipLevel,
+									  copyInfo.pRegions[i].imageSubresource.baseArrayLayer,
+									  copyInfo.pRegions[i].imageSubresource.layerCount,
 								  },
 								  VkOffset3D{
-									  e.imageOffset.x,
-									  e.imageOffset.y,
-									  e.imageOffset.z,
+									  copyInfo.pRegions[i].imageOffset.x,
+									  copyInfo.pRegions[i].imageOffset.y,
+									  copyInfo.pRegions[i].imageOffset.z,
 								  },
 								  VkExtent3D{
-									  e.imageExtent.width,
-									  e.imageExtent.height,
-									  e.imageExtent.depth,
+									  copyInfo.pRegions[i].imageExtent.width,
+									  copyInfo.pRegions[i].imageExtent.height,
+									  copyInfo.pRegions[i].imageExtent.depth,
 								  }});
 		}
 
@@ -231,22 +235,22 @@ namespace Shit
 
 		std::vector<VkImageBlit> regions;
 		VkImageBlit blit;
-		for (auto &&e : blitInfo.regions)
+		for (uint32_t i = 0; i < blitInfo.regionCount; ++i)
 		{
 			blit.srcSubresource = {
 				aspectFlags,
-				e.srcSubresource.mipLevel,
-				e.srcSubresource.baseArrayLayer,
-				e.srcSubresource.layerCount,
+				blitInfo.pRegions[i].srcSubresource.mipLevel,
+				blitInfo.pRegions[i].srcSubresource.baseArrayLayer,
+				blitInfo.pRegions[i].srcSubresource.layerCount,
 			};
 			blit.dstSubresource = {
 				aspectFlags,
-				e.dstSubresource.mipLevel,
-				e.dstSubresource.baseArrayLayer,
-				e.dstSubresource.layerCount,
+				blitInfo.pRegions[i].dstSubresource.mipLevel,
+				blitInfo.pRegions[i].dstSubresource.baseArrayLayer,
+				blitInfo.pRegions[i].dstSubresource.layerCount,
 			};
-			memcpy(blit.srcOffsets, e.srcOffsets.data(), sizeof(VkOffset3D) * 2);
-			memcpy(blit.dstOffsets, e.dstOffsets.data(), sizeof(VkOffset3D) * 2);
+			memcpy(blit.srcOffsets, blitInfo.pRegions[i].srcOffsets.data(), sizeof(VkOffset3D) * 2);
+			memcpy(blit.dstOffsets, blitInfo.pRegions[i].dstOffsets.data(), sizeof(VkOffset3D) * 2);
 			regions.emplace_back(blit);
 		}
 		vkCmdBlitImage(
@@ -262,14 +266,14 @@ namespace Shit
 	void VKCommandBuffer::BindVertexBuffer(const BindVertexBufferInfo &info)
 	{
 		std::vector<VkBuffer> buffers;
-		for (auto &&e : info.buffers)
-			buffers.emplace_back(static_cast<VKBuffer *>(e)->GetHandle());
+		for (size_t i = 0; i < info.bindingCount; ++i)
+			buffers.emplace_back(static_cast<VKBuffer *>(&info.pBuffers[i])->GetHandle());
 		vkCmdBindVertexBuffers(
 			mHandle,
 			info.firstBinding,
-			static_cast<uint32_t>(info.buffers.size()),
+			info.bindingCount,
 			buffers.data(),
-			info.offsets.data());
+			info.pOffsets);
 	}
 	void VKCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
 	{
@@ -297,7 +301,7 @@ namespace Shit
 			info.drawCount,
 			info.stride);
 	}
-	void VKCommandBuffer::DrawIndirectCount(const DrawIndirectCountInfo &info)
+	void VKCommandBuffer::DrawIndirectCount([[maybe_unused]] const DrawIndirectCountInfo &info)
 	{
 #if SHIT_VK_VERSION_ATLEAST(1, 2, 0)
 		vkCmdDrawIndirectCount(
@@ -309,8 +313,8 @@ namespace Shit
 			info.maxDrawCount,
 			info.stride);
 #else
-	//exenstion
-	THROW("draw indirect count is not supported");
+		//exenstion
+		THROW("draw indirect count is not supported");
 #endif
 	}
 	void VKCommandBuffer::DrawIndexed(const DrawIndexedIndirectCommand &info)
@@ -332,7 +336,7 @@ namespace Shit
 			info.drawCount,
 			info.stride);
 	}
-	void VKCommandBuffer::DrawIndexedIndirectCount(const DrawIndirectCountInfo &info)
+	void VKCommandBuffer::DrawIndexedIndirectCount([[maybe_unused]] const DrawIndirectCountInfo &info)
 	{
 #if SHIT_VK_VERSION_ATLEAST(1, 2, 0)
 		vkCmdDrawIndexedIndirectCount(
@@ -344,6 +348,7 @@ namespace Shit
 			info.maxDrawCount,
 			info.stride);
 #else
+		THROW("draw indexed indirect count is not supported");
 #endif
 	}
 

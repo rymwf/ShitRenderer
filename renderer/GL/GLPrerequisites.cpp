@@ -205,65 +205,40 @@ namespace Shit
 	for (GLint i = 0; i < a; ++i)
 		LOG(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)));
 #endif
-
-			constexpr GLenum glCapabilityEnum[] = {
-				GL_BLEND,
-				GL_COLOR_LOGIC_OP,
-				GL_CULL_FACE,
-				GL_DEPTH_CLAMP,
-				GL_DEBUG_OUTPUT,
-				GL_DEBUG_OUTPUT_SYNCHRONOUS,
-				GL_DEPTH_TEST,
-				GL_DITHER,
-				GL_FRAMEBUFFER_SRGB,
-				GL_LINE_SMOOTH,
-				GL_MULTISAMPLE,
-				GL_POLYGON_SMOOTH,
-				GL_POLYGON_OFFSET_FILL,
-				GL_POLYGON_OFFSET_LINE,
-				GL_POLYGON_OFFSET_POINT,
-				GL_PROGRAM_POINT_SIZE,
-				GL_PRIMITIVE_RESTART,
-				GL_SAMPLE_ALPHA_TO_COVERAGE,
-				GL_SAMPLE_ALPHA_TO_ONE,
-				GL_SAMPLE_COVERAGE,
-				GL_SAMPLE_MASK,
-				GL_SCISSOR_TEST,
-				GL_STENCIL_TEST,
-				GL_TEXTURE_CUBE_MAP_SEAMLESS,
-			};
-			constexpr char *glCapabilityEnumNames[]{
+			const char *glCapabilityEnumNames[]{
 				"GL_BLEND",
 				"GL_COLOR_LOGIC_OP",
 				"GL_CULL_FACE",
-				"GL_DEPTH_CLAMP",
 				"GL_DEBUG_OUTPUT",
 				"GL_DEBUG_OUTPUT_SYNCHRONOUS",
+				"GL_DEPTH_CLAMP",
 				"GL_DEPTH_TEST",
 				"GL_DITHER",
 				"GL_FRAMEBUFFER_SRGB",
 				"GL_LINE_SMOOTH",
 				"GL_MULTISAMPLE",
-				"GL_POLYGON_SMOOTH",
 				"GL_POLYGON_OFFSET_FILL",
 				"GL_POLYGON_OFFSET_LINE",
 				"GL_POLYGON_OFFSET_POINT",
-				"GL_PROGRAM_POINT_SIZE",
+				"GL_POLYGON_SMOOTH",
 				"GL_PRIMITIVE_RESTART",
+				"GL_PRIMITIVE_RESTART_FIXED_INDEX",
+				"GL_RASTERIZER_DISCARD",
 				"GL_SAMPLE_ALPHA_TO_COVERAGE",
 				"GL_SAMPLE_ALPHA_TO_ONE",
 				"GL_SAMPLE_COVERAGE",
+				"GL_SAMPLE_SHADING",
 				"GL_SAMPLE_MASK",
 				"GL_SCISSOR_TEST",
 				"GL_STENCIL_TEST",
 				"GL_TEXTURE_CUBE_MAP_SEAMLESS",
+				"GL_PROGRAM_POINT_SIZE",
 			};
 
-			for (int i = 0, len = sizeof(glCapabilityEnum) / sizeof(glCapabilityEnum[0]);
-				 i < len; ++i)
+			for (int i = 0, len = sizeof(glCapabilityArray) / sizeof(glCapabilityArray[0]); i < len; ++i)
 			{
 				LOG(glCapabilityEnumNames[i]);
-				LOG(bool(glIsEnabled(glCapabilityEnum[i])));
+				LOG(bool(glIsEnabled(glCapabilityArray[i])));
 			}
 		}
 
@@ -316,7 +291,15 @@ namespace Shit
 		GL_TESS_EVALUATION_SHADER,
 		GL_COMPUTE_SHADER,
 		GL_NONE};
-
+	constexpr GLenum glShaderStageFlagBitsArray[]{
+		GL_VERTEX_SHADER_BIT,		   // 0x00000001
+		GL_FRAGMENT_SHADER_BIT,		   // 0x00000002
+		GL_GEOMETRY_SHADER_BIT,		   // 0x00000004
+		GL_TESS_CONTROL_SHADER_BIT,	   // 0x00000008
+		GL_TESS_EVALUATION_SHADER_BIT, // 0x00000010
+		GL_COMPUTE_SHADER_BIT,		   // 0x00000020
+		GL_ALL_SHADER_BITS,			   // 0xFFFFFFFF
+	};
 	constexpr GLenum glBufferBindTargetArray[]{
 		GL_COPY_READ_BUFFER,
 		GL_COPY_WRITE_BUFFER,
@@ -400,42 +383,167 @@ namespace Shit
 		GL_GREEN,
 		GL_BLUE,
 		GL_ALPHA};
-
+	constexpr GLenum glPrimitiveTopologyArray[]{
+		GL_POINTS,
+		GL_LINES,
+		GL_LINE_STRIP,
+		GL_TRIANGLES,
+		GL_TRIANGLE_STRIP,
+		GL_TRIANGLE_FAN,
+		GL_LINES_ADJACENCY,
+		GL_LINE_STRIP_ADJACENCY,
+		GL_TRIANGLES_ADJACENCY,
+		GL_TRIANGLE_STRIP_ADJACENCY,
+		GL_PATCHES};
+	constexpr GLenum glPolygonModeArray[]{
+		GL_FILL,
+		GL_LINE,
+		GL_POINT,
+	};
+	constexpr GLenum glCullModeArray[]{
+		GL_NONE,
+		GL_FRONT,
+		GL_BACK,
+		GL_FRONT_AND_BACK};
+	constexpr GLenum glFrontFaceArray[]{
+		GL_CCW,
+		GL_CW};
+	constexpr GLenum glStencilOpArray[]{
+		GL_KEEP,
+		GL_ZERO,
+		GL_REPLACE,
+		GL_INCR,
+		GL_DECR,
+		GL_INVERT,
+		GL_INCR_WRAP,
+		GL_DECR_WRAP};
+	constexpr GLenum glLogicOpArray[]{
+		GL_CLEAR,
+		GL_AND,
+		GL_AND_REVERSE,
+		GL_COPY,
+		GL_AND_INVERTED,
+		GL_NOOP,
+		GL_XOR,
+		GL_OR,
+		GL_NOR,
+		GL_EQUIV,
+		GL_INVERT,
+		GL_OR_REVERSE,
+		GL_COPY_INVERTED,
+		GL_OR_INVERTED,
+		GL_NAND,
+		GL_SET};
+	constexpr GLenum glBlendFactorArray[]{
+		GL_ZERO,
+		GL_ONE,
+		GL_SRC_COLOR,
+		GL_ONE_MINUS_SRC_COLOR,
+		GL_DST_COLOR,
+		GL_ONE_MINUS_DST_COLOR,
+		GL_SRC_ALPHA,
+		GL_ONE_MINUS_SRC_ALPHA,
+		GL_DST_ALPHA,
+		GL_ONE_MINUS_DST_ALPHA,
+		GL_CONSTANT_COLOR,
+		GL_ONE_MINUS_CONSTANT_COLOR,
+		GL_CONSTANT_ALPHA,
+		GL_ONE_MINUS_CONSTANT_ALPHA,
+		GL_SRC_ALPHA_SATURATE,
+		GL_SRC1_COLOR,
+		GL_ONE_MINUS_SRC1_COLOR,
+		GL_SRC1_ALPHA,
+		GL_ONE_MINUS_SRC1_ALPHA,
+	};
+	constexpr GLenum glBlendOpArray[]{
+		GL_FUNC_ADD,
+		GL_FUNC_SUBTRACT,
+		GL_FUNC_REVERSE_SUBTRACT,
+		GL_MIN,
+		GL_MAX,
+	};
+	GLenum Map(BlendOp op)
+	{
+		return glBlendOpArray[static_cast<size_t>(op)];
+	}
+	GLenum Map(BlendFactor factor)
+	{
+		return glBlendFactorArray[static_cast<size_t>(factor)];
+	}
+	GLenum Map(LogicOp op)
+	{
+		return glLogicOpArray[static_cast<size_t>(op)];
+	}
+	GLenum Map(StencilOp op)
+	{
+		return glStencilOpArray[static_cast<size_t>(op)];
+	}
+	GLenum Map(FrontFace face)
+	{
+		return glFrontFaceArray[static_cast<size_t>(face)];
+	}
+	GLenum Map(CullMode mode)
+	{
+		return glCullModeArray[static_cast<size_t>(mode)];
+	}
+	GLenum Map(PolygonMode mode)
+	{
+		return glPolygonModeArray[static_cast<size_t>(mode)];
+	}
+	GLenum Map(PrimitiveTopology topology)
+	{
+		return glPrimitiveTopologyArray[static_cast<size_t>(topology)];
+	}
+	GLenum Map(ComponentSwizzle swizzle)
+	{
+		return glComponentSwizzleArray[static_cast<size_t>(swizzle)];
+	}
 	GLenum Map(ShaderStageFlagBits flag)
 	{
-		GLenum shaderType{};
 		switch (flag)
 		{
 		case ShaderStageFlagBits::VERTEX_BIT:
-			shaderType = GL_VERTEX_SHADER;
-			break;
+			return GL_VERTEX_SHADER;
 		case ShaderStageFlagBits::FRAGMENT_BIT:
-			shaderType = GL_FRAGMENT_SHADER;
-			break;
+			return GL_FRAGMENT_SHADER;
 		case ShaderStageFlagBits::GEOMETRY_BIT:
-			shaderType = GL_GEOMETRY_SHADER;
-			break;
+			return GL_GEOMETRY_SHADER;
 		case ShaderStageFlagBits::TESSELLATION_CONTROL_BIT:
-			shaderType = GL_TESS_CONTROL_SHADER;
-			break;
+			return GL_TESS_CONTROL_SHADER;
 		case ShaderStageFlagBits::TESSELLATION_EVALUATION_BIT:
-			shaderType = GL_TESS_EVALUATION_SHADER;
-			break;
+			return GL_TESS_EVALUATION_SHADER;
 		case ShaderStageFlagBits::COMPUTE_BIT:
-			shaderType = GL_COMPUTE_SHADER;
-			break;
+			return GL_COMPUTE_SHADER;
 		default:
 			THROW("GL do not contain shader stage:" + std::to_string(int(flag)));
-			break;
 		}
-		return shaderType;
 	}
-
-	GLint MapInternalFormat(ShitFormat format)
+	GLbitfield MapShaderStageFlags(ShaderStageFlagBits flags)
+	{
+		if (static_cast<bool>(flags == ShaderStageFlagBits::ALL))
+			return GL_ALL_SHADER_BITS;
+		if (static_cast<bool>(flags == ShaderStageFlagBits::ALL_GRAPHICS))
+			return 0x1F;
+		GLbitfield ret{};
+		if (static_cast<bool>(flags & ShaderStageFlagBits::VERTEX_BIT))
+			ret |= GL_VERTEX_SHADER_BIT;
+		if (static_cast<bool>(flags & ShaderStageFlagBits::FRAGMENT_BIT))
+			ret |= GL_FRAGMENT_SHADER_BIT;
+		if (static_cast<bool>(flags & ShaderStageFlagBits::TESSELLATION_CONTROL_BIT))
+			ret |= GL_TESS_CONTROL_SHADER_BIT;
+		if (static_cast<bool>(flags & ShaderStageFlagBits::TESSELLATION_EVALUATION_BIT))
+			ret |= GL_TESS_EVALUATION_SHADER_BIT;
+		if (static_cast<bool>(flags & ShaderStageFlagBits::GEOMETRY_BIT))
+			ret |= GL_GEOMETRY_SHADER_BIT;
+		if (static_cast<bool>(flags & ShaderStageFlagBits::COMPUTE_BIT))
+			ret |= GL_COMPUTE_SHADER_BIT;
+		return ret;
+	}
+	GLenum MapInternalFormat(ShitFormat format)
 	{
 		return glFormatArray[static_cast<size_t>(format)][0];
 	}
-	GLint MapExternalFormat(ShitFormat format)
+	GLenum MapExternalFormat(ShitFormat format)
 	{
 		return glFormatArray[static_cast<size_t>(format)][1];
 	}
@@ -479,7 +587,7 @@ namespace Shit
 			else if (viewType == ImageViewType::TYPE_2D_ARRAY)
 				return GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
 			else
-				throw std::runtime_error("wrong image view type");
+				THROW("wrong image view type");
 		}
 		else
 			return glImageViewTypeArray[static_cast<size_t>(viewType)];
@@ -487,6 +595,20 @@ namespace Shit
 	GLenum Map(DataType dataType)
 	{
 		return glDataTypeArray[static_cast<size_t>(dataType)];
+	}
+	GLenum Map(IndexType type)
+	{
+		switch (type)
+		{
+		case IndexType::UINT8:
+			return GL_UNSIGNED_BYTE;
+		case IndexType::UINT16:
+			return GL_UNSIGNED_SHORT;
+		case IndexType::UINT32:
+			return GL_UNSIGNED_INT;
+		default:
+			THROW("wrong index type");
+		}
 	}
 
 } // namespace Shit

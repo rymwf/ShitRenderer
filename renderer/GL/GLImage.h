@@ -12,11 +12,11 @@
 #include "GLPrerequisites.h"
 namespace Shit
 {
-
 	class GLImage final : public Image
 	{
 		GLuint mHandle;
 		GLStateManager *mpStateManager;
+		bool mIsRenderbuffer{};
 
 	public:
 		GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo);
@@ -44,5 +44,22 @@ namespace Shit
 		 * @param imageSubData 
 		 */
 		void UpdateImageSubData(const ImageSubData &imageSubData);
+		constexpr bool IsRenderbuffer() const
+		{
+			return mIsRenderbuffer;
+		}
+	};
+
+	class GLImageView final : public ImageView
+	{
+		GLuint mHandle;
+		GLStateManager *mpStateManger;
+	public:
+		GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo);
+		~GLImageView() override {}
+		constexpr GLuint GetHandle() const
+		{
+			return mHandle;
+		}
 	};
 }

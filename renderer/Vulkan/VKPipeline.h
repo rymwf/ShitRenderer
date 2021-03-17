@@ -14,7 +14,7 @@ namespace Shit
 {
 	class VKPipelineLayout final : public PipelineLayout
 	{
-		VkPipelineLayout mHandle;
+		VkPipelineLayout mHandle{};
 		VkDevice mDevice;
 
 	public:

@@ -15,7 +15,7 @@ namespace Shit
 	{
 	protected:
 		FramebufferCreateInfo mCreateInfo;
-		Framebuffer(const FramebufferCreateInfo &createInfo) {}
+		Framebuffer(const FramebufferCreateInfo &createInfo) : mCreateInfo(createInfo) {}
 
 	public:
 		virtual ~Framebuffer() {}

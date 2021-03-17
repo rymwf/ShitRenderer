@@ -10,8 +10,6 @@
 #pragma once
 #include <renderer/ShitSwapchain.h>
 #include "VKPrerequisites.h"
-#include "VKSurface.h"
-#include "VKImage.h"
 
 namespace Shit
 {
@@ -21,17 +19,11 @@ namespace Shit
 		VkSwapchainKHR mHandle;
 		VkPresentModeKHR mPresentMode{};
 		VkSurfaceFormatKHR mSurfaceFormat;
-		VkDevice mDevice;
 
+		VKDevice* mpDevice;
 	public:
-		VKSwapchain(
-			VkDevice device,
-			const SwapchainCreateInfo &createInfo,
-			VkSurfaceKHR surface,
-			VkSurfaceFormatKHR surfaceFormat,
-			VkPresentModeKHR presentMode,
-			QueueFamilyIndex presentQueueFamilyIndex
-			);
+		VKSwapchain(Device *pDevice, ShitWindow *pWindow, const SwapchainCreateInfo &createInfo);
+
 		constexpr VkSurfaceFormatKHR GetSurfaceFormat() const
 		{
 			return mSurfaceFormat;
@@ -44,12 +36,9 @@ namespace Shit
 		{
 			return mPresentMode;
 		}
-		~VKSwapchain() override
-		{
-			vkDestroySwapchainKHR(mDevice, mHandle, nullptr);
-		}
-		void GetNextImage(const GetNextImageInfo &info, uint32_t& index) const override;
+		~VKSwapchain() override;
 
+		uint32_t GetNextImage(const GetNextImageInfo &info) override;
 	};
 
 }

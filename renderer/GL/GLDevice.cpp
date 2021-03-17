@@ -8,6 +8,13 @@
  * 
  */
 #include "GLDevice.h"
+#include "GLFence.h"
+#include "GLQueue.h"
+#include "GLFramebuffer.h"
+#include "GLSemaphore.h"
+#include "GLPipeline.h"
+#include "GLRenderPass.h"
+#include "GLCommandPool.h"
 
 #ifdef _WIN32
 #include <renderer/ShitWindowWin32.h>
@@ -15,6 +22,11 @@
 
 namespace Shit
 {
+	CommandPool *GLDevice::CreateCommandPool(const CommandPoolCreateInfo &createInfo)
+	{
+		mCommandPools.emplace_back(std::make_unique<GLCommandPool>(&mStateManager, createInfo));
+		return mCommandPools.back().get();
+	}
 
 	Shader *GLDevice::CreateShader(const ShaderCreateInfo &createInfo)
 	{
@@ -30,11 +42,8 @@ namespace Shit
 
 	Queue *GLDevice::CreateDeviceQueue(const QueueCreateInfo &createInfo)
 	{
-		return nullptr;
-	}
-	Result GLDevice::WaitForFence(Fence *fence, uint64_t timeout)
-	{
-		return Result::SUCCESS;
+		mQueues.emplace_back(std::make_unique<GLQueue>(this, &mStateManager, createInfo));
+		return mQueues.back().get();
 	}
 	Buffer *GLDevice::CreateBuffer(const BufferCreateInfo &createInfo, void *pData)
 	{
@@ -45,7 +54,19 @@ namespace Shit
 	Image *GLDevice::CreateImage(const ImageCreateInfo &createInfo, void *pData)
 	{
 		mImages.emplace_back(std::make_unique<GLImage>(&mStateManager, createInfo));
-		return mImages.back().get();
+		auto pImage = mImages.back().get();
+		if (pData)
+		{
+			ImageSubData subdata{
+				createInfo.format,
+				DataType::UNSIGNED_BYTE,
+				0,
+				{{},
+				 createInfo.extent},
+				pData};
+			static_cast<GLImage *>(pImage)->UpdateImageSubData(subdata);
+		}
+		return pImage;
 	}
 	DescriptorSetLayout *GLDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo)
 	{
@@ -53,13 +74,62 @@ namespace Shit
 		return mDescriptorSetLayouts.back().get();
 	}
 
+	ImageView *GLDevice::CreateImageView(const ImageViewCreateInfo &createInfo)
+	{
+		mImageViews.emplace_back(std::make_unique<GLImageView>(&mStateManager, createInfo));
+		return mImageViews.back().get();
+	}
+	PipelineLayout *GLDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo)
+	{
+		mPipelineLayouts.emplace_back(std::make_unique<GLPipelineLayout>(createInfo));
+		return mPipelineLayouts.back().get();
+	}
+	RenderPass *GLDevice::CreateRenderPass(const RenderPassCreateInfo &createInfo)
+	{
+		mRenderPasses.emplace_back(std::make_unique<GLRenderPass>(createInfo));
+		return mRenderPasses.back().get();
+	}
+	Framebuffer *GLDevice::CreateFramebuffer(const FramebufferCreateInfo &createInfo)
+	{
+		mFramebuffers.emplace_back(std::make_unique<GLFramebuffer>(&mStateManager, createInfo));
+		return mFramebuffers.back().get();
+	}
+	Semaphore *GLDevice::CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo)
+	{
+		mSemaphores.emplace_back(std::make_unique<GLSemaphore>(&mStateManager, createInfo));
+		return mSemaphores.back().get();
+	}
+	Fence *GLDevice::CreateFence(const FenceCreateInfo &createInfo)
+	{
+		mFences.emplace_back(std::make_unique<GLFence>(&mStateManager, createInfo));
+		return mFences.back().get();
+	}
+
 #ifdef _WIN32
 
+	void GLDeviceWin32::GetWindowPixelFormats([[maybe_unused]] const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats)
+	{
+		if (wglIsExtensionSupported("WGL_EXT_framebuffer_sRGB"))
+		{
+			formats.emplace_back(
+				WindowPixelFormat{ShitFormat::RGBA8_SRGB,
+								  ColorSpace::SRGB_NONLINEAR});
+		}
+		else if (wglIsExtensionSupported("WGL_ARB_framebuffer_sRGB"))
+		{
+			formats.emplace_back(
+				WindowPixelFormat{ShitFormat::RGBA8_SRGB,
+								  ColorSpace::SRGB_NONLINEAR});
+		}
+		formats.emplace_back(
+			WindowPixelFormat{ShitFormat::RGBA8_UNORM,
+							  ColorSpace::SRGB_NONLINEAR});
+	}
 	Swapchain *GLDeviceWin32::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
-		mSwapchains.emplace_back(std::make_unique<GLSwapchainWin32>(mHDC, createInfo, mRenderSystemCreatInfo.version, mRenderSystemCreatInfo.flags));
+		mSwapchains.emplace_back(std::make_unique<GLSwapchainWin32>(this, &mStateManager, mHDC, createInfo, mRenderSystemCreatInfo.version, mRenderSystemCreatInfo.flags));
 		pWindow->SetSwapchain(mSwapchains.back().get());
-		return pWindow->GetSwapchain();
+		return mSwapchains.back().get();
 	}
 	GLDeviceWin32::GLDeviceWin32(ShitWindow *pWindow, const RenderSystemCreateInfo &createInfo) : GLDevice(createInfo)
 	{

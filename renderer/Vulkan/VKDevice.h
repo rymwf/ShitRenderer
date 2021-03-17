@@ -42,6 +42,8 @@ namespace Shit
 
 		std::optional<QueueFamilyIndex> GetQueueFamilyIndexByFlag(QueueFlagBits flag, const std::unordered_set<uint32_t> &skipIndices) override;
 
+		void GetWindowPixelFormats(const ShitWindow *pWindow,std::vector<WindowPixelFormat> &format)override;
+
 		Swapchain* CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
@@ -51,8 +53,6 @@ namespace Shit
 		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
 
 		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
-
-		Result WaitForFence(Fence *fence, uint64_t timeout) override;
 
 		Buffer *CreateBuffer(const BufferCreateInfo &createInfo, void *pData) override;
 

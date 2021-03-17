@@ -14,22 +14,55 @@
 
 namespace Shit
 {
-
-	class GLGraphicsPipeline final : public GraphicsPipeline
+	class GLPipelineLayout final : public PipelineLayout
 	{
-		GLuint mPipeline;
+	public:
+		GLPipelineLayout(const PipelineLayoutCreateInfo &createInfo) : PipelineLayout(createInfo) {}
+	};
+
+	class GLPipeline : public virtual Pipeline
+	{
+	protected:
+		GLuint mHandle;
 		std::vector<GLuint> mPrograms;
-		GLStateManager* mStateManager;
+		GLStateManager *mpStateManager;
 
 	public:
-		GLGraphicsPipeline(GLStateManager* stateManager, const GraphicsPipelineCreateInfo &createInfo);
+		GLPipeline(GLStateManager *pStateManager) : mpStateManager(pStateManager) {}
 
-		GLuint CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable);
-
-		~GLGraphicsPipeline() override
+		~GLPipeline() override
 		{
 			for (auto &&e : mPrograms)
 				glDeleteProgram(e);
+			glDeleteProgramPipelines(1, &mHandle);
 		}
+		GLuint CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable);
+
+		constexpr GLuint GetHandle() const
+		{
+			return mHandle;
+		}
+	};
+
+	class GLGraphicsPipeline final : public GraphicsPipeline, public GLPipeline
+	{
+		GLuint mVAO{};
+		void CreateVertexArray();
+	public:
+		GLGraphicsPipeline(GLStateManager *stateManager, const GraphicsPipelineCreateInfo &createInfo);
+		constexpr GLuint GetVertexArray() const
+		{
+			return mVAO;
+		}
+		~GLGraphicsPipeline() override
+		{
+			glDeleteVertexArrays(1, &mVAO);
+		}
+	};
+
+	class GLComputePipeline final : public ComputePipeline, public GLPipeline
+	{
+	public:
+		GLComputePipeline(GLStateManager *stateManager, const ComputePipelineCreateInfo &createInfo);
 	};
 }

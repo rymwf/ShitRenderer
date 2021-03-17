@@ -32,14 +32,15 @@ namespace Shit
 		{
 			vkFreeCommandBuffers(mDevice, mCommandPool, 1, &mHandle);
 		}
+		void ExecuteSecondaryCommandBuffer(const ExecuteSecondaryCommandBufferInfo &secondaryCommandBufferInfo) override;
+
 		void Reset(CommandBufferResetFlatBits flags) override;
 		void Begin(const CommandBufferBeginInfo &beginInfo) override;
 		void End() override;
-		void ExecuteSecondaryCommandBuffer(const std::vector<CommandBuffer *> &secondaryCommandBuffers) override;
-		void BeginRenderPass(const RenderPassBeginInfo &beginInfo, const SubpassBeginInfo &subpassBeginInfo) override;
+		void BeginRenderPass(const RenderPassBeginInfo &beginInfo) override;
 		void EndRenderPass() override;
-		void NextSubpass(const SubpassBeginInfo &subpassBeginInfo) override;
-		void BindPipeline(PipelineBindPoint bindPoint, Pipeline *pPipeline) override;
+		void NextSubpass(SubpassContents subpassContents) override;
+		void BindPipeline(const BindPipelineInfo& info) override;
 
 		void CopyBuffer(const CopyBufferInfo &copyInfo) override;
 		void CopyImage(const CopyImageInfo &copyInfo) override;

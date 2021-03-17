@@ -94,44 +94,21 @@ namespace Shit
 			std::stack<GLuint> vaoStack;
 		} mVAOState;
 
-		//		struct ColorMaskState
-		//		{
-		//			uint32_t colorBitMask;
-		//			std::stack<int> maskStack;
-		//		} mColorMaskState;
-		//		struct DepthMaskState
-		//		{
-		//			bool curMask;
-		//			std::stack<bool> maskStack;
-		//		} mDepthMaskState;
-		//		struct StencilMaskState
-		//		{
-		//			struct StackEntry
-		//			{
-		//				uint32_t backfaceBitmask;
-		//				uint32_t frontfaceBitmask;
-		//			};
-		//			uint32_t backfaceBitmask;
-		//			uint32_t frontfaceBitmask;
-		//			std::stack<StackEntry> maskStack;
-		//		} mStencilState;
-
-		struct PipelineState
+		struct GLPipelineState
 		{
 			GLuint curPipeline;
 			std::stack<GLuint> pipelineStack;
 		} mPipelineState;
-
 	public:
 		GLStateManager() = default;
 
 		//framebuffer
-		void BindDrawBuffer(GLuint framebuffer);
-		void PushDrawBuffer(GLuint framebuffer);
-		void PopDrawBuffer();
-		void BindReadBuffer(GLuint framebuffer);
-		void PushReadBuffer(GLuint framebuffer);
-		void PopReadBuffer();
+		void BindDrawFramebuffer(GLuint framebuffer);
+		void PushDrawFramebuffer(GLuint framebuffer);
+		void PopDrawFramebuffer();
+		void BindReadFramebuffer(GLuint framebuffer);
+		void PushReadFramebuffer(GLuint framebuffer);
+		void PopReadFramebuffer();
 		void NotifyReleasedFramebuffer(GLuint framebuffer);
 
 		//renderbuffer
@@ -147,10 +124,10 @@ namespace Shit
 		void NotifyReleaseBuffer(GLuint buffer);
 
 		//vao
-		void BindVAO(GLuint vao);
-		void PushVAO(GLuint vao);
-		void PopVAO();
-		void NotifyReleasedVAO(GLuint vao);
+		void BindVertexArray(GLuint vao);
+		void PushVertexArray(GLuint vao);
+		void PopVertexArray();
+		void NotifyReleasedVertexArray(GLuint vao);
 
 		//texture
 		void BindTextureUnit(GLuint unit, GLenum target, GLuint texture);

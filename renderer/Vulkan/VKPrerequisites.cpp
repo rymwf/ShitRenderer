@@ -28,7 +28,7 @@ namespace Shit
 			LOG_VAR(deviceProperties.deviceID);
 			LOG_VAR(deviceProperties.deviceType);
 			LOG_VAR(deviceProperties.deviceName);
-			LOG_VAR(deviceProperties.pipelineCacheUUID);
+//			LOG_VAR(deviceProperties.pipelineCacheUUID);
 			LOG_VAR(deviceProperties.limits.maxVertexInputBindings);
 			LOG_VAR(deviceProperties.limits.maxVertexInputBindingStride);
 			LOG_VAR(deviceProperties.limits.maxVertexInputAttributes);
@@ -615,6 +615,21 @@ namespace Shit
 	};
 	constexpr VkColorSpaceKHR vkColorSpaceArray[]{
 		VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+		VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT,
+		VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
+		VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT,
+		VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT,
+		VK_COLOR_SPACE_BT709_LINEAR_EXT,
+		VK_COLOR_SPACE_BT709_NONLINEAR_EXT,
+		VK_COLOR_SPACE_BT2020_LINEAR_EXT,
+		VK_COLOR_SPACE_HDR10_ST2084_EXT,
+		VK_COLOR_SPACE_DOLBYVISION_EXT,
+		VK_COLOR_SPACE_HDR10_HLG_EXT,
+		VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT,
+		VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT,
+		VK_COLOR_SPACE_PASS_THROUGH_EXT,
+		VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT,
+		VK_COLOR_SPACE_DISPLAY_NATIVE_AMD,
 	};
 
 	constexpr VkPresentModeKHR vkPresentModeArray[]{
@@ -667,8 +682,7 @@ namespace Shit
 	};
 	constexpr VkImageTiling vkImageTilingArray[]{
 		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_TILING_LINEAR
-	};
+		VK_IMAGE_TILING_LINEAR};
 	constexpr VkImageUsageFlagBits vkImageUsageFlagBitArray[]{
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 		VK_IMAGE_USAGE_TRANSFER_DST_BIT,
@@ -776,8 +790,7 @@ namespace Shit
 		VK_ATTACHMENT_LOAD_OP_LOAD,
 		VK_ATTACHMENT_LOAD_OP_CLEAR,
 		VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-		VK_ATTACHMENT_LOAD_OP_MAX_ENUM
-	};
+		VK_ATTACHMENT_LOAD_OP_MAX_ENUM};
 	constexpr VkAttachmentStoreOp vkAttachmentStoreOpArray[]{
 		VK_ATTACHMENT_STORE_OP_STORE,
 		VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -791,8 +804,7 @@ namespace Shit
 		VK_COMPONENT_SWIZZLE_G,
 		VK_COMPONENT_SWIZZLE_B,
 		VK_COMPONENT_SWIZZLE_A,
-		VK_COMPONENT_SWIZZLE_MAX_ENUM
-	};
+		VK_COMPONENT_SWIZZLE_MAX_ENUM};
 	constexpr VkPipelineBindPoint vkPipelineBindPointArray[]{
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -809,7 +821,7 @@ namespace Shit
 		VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
 	};
 	constexpr VkIndexType vkIndexTypeArray[]{
-		VK_INDEX_TYPE_NONE_KHR,// Provided by VK_KHR_ray_tracing
+		VK_INDEX_TYPE_NONE_KHR,	 // Provided by VK_KHR_ray_tracing
 		VK_INDEX_TYPE_UINT8_EXT, // Provided by VK_EXT_index_type_uint8
 		VK_INDEX_TYPE_UINT16,
 		VK_INDEX_TYPE_UINT32,
@@ -817,6 +829,277 @@ namespace Shit
 	constexpr VkCommandBufferResetFlagBits vkCommandBufferResetFlagBitsArray[]{
 		VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT,
 	};
+	constexpr VkPrimitiveTopology vkPrimitiveTopologyArray[]{
+		VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+		VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+		VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+		VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
+		VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
+		VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
+	};
+	constexpr VkPolygonMode vkPolygonModeArray[]{
+		VK_POLYGON_MODE_FILL,
+		VK_POLYGON_MODE_LINE,
+		VK_POLYGON_MODE_POINT,
+		VK_POLYGON_MODE_FILL_RECTANGLE_NV,
+	};
+	constexpr VkCullModeFlagBits vkCullModeFlagBitsArray[]{
+		VK_CULL_MODE_NONE,
+		VK_CULL_MODE_FRONT_BIT,
+		VK_CULL_MODE_BACK_BIT,
+		VK_CULL_MODE_FRONT_AND_BACK,
+	};
+	constexpr VkFrontFace vkFrontFaceArray[]{
+		VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		VK_FRONT_FACE_CLOCKWISE,
+	};
+	constexpr VkStencilOp vkStencilOpArray[]{
+		VK_STENCIL_OP_KEEP,
+		VK_STENCIL_OP_ZERO,
+		VK_STENCIL_OP_REPLACE,
+		VK_STENCIL_OP_INCREMENT_AND_CLAMP,
+		VK_STENCIL_OP_DECREMENT_AND_CLAMP,
+		VK_STENCIL_OP_INVERT,
+		VK_STENCIL_OP_INCREMENT_AND_WRAP,
+		VK_STENCIL_OP_DECREMENT_AND_WRAP,
+	};
+	constexpr VkLogicOp vkLogicOpArray[]{
+		VK_LOGIC_OP_CLEAR,
+		VK_LOGIC_OP_AND,
+		VK_LOGIC_OP_AND_REVERSE,
+		VK_LOGIC_OP_COPY,
+		VK_LOGIC_OP_AND_INVERTED,
+		VK_LOGIC_OP_NO_OP,
+		VK_LOGIC_OP_XOR,
+		VK_LOGIC_OP_OR,
+		VK_LOGIC_OP_NOR,
+		VK_LOGIC_OP_EQUIVALENT,
+		VK_LOGIC_OP_INVERT,
+		VK_LOGIC_OP_OR_REVERSE,
+		VK_LOGIC_OP_COPY_INVERTED,
+		VK_LOGIC_OP_OR_INVERTED,
+		VK_LOGIC_OP_NAND,
+		VK_LOGIC_OP_SET,
+	};
+	constexpr VkBlendFactor vkBlendFactorArray[]{
+		VK_BLEND_FACTOR_ZERO,
+		VK_BLEND_FACTOR_ONE,
+		VK_BLEND_FACTOR_SRC_COLOR,
+		VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+		VK_BLEND_FACTOR_DST_COLOR,
+		VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+		VK_BLEND_FACTOR_SRC_ALPHA,
+		VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		VK_BLEND_FACTOR_DST_ALPHA,
+		VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+		VK_BLEND_FACTOR_CONSTANT_COLOR,
+		VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+		VK_BLEND_FACTOR_CONSTANT_ALPHA,
+		VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+		VK_BLEND_FACTOR_SRC_ALPHA_SATURATE,
+		VK_BLEND_FACTOR_SRC1_COLOR,
+		VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
+		VK_BLEND_FACTOR_SRC1_ALPHA,
+		VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
+		VK_BLEND_FACTOR_MAX_ENUM};
+	constexpr VkBlendOp vkBlendOpArray[]{
+		VK_BLEND_OP_ADD,
+		VK_BLEND_OP_SUBTRACT,
+		VK_BLEND_OP_REVERSE_SUBTRACT,
+		VK_BLEND_OP_MIN,
+		VK_BLEND_OP_MAX,
+		VK_BLEND_OP_ZERO_EXT,
+		VK_BLEND_OP_SRC_EXT,
+		VK_BLEND_OP_DST_EXT,
+		VK_BLEND_OP_SRC_OVER_EXT,
+		VK_BLEND_OP_DST_OVER_EXT,
+		VK_BLEND_OP_SRC_IN_EXT,
+		VK_BLEND_OP_DST_IN_EXT,
+		VK_BLEND_OP_SRC_OUT_EXT,
+		VK_BLEND_OP_DST_OUT_EXT,
+		VK_BLEND_OP_SRC_ATOP_EXT,
+		VK_BLEND_OP_DST_ATOP_EXT,
+		VK_BLEND_OP_XOR_EXT,
+		VK_BLEND_OP_MULTIPLY_EXT,
+		VK_BLEND_OP_SCREEN_EXT,
+		VK_BLEND_OP_OVERLAY_EXT,
+		VK_BLEND_OP_DARKEN_EXT,
+		VK_BLEND_OP_LIGHTEN_EXT,
+		VK_BLEND_OP_COLORDODGE_EXT,
+		VK_BLEND_OP_COLORBURN_EXT,
+		VK_BLEND_OP_HARDLIGHT_EXT,
+		VK_BLEND_OP_SOFTLIGHT_EXT,
+		VK_BLEND_OP_DIFFERENCE_EXT,
+		VK_BLEND_OP_EXCLUSION_EXT,
+		VK_BLEND_OP_INVERT_EXT,
+		VK_BLEND_OP_INVERT_RGB_EXT,
+		VK_BLEND_OP_LINEARDODGE_EXT,
+		VK_BLEND_OP_LINEARBURN_EXT,
+		VK_BLEND_OP_VIVIDLIGHT_EXT,
+		VK_BLEND_OP_LINEARLIGHT_EXT,
+		VK_BLEND_OP_PINLIGHT_EXT,
+		VK_BLEND_OP_HARDMIX_EXT,
+		VK_BLEND_OP_HSL_HUE_EXT,
+		VK_BLEND_OP_HSL_SATURATION_EXT,
+		VK_BLEND_OP_HSL_COLOR_EXT,
+		VK_BLEND_OP_HSL_LUMINOSITY_EXT,
+		VK_BLEND_OP_PLUS_EXT,
+		VK_BLEND_OP_PLUS_CLAMPED_EXT,
+		VK_BLEND_OP_PLUS_CLAMPED_ALPHA_EXT,
+		VK_BLEND_OP_PLUS_DARKER_EXT,
+		VK_BLEND_OP_MINUS_EXT,
+		VK_BLEND_OP_MINUS_CLAMPED_EXT,
+		VK_BLEND_OP_CONTRAST_EXT,
+		VK_BLEND_OP_INVERT_OVG_EXT,
+		VK_BLEND_OP_RED_EXT,
+		VK_BLEND_OP_GREEN_EXT,
+		VK_BLEND_OP_BLUE_EXT,
+	};
+	constexpr VkColorComponentFlagBits vkColorComponentFlagBitsArray[]{
+		VK_COLOR_COMPONENT_R_BIT,
+		VK_COLOR_COMPONENT_G_BIT,
+		VK_COLOR_COMPONENT_B_BIT,
+		VK_COLOR_COMPONENT_A_BIT,
+	};
+	constexpr VkDynamicState vkDynamicStateArray[]{
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+		VK_DYNAMIC_STATE_LINE_WIDTH,
+		VK_DYNAMIC_STATE_DEPTH_BIAS,
+		VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+		VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+		VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+		VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV,
+		VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT,
+		VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT,
+		VK_DYNAMIC_STATE_VIEWPORT_SHADING_RATE_PALETTE_NV,
+		VK_DYNAMIC_STATE_VIEWPORT_COARSE_SAMPLE_ORDER_NV,
+		VK_DYNAMIC_STATE_EXCLUSIVE_SCISSOR_NV,
+		VK_DYNAMIC_STATE_LINE_STIPPLE_EXT,
+		VK_DYNAMIC_STATE_CULL_MODE_EXT,
+		VK_DYNAMIC_STATE_FRONT_FACE_EXT,
+		VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
+		VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT,
+		VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT,
+		VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT,
+		VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT,
+		VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT,
+		VK_DYNAMIC_STATE_STENCIL_OP_EXT,
+	};
+	constexpr VkResult vkResultArray[]{
+		VK_SUCCESS,
+		VK_NOT_READY,
+		VK_TIMEOUT,
+		VK_EVENT_SET,
+		VK_EVENT_RESET,
+		VK_INCOMPLETE,
+		VK_ERROR_OUT_OF_HOST_MEMORY,
+		VK_ERROR_OUT_OF_DEVICE_MEMORY,
+		VK_ERROR_INITIALIZATION_FAILED,
+		VK_ERROR_DEVICE_LOST,
+		VK_ERROR_MEMORY_MAP_FAILED,
+		VK_ERROR_LAYER_NOT_PRESENT,
+		VK_ERROR_EXTENSION_NOT_PRESENT,
+		VK_ERROR_FEATURE_NOT_PRESENT,
+		VK_ERROR_INCOMPATIBLE_DRIVER,
+		VK_ERROR_TOO_MANY_OBJECTS,
+		VK_ERROR_FORMAT_NOT_SUPPORTED,
+		VK_ERROR_FRAGMENTED_POOL,
+		VK_ERROR_UNKNOWN,
+		VK_ERROR_OUT_OF_POOL_MEMORY,
+		VK_ERROR_INVALID_EXTERNAL_HANDLE,
+		VK_ERROR_FRAGMENTATION,
+		VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
+		VK_ERROR_SURFACE_LOST_KHR,
+		VK_ERROR_NATIVE_WINDOW_IN_USE_KHR,
+		VK_SUBOPTIMAL_KHR,
+		VK_ERROR_OUT_OF_DATE_KHR,
+		VK_ERROR_INCOMPATIBLE_DISPLAY_KHR,
+		VK_ERROR_VALIDATION_FAILED_EXT,
+		VK_ERROR_INVALID_SHADER_NV,
+		VK_ERROR_INCOMPATIBLE_VERSION_KHR,
+		VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
+		VK_ERROR_NOT_PERMITTED_EXT,
+		VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT,
+		VK_THREAD_IDLE_KHR,
+		VK_THREAD_DONE_KHR,
+		VK_OPERATION_DEFERRED_KHR,
+		VK_OPERATION_NOT_DEFERRED_KHR,
+		VK_PIPELINE_COMPILE_REQUIRED_EXT,
+	};
+	VkFenceCreateFlagBits VkFenceCreateFlagBitsArray[]{
+		VK_FENCE_CREATE_SIGNALED_BIT,
+	};
+	VkSemaphoreType vkSemaphoreTypeArray[]{
+		VK_SEMAPHORE_TYPE_BINARY,
+		VK_SEMAPHORE_TYPE_TIMELINE,
+	};
+	VkSemaphoreType Map(SemaphoreType type)
+	{
+		return vkSemaphoreTypeArray[static_cast<size_t>(type)];
+	}
+	VkFenceCreateFlags Map(FenceCreateFlagBits flags)
+	{
+		VkFenceCreateFlags ret{};
+		int a = static_cast<int>(flags);
+		for (int i = 0; a > 0 && i < 32; ++i, a >>= 1)
+		{
+			if (a & 1)
+				ret |= VkFenceCreateFlagBitsArray[i];
+		}
+		return ret;
+	};
+	VkDynamicState Map(DynamicState state)
+	{
+		return vkDynamicStateArray[static_cast<size_t>(state)];
+	}
+	VkColorComponentFlags Map(ColorComponentFlagBits flag)
+	{
+		return static_cast<VkColorComponentFlags>(flag);
+	}
+	VkBlendOp Map(BlendOp op)
+	{
+		return vkBlendOpArray[static_cast<size_t>(op)];
+	}
+	VkBlendFactor Map(BlendFactor factor)
+	{
+		return vkBlendFactorArray[static_cast<size_t>(factor)];
+	}
+	VkLogicOp Map(LogicOp op)
+	{
+		return vkLogicOpArray[static_cast<size_t>(op)];
+	}
+	VkStencilOp Map(StencilOp op)
+	{
+		return vkStencilOpArray[static_cast<size_t>(op)];
+	}
+	VkFrontFace Map(FrontFace face)
+	{
+		return vkFrontFaceArray[static_cast<size_t>(face)];
+	}
+	VkCullModeFlags Map(CullMode cullmode)
+	{
+		return static_cast<VkCullModeFlags>(vkCullModeFlagBitsArray[static_cast<size_t>(cullmode)]);
+	}
+	VkPolygonMode Map(PolygonMode mode)
+	{
+		return vkPolygonModeArray[static_cast<size_t>(mode)];
+	}
+	VkPrimitiveTopology Map(PrimitiveTopology topology)
+	{
+		return vkPrimitiveTopologyArray[static_cast<size_t>(topology)];
+	}
+
 	VkCommandBufferResetFlags Map(CommandBufferResetFlatBits flag)
 	{
 		VkCommandBufferResetFlags ret{};
@@ -957,10 +1240,42 @@ namespace Shit
 	{
 		return vkFormatArray[static_cast<size_t>(format)];
 	}
+	ShitFormat Map(VkFormat format)
+	{
+		static std::unordered_map<VkFormat, ShitFormat> tempMap;
+		if (tempMap.find(format) == tempMap.end())
+		{
+			for (int i = 0, len = static_cast<int>(ShitFormat::Num); i < len; ++i)
+			{
+				auto a = Map(static_cast<ShitFormat>(i));
+				if (a == format)
+					return tempMap[format] = static_cast<ShitFormat>(i);
+			}
+			THROW("failed to find corresponding ShitFormat");
+		}
+		else
+			return tempMap[format];
+	};
 
 	VkColorSpaceKHR Map(ColorSpace colorSpace)
 	{
 		return vkColorSpaceArray[static_cast<size_t>(colorSpace)];
+	}
+	ColorSpace Map(VkColorSpaceKHR colorSpace)
+	{
+		static std::unordered_map<VkColorSpaceKHR, ColorSpace> tempMap;
+		if (tempMap.find(colorSpace) == tempMap.end())
+		{
+			for (int i = 0, len = static_cast<int>(ShitFormat::Num); i < len; ++i)
+			{
+				auto a = Map(static_cast<ColorSpace>(i));
+				if (a == colorSpace)
+					return tempMap[a] = static_cast<ColorSpace>(i);
+			}
+			THROW("failed to find corresponding ShitFormat");
+		}
+		else
+			return tempMap[colorSpace];
 	}
 
 	VkPresentModeKHR Map(PresentMode mode)
@@ -1003,4 +1318,185 @@ namespace Shit
 			return VK_IMAGE_ASPECT_COLOR_BIT;
 		}
 	}
+	VkFormat GetFormat(DataType dataType, uint32_t components, bool normalized)
+	{
+		if (normalized)
+		{
+			switch (components)
+			{
+			case 1:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8_SNORM;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8_UNORM;
+				case DataType::SHORT:
+					return VK_FORMAT_R16_SNORM;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16_UNORM;
+				default:
+					break;
+				}
+				break;
+			case 2:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8G8_SNORM;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8G8_UNORM;
+				case DataType::SHORT:
+					return VK_FORMAT_R16G16_SNORM;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16G16_UNORM;
+				default:
+					break;
+				}
+				break;
+			case 3:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8G8B8_SNORM;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8G8B8_UNORM;
+				case DataType::SHORT:
+					return VK_FORMAT_R16G16B16_SNORM;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16G16B16_UNORM;
+				default:
+					break;
+				}
+				break;
+			case 4:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8G8B8A8_SNORM;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8G8B8A8_UNORM;
+				case DataType::SHORT:
+					return VK_FORMAT_R16G16B16A16_SNORM;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16G16B16A16_UNORM;
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
+			}
+		}
+		else
+		{
+			switch (components)
+			{
+			case 1:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8_SINT;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8_UINT;
+				case DataType::SHORT:
+					return VK_FORMAT_R16_SINT;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16_UINT;
+				case DataType::INT:
+					return VK_FORMAT_R32_SINT;
+				case DataType::UNSIGNED_INT:
+					return VK_FORMAT_R32_UINT;
+				case DataType::FLOAT_HALF:
+					return VK_FORMAT_R16_SFLOAT;
+				case DataType::FLOAT:
+					return VK_FORMAT_R32_SFLOAT;
+				case DataType::DOUBLE:
+					return VK_FORMAT_R64_SFLOAT;
+				default:
+					break;
+				}
+				break;
+			case 2:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8G8_SINT;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8G8_UINT;
+				case DataType::SHORT:
+					return VK_FORMAT_R16G16_SINT;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16G16_UINT;
+				case DataType::INT:
+					return VK_FORMAT_R32G32_SINT;
+				case DataType::UNSIGNED_INT:
+					return VK_FORMAT_R32G32_UINT;
+				case DataType::FLOAT_HALF:
+					return VK_FORMAT_R16G16_SFLOAT;
+				case DataType::FLOAT:
+					return VK_FORMAT_R32G32_SFLOAT;
+				case DataType::DOUBLE:
+					return VK_FORMAT_R64G64_SFLOAT;
+				default:
+					break;
+				}
+				break;
+			case 3:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8G8B8_SINT;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8G8B8_UINT;
+				case DataType::SHORT:
+					return VK_FORMAT_R16G16B16_SINT;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16G16B16_UINT;
+				case DataType::INT:
+					return VK_FORMAT_R32G32B32_SINT;
+				case DataType::UNSIGNED_INT:
+					return VK_FORMAT_R32G32B32_UINT;
+				case DataType::FLOAT_HALF:
+					return VK_FORMAT_R16G16B16_SFLOAT;
+				case DataType::FLOAT:
+					return VK_FORMAT_R32G32B32_SFLOAT;
+				case DataType::DOUBLE:
+					return VK_FORMAT_R64G64B64_SFLOAT;
+				default:
+					break;
+				}
+				break;
+			case 4:
+				switch (dataType)
+				{
+				case DataType::BYTE:
+					return VK_FORMAT_R8G8B8A8_SINT;
+				case DataType::UNSIGNED_BYTE:
+					return VK_FORMAT_R8G8B8A8_UINT;
+				case DataType::SHORT:
+					return VK_FORMAT_R16G16B16A16_SINT;
+				case DataType::UNSIGNED_SHORT:
+					return VK_FORMAT_R16G16B16A16_UINT;
+				case DataType::INT:
+					return VK_FORMAT_R32G32B32A32_SINT;
+				case DataType::UNSIGNED_INT:
+					return VK_FORMAT_R32G32B32A32_UINT;
+				case DataType::FLOAT_HALF:
+					return VK_FORMAT_R16G16B16A16_SFLOAT;
+				case DataType::FLOAT:
+					return VK_FORMAT_R32G32B32A32_SFLOAT;
+				case DataType::DOUBLE:
+					return VK_FORMAT_R64G64B64A64_SFLOAT;
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
+			}
+		}
+		THROW("failed to faind appropriate format");
+	}
+
 } // namespace Shit

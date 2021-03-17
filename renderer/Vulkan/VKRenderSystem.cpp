@@ -113,9 +113,9 @@ namespace Shit
 			NULL,
 			0, //must
 			&appInfo,
-			layers.size(),
+			static_cast<uint32_t>(layers.size()),
 			layers.data(),
-			extensionNames.size(),
+			static_cast<uint32_t>(extensionNames.size()),
 			extensionNames.data()};
 		if (vkCreateInstance(&instanceInfo, 0, &vk_instance) != VK_SUCCESS)
 			THROW("create instance failed");

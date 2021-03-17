@@ -17,10 +17,15 @@
 #include <vulkan/vulkan_win32.h>
 #endif
 
-constexpr char *LAYER_VALIDATION_KHRONOS_validation = "VK_LAYER_KHRONOS_validation";
+#define LAYER_VALIDATION_KHRONOS_validation "VK_LAYER_KHRONOS_validation"
+#define CHECK_VK_RESULT(res) \
+	if (res != VK_SUCCESS)   \
+	THROW(#res " failed")
 
 namespace Shit
 {
+	class VKDevice;
+
 	extern VkInstance vk_instance;
 
 	static inline void destroyVkSurface(VkSurfaceKHR surface)
@@ -66,6 +71,18 @@ namespace Shit
 		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 	}
 
+	VkSemaphoreType Map(SemaphoreType type);
+	VkFenceCreateFlags Map(FenceCreateFlagBits flags);
+	VkDynamicState Map(DynamicState state);
+	VkColorComponentFlags Map(ColorComponentFlagBits flag);
+	VkBlendOp Map(BlendOp op);
+	VkBlendFactor Map(BlendFactor factor);
+	VkLogicOp Map(LogicOp op);
+	VkStencilOp Map(StencilOp op);
+	VkFrontFace Map(FrontFace face);
+	VkCullModeFlags Map(CullMode cullmode);
+	VkPolygonMode Map(PolygonMode mode);
+	VkPrimitiveTopology Map(PrimitiveTopology topology);
 	VkCommandBufferResetFlags Map(CommandBufferResetFlatBits flag);
 	VkIndexType Map(IndexType type);
 	VkSubpassContents Map(SubpassContents contents);
@@ -89,9 +106,12 @@ namespace Shit
 	VkBufferUsageFlags Map(BufferUsageFlagBits flag);
 	VkMemoryPropertyFlags Map(MemoryPropertyFlagBits flag);
 	VkFormat Map(ShitFormat format);
+	ShitFormat Map(VkFormat format);
 	VkColorSpaceKHR Map(ColorSpace colorSpace);
+	ColorSpace Map(VkColorSpaceKHR colorSpace);
 	VkPresentModeKHR Map(PresentMode mode);
 	VkCommandBufferLevel Map(CommandBufferLevel level);
 	VkQueueFlags Map(QueueFlagBits flag);
 	VkImageAspectFlags GetImageAspectFromFormat(ShitFormat format);
+	VkFormat GetFormat(DataType dataType, uint32_t components, bool normalized);
 }

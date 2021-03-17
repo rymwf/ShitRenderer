@@ -37,10 +37,7 @@ namespace Shit
 	{
 	protected:
 		GraphicsPipelineCreateInfo mCreateInfo;
-
-		GraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) : mCreateInfo(createInfo)
-		{
-		}
+		GraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) : mCreateInfo(createInfo) {}
 
 	public:
 		virtual ~GraphicsPipeline() {}
@@ -52,6 +49,15 @@ namespace Shit
 
 	class ComputePipeline : public virtual Pipeline
 	{
+	protected:
+		ComputePipelineCreateInfo mCreateInfo;
+		ComputePipeline(const ComputePipelineCreateInfo &createInfo) : mCreateInfo(createInfo) {}
+
 	public:
+		virtual ~ComputePipeline() {}
+		constexpr const ComputePipelineCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 }

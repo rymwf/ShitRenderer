@@ -7,21 +7,62 @@
  * @copyright Copyright (c) 2021
  * 
  */
+#include <renderer/ShitWindow.h>
 #include "VKSwapchain.h"
 #include "VKSemaphore.h"
 #include "VKFence.h"
+#include "VKDevice.h"
+#include "VKSurface.h"
+#include "VKImage.h"
+
 namespace Shit
 {
-	VKSwapchain::VKSwapchain(
-		VkDevice device,
-		const SwapchainCreateInfo &createInfo,
-		VkSurfaceKHR surface,
-		VkSurfaceFormatKHR surfaceFormat,
-		VkPresentModeKHR presentMode,
-		QueueFamilyIndex presentQueueFamilyIndex)
-		: Swapchain(createInfo), mDevice(device)
+	VKSwapchain::~VKSwapchain()
 	{
-		mPresentQueueFamilyIndex = presentQueueFamilyIndex;
+		vkDestroySwapchainKHR(mpDevice->GetHandle(), mHandle, nullptr);
+	}
+	VKSwapchain::VKSwapchain(Device *pDevice, ShitWindow *pWindow, const SwapchainCreateInfo &createInfo)
+		: Swapchain(createInfo), mpDevice(static_cast<VKDevice *>(pDevice))
+	{
+		VkSurfaceKHR surface = static_cast<const VKSurface *>(pWindow->GetSurfacePtr())->GetHandle();
+
+		auto presentQueueFamilyIndex = pDevice->GetPresentQueueFamilyIndex(pWindow);
+
+		if (!presentQueueFamilyIndex.has_value())
+			THROW("current device do not support present to surface");
+
+		//set format
+		std::vector<VkSurfaceFormatKHR> surfaceFormats;
+		VK::querySurfaceFormats(mpDevice->GetPhysicalDevice(), surface, surfaceFormats);
+
+		VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+
+		VkFormat format = Map(createInfo.format);
+		VkColorSpaceKHR colorSpace = Map(createInfo.colorSpace);
+		//change to srgba8
+		for (auto &&e : surfaceFormats)
+		{
+			if (e.format == format && e.colorSpace == colorSpace)
+			{
+				surfaceFormat = e;
+				break;
+			}
+		}
+		LOG_VAR(surfaceFormat.format);
+		LOG_VAR(surfaceFormat.colorSpace);
+
+		std::vector<VkPresentModeKHR> presentModes;
+		VK::querySurfacePresentModes(mpDevice->GetPhysicalDevice(), surface, presentModes);
+		VkPresentModeKHR presentMode;
+		auto dstmode = Map(createInfo.presentMode);
+		for (auto &&e : presentModes)
+		{
+			if (dstmode == e)
+			{
+				presentMode = e;
+				break;
+			}
+		}
 
 		VkSwapchainCreateInfoKHR swapchainInfo{
 			VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -44,25 +85,26 @@ namespace Shit
 			VK_TRUE,
 			VK_NULL_HANDLE};
 
-		if (vkCreateSwapchainKHR(mDevice, &swapchainInfo, nullptr, &mHandle) != VK_SUCCESS)
-			THROW("failed to create swapchain");
+		CHECK_VK_RESULT(vkCreateSwapchainKHR(mpDevice->GetHandle(), &swapchainInfo, nullptr, &mHandle));
 
 		uint32_t swapchainImageCount;
-		vkGetSwapchainImagesKHR(mDevice, mHandle, &swapchainImageCount, nullptr);
+		vkGetSwapchainImagesKHR(mpDevice->GetHandle(), mHandle, &swapchainImageCount, nullptr);
 		LOG_VAR(swapchainImageCount);
 		std::vector<VkImage> swapchainImages;
 		swapchainImages.resize(swapchainImageCount);
-		vkGetSwapchainImagesKHR(mDevice, mHandle, &swapchainImageCount, swapchainImages.data());
+		vkGetSwapchainImagesKHR(mpDevice->GetHandle(), mHandle, &swapchainImageCount, swapchainImages.data());
 		for (auto e : swapchainImages)
 		{
-			mImages.emplace_back(std::make_unique<VKImage>(mDevice, e, true));
+			mImages.emplace_back(std::make_unique<VKImage>(mpDevice->GetHandle(), e, true));
 		}
 	}
-	void VKSwapchain::GetNextImage(const GetNextImageInfo &info, uint32_t &index) const
+	uint32_t VKSwapchain::GetNextImage(const GetNextImageInfo &info)
 	{
-		vkAcquireNextImageKHR(mDevice, mHandle, info.timeout,
-							  info.pSemaphore ? static_cast<VKSemaphore *>(info.pSemaphore)->GetHandle() : VK_NULL_HANDLE,
-							  info.pFence ? static_cast<VKFence *>(info.pFence)->GetHandle() : VK_NULL_HANDLE,
-							  &index);
+		uint32_t ret;
+		CHECK_VK_RESULT(vkAcquireNextImageKHR(mpDevice->GetHandle(), mHandle, info.timeout,
+											  info.pSemaphore ? static_cast<VKSemaphore *>(info.pSemaphore)->GetHandle() : VK_NULL_HANDLE,
+											  info.pFence ? static_cast<VKFence *>(info.pFence)->GetHandle() : VK_NULL_HANDLE,
+											  &ret));
+		return ret;
 	}
 } // namespace Shit

@@ -10,4 +10,42 @@
 
 #pragma once
 
+#include <string>
+#include <memory>
+#include <unordered_set>
+#include <vector>
+#include <stdexcept>
+#include <optional>
+#include <stack>
+#include <utility>
+#include <array>
+#include <unordered_map>
+#include <functional>
+#include <type_traits>
+#include <variant>
+#include <algorithm>
+#include <execution>
+#include <sstream>
 
+namespace Shit
+{
+	template <class T>
+	void RemoveFromUniqueVector(std::vector<std::unique_ptr<T>> &container, const T *entry)
+	{
+		if (entry)
+		{
+#if __cplusplus >= 201703L
+			auto &&it = std::find_if(std::execution::par_unseq, container.begin(), container.end(), [entry](auto &&e) {
+				return e.get() == entry;
+			});
+#else
+			auto &&it = std::find_if(container.begin(), container.end(), [entry](auto &&e) {
+				return e.get() == entry;
+			});
+#endif
+			if (it != container.end())
+				container.erase(it);
+		}
+	}
+
+} // namespace Shit

@@ -50,11 +50,11 @@ namespace Shit
 		{
 			mpSwapchain = pSwapchain;
 		}
-		Surface *GetSurface() const
+		constexpr const Surface *GetSurfacePtr() const
 		{
 			return mpSurface;
 		}
-		Swapchain *GetSwapchain() const
+		constexpr const Swapchain *GetSwapchainPtr() const
 		{
 			return mpSwapchain;
 		}

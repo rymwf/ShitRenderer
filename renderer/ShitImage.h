@@ -35,6 +35,10 @@ namespace Shit
 
 	public:
 		virtual ~ImageView() {}
+		constexpr const ImageViewCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 
 }

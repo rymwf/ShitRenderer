@@ -10,18 +10,23 @@
 #pragma once
 #include <renderer/ShitQueue.h>
 #include "GLPrerequisites.h"
+
 namespace Shit
 {
 	class GLQueue final : public Queue
 	{
-
-		GLStateManager *mStateManager;
+		GLStateManager *mpStateManager;
+		Device *mpDevice;
 
 	public:
-		GLQueue(GLStateManager *stateManager, const QueueCreateInfo &createInfo)
-			: Queue(createInfo), mStateManager(stateManager) {}
-		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) override
+		GLQueue(Device *pDevice, GLStateManager *pStateManager, const QueueCreateInfo &createInfo)
+			: Queue(createInfo), mpStateManager(pStateManager), mpDevice(pDevice) {}
+
+		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *pFence) override;
+		void Present(const PresentInfo &presentInfo) override;
+		void WaitIdle() override
 		{
+			glFinish();
 		}
 	};
 } // namespace Shit

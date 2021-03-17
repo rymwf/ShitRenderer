@@ -8,20 +8,8 @@
  * 
  */
 #pragma once
-#include <string>
-#include <memory>
-#include <unordered_set>
-#include <vector>
-#include <stdexcept>
-#include <optional>
-#include <stack>
-#include <utility>
-#include <array>
-#include <unordered_map>
-#include <functional>
-#include <type_traits>
-#include <variant>
 
+#include "ShitUtility.h"
 #include "ShitEnum.h"
 #include "config.h"
 
@@ -81,6 +69,7 @@ namespace Shit
 	class PipelineLayout;
 	class Framebuffer;
 	class Pipeline;
+	class VertexArray;
 
 	//common object types
 	struct Offset2D
@@ -144,6 +133,12 @@ namespace Shit
 	{
 	};
 
+	struct WindowPixelFormat
+	{
+		ShitFormat format;
+		ColorSpace colorSpace;
+	};
+
 	struct SwapchainCreateInfo
 	{
 		uint32_t minImageCount;
@@ -172,7 +167,6 @@ namespace Shit
 		const char *entryName;
 		SpecializationInfo specializationInfo;
 	};
-
 	struct VertexAttributeDescription
 	{
 		uint32_t location;	 //location in shader
@@ -185,7 +179,7 @@ namespace Shit
 
 	struct VertexBindingDescription
 	{
-		uint32_t binding; //index in given buffers
+		//uint32_t binding; //index in given buffers, binding must be equal to the given buffer index
 		uint32_t stride;
 		uint32_t divisor; //attributes advance once per divior instances,when 0, advance per vertex
 	};
@@ -195,7 +189,6 @@ namespace Shit
 		std::vector<VertexBindingDescription> vertexBindingDescriptions;
 		std::vector<VertexAttributeDescription> vertexAttributeDescriptions;
 	};
-
 	struct Viewport
 	{
 		float x;
@@ -205,20 +198,104 @@ namespace Shit
 		float minDepth;
 		float maxDepth;
 	};
+	struct PipelineInputAssemblyStateCreateInfo
+	{
+		PrimitiveTopology topology;
+		bool primitiveRestartEnable;
+	};
 	struct PipelineViewportStateCreateInfo
 	{
 		std::vector<Viewport> viewports;
 		std::vector<Rect2D> scissors;
 	};
+	struct PipelineTessellationStateCreateInfo
+	{
+		uint32_t patchControlPoints;
+	};
+	struct PipelineRasterizationStateCreateInfo
+	{
+		bool depthClampEnable;
+		bool rasterizerDiscardEnbale;
+		PolygonMode polygonMode{PolygonMode::FILL};
+		CullMode cullMode{CullMode::BACK};
+		FrontFace frontFace{FrontFace::COUNTER_CLOCKWISE};
+		bool depthBiasEnable;
+		float depthBiasContantFactor;
+		float depthBiasClamp;
+		float depthBiasSlopeFactor;
+		float lineWidth{1.f};
+	};
+	struct PipelineMultisampleStateCreateInfo
+	{
+		SampleCountFlagBits rasterizationSamples{SampleCountFlagBits::BIT_1};
+		bool sampleShadingEnable;
+		float minSampleShading;
+		const uint32_t *pSampleMask; //array size is sampleCount
+		bool alphaToCoverageEnable;
+		bool alphaToOneEnable;
+	};
+	struct StencilOpState
+	{
+		StencilOp failOp;
+		StencilOp passOp;
+		StencilOp depthFailOp;
+		CompareOp compareOp;
+		uint32_t compareMask;
+		uint32_t writeMask;
+		uint32_t reference;
+	};
+	struct PipelineDepthStencilStateCreateInfo
+	{
+		bool depthTestEnable;
+		bool depthWriteEnable;
+		CompareOp depthCompareOp;
+		bool depthBoundsTestEnable;
+		bool stencilTestEnable;
+		StencilOpState front;
+		StencilOpState back;
+		float minDepthBounds;
+		float maxDepthBounds;
+	};
+	struct PipelineColorBlendAttachmentState
+	{
+		bool blendEnable;
+		BlendFactor srcColorBlendFactor;
+		BlendFactor dstColorBlendFactor;
+		BlendOp colorBlendOp;
+		BlendFactor srcAlphaBlendFactor;
+		BlendFactor dstAlphaBlendFactor;
+		BlendOp alphaBlendOp;
+		ColorComponentFlagBits colorWriteMask;
+	};
+	struct PipelineColorBlendStateCreateInfo
+	{
+		bool logicOpEnable;
+		LogicOp logicOp;
+		std::vector<PipelineColorBlendAttachmentState> attachments;
+		std::array<float, 4> blendConstants;
+	};
+	struct PipelineDynamicStateCreateInfo
+	{
+		std::vector<DynamicState> dynamicStates;
+	};
 	struct GraphicsPipelineCreateInfo
 	{
 		std::vector<PipelineShaderStageCreateInfo> stages;
 		VertexInputStateCreateInfo vertexInputState;
-		PipelineViewportStateCreateInfo viewport;
-
+		PipelineInputAssemblyStateCreateInfo inputAssemblyState;
+		PipelineViewportStateCreateInfo viewportState;
+		PipelineTessellationStateCreateInfo tessellationState;
+		PipelineRasterizationStateCreateInfo rasterizationState;
+		PipelineMultisampleStateCreateInfo multisampleState;
+		PipelineDepthStencilStateCreateInfo depthStencilState;
+		PipelineColorBlendStateCreateInfo colorBlendState;
+		PipelineDynamicStateCreateInfo dynamicState;
 		PipelineLayout *pLayout;
 		RenderPass *pRenderPass;
 		uint32_t subpass;
+	};
+	struct ComputePipelineCreateInfo
+	{
 	};
 	struct BufferCreateInfo
 	{
@@ -256,10 +333,12 @@ namespace Shit
 
 	struct FenceCreateInfo
 	{
+		FenceCreateFlagBits flags;
 	};
 
 	struct SemaphoreCreateInfo
 	{
+		//		SemaphoreType type;
 	};
 
 	struct ImageCreateInfo
@@ -271,8 +350,8 @@ namespace Shit
 		uint32_t mipLevels;
 		uint32_t arrayLayers;
 		SampleCountFlagBits samples;
-		ImageTiling tiling;			   //no use for opengl
-		ImageUsageFlagBits usageFlags; //seems to be meaningless 
+		ImageTiling tiling; //no use for opengl
+		ImageUsageFlagBits usageFlags;
 		MemoryPropertyFlagBits memoryPropertyFlags;
 	};
 
@@ -322,7 +401,8 @@ namespace Shit
 	{
 		Buffer *pSrcBuffer;
 		Buffer *pDstBuffer;
-		std::vector<BufferCopy> regions;
+		uint32_t regionCount;
+		BufferCopy *pRegions;
 	};
 
 	struct ImageSubresourceLayer
@@ -332,7 +412,8 @@ namespace Shit
 		uint32_t layerCount;
 	};
 
-	struct ImageCopy{
+	struct ImageCopy
+	{
 		ImageSubresourceLayer srcSubresource;
 		Offset3D srcOffset;
 		ImageSubresourceLayer dstSubresource;
@@ -342,9 +423,10 @@ namespace Shit
 
 	struct CopyImageInfo
 	{
-		Image* pSrcImage;
-		Image* pDstImage;
-		std::vector<ImageCopy> regions;
+		Image *pSrcImage;
+		Image *pDstImage;
+		uint32_t regionCount;
+		ImageCopy *pRegions;
 	};
 
 	struct BufferImageCopy
@@ -360,13 +442,15 @@ namespace Shit
 	{
 		Buffer *pSrcBuffer;
 		Image *pDstImage;
-		std::vector<BufferImageCopy> regions;
+		uint32_t regionCount;
+		BufferImageCopy *pRegions;
 	};
 	struct CopyImageToBufferInfo
 	{
 		Image *pSrcImage;
 		Buffer *pDstBuffer;
-		std::vector<BufferImageCopy> regions;
+		uint32_t regionCount;
+		BufferImageCopy *pRegions;
 	};
 	struct ImageBlit
 	{
@@ -379,7 +463,8 @@ namespace Shit
 	{
 		Image *pSrcImage;
 		Image *pDstImage;
-		std::vector<ImageBlit> regions;
+		uint32_t regionCount;
+		ImageBlit *pRegions;
 		Filter filter;
 	};
 
@@ -414,7 +499,7 @@ namespace Shit
 
 	struct ImageViewCreateInfo
 	{
-		Image* pImage;
+		Image *pImage;
 		ImageViewType viewType;
 		ShitFormat format;
 		ComponentMapping components;
@@ -423,19 +508,19 @@ namespace Shit
 
 	struct DescriptorImageInfo
 	{
-		Sampler* pSampler;
-		ImageView* pImageView;
+		Sampler *pSampler;
+		ImageView *pImageView;
 	};
 	struct DescriptorBufferInfo
 	{
-		Buffer* pBuffer;
+		Buffer *pBuffer;
 		uint32_t offset;
 		uint32_t range;
 	};
 
 	struct WriteDescriptorSet
 	{
-		DescriptorSet* pDstSet;
+		DescriptorSet *pDstSet;
 		uint32_t dstBinding;
 		uint32_t dstArrayElement;
 		DescriptorType descriptorType;
@@ -460,7 +545,7 @@ namespace Shit
 
 	struct PipelineLayoutCreateInfo
 	{
-		std::vector<DescriptorSetLayout*> setLayouts; 
+		std::vector<DescriptorSetLayout *> setLayouts;
 		std::vector<PushConstantRange> pushConstantRanges;
 	};
 
@@ -521,14 +606,12 @@ namespace Shit
 		std::optional<AttachmentReference> resolveAttachment;
 		std::optional<AttachmentReference> depthStencilAttachment;
 	};
-
 	struct RenderPassCreateInfo
 	{
 		std::vector<AttachmentDescription> attachments;
 		std::vector<SubpassDescription> subpasses;
 		//	std::vector<SubpassDependencies> spSubpassDependencies;	//TODO:spSubpassDependencies
 	};
-
 	struct FramebufferCreateInfo
 	{
 		RenderPass *pRenderPass;
@@ -541,17 +624,16 @@ namespace Shit
 		RenderPass *pRenderPass;
 		Framebuffer *pFramebuffer;
 		Rect2D renderArea;
-		std::vector<ClearValue> clearValues;
+		uint32_t clearValueCount;
+		ClearValue *pClearValues;
+		SubpassContents contents; //first subpass provide method
 	};
-	struct SubpassBeginInfo
-	{
-		SubpassContents contents;
-	};
+
 	struct GetNextImageInfo
 	{
 		uint64_t timeout;
-		Semaphore* pSemaphore;	//must be unsigal, will be signaled after operation
-		Fence* pFence;
+		Semaphore *pSemaphore; //must be unsigal, will be signaled after operation
+		Fence *pFence;
 	};
 	struct SubmitInfo
 	{
@@ -561,15 +643,16 @@ namespace Shit
 	};
 	struct PresentInfo
 	{
-		std::vector<Semaphore*> waitSemaphores;
-		std::vector<Swapchain*> swapchains;
+		std::vector<Semaphore *> waitSemaphores;
+		std::vector<Swapchain *> swapchains;
 		std::vector<uint32_t> imageIndices;
 	};
 	struct BindVertexBufferInfo
 	{
 		uint32_t firstBinding;
-		std::vector<Buffer *> buffers;
-		std::vector<uint64_t> offsets;
+		uint32_t bindingCount;
+		Buffer *pBuffers;
+		uint64_t *pOffsets;
 	};
 	struct BindIndexBufferInfo
 	{
@@ -577,5 +660,14 @@ namespace Shit
 		uint64_t offset;
 		IndexType indexType;
 	};
-
+	struct BindPipelineInfo
+	{
+		PipelineBindPoint bindPoint;
+		Pipeline *pPipeline;
+	};
+	struct ExecuteSecondaryCommandBufferInfo
+	{
+		uint32_t count;
+		CommandBuffer *pCommandBuffers;
+	};
 } // namespace Shit

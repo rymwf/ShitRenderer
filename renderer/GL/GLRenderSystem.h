@@ -9,9 +9,7 @@
  */
 #pragma once
 #include <renderer/ShitRenderSystem.h>
-
 #include "GLPrerequisites.h"
-#include "GLDevice.h"
 
 namespace Shit
 {
@@ -29,14 +27,6 @@ namespace Shit
 
 		void EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices) override;
 
-		Device *CreateDevice(const DeviceCreateInfo &createInfo) override
-		{
-#ifdef _WIN32
-			mDevices.emplace_back(std::make_unique<GLDeviceWin32>(reinterpret_cast<ShitWindow *>(createInfo.physicalDevice.pPhysicalDevice), mCreateInfo));
-#else
-			static_assert(0, "GL CreateDevice is not implemented yet");
-#endif
-			return mDevices.back().get();
-		};
+		Device *CreateDevice(const DeviceCreateInfo &createInfo) override;
 	};
 }

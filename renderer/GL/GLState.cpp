@@ -28,7 +28,7 @@ namespace Shit
 		{GL_UNIFORM_BUFFER, 14},
 	};
 
-	void GLStateManager::BindDrawBuffer(GLuint framebuffer)
+	void GLStateManager::BindDrawFramebuffer(GLuint framebuffer)
 	{
 		if (mDrawBufferState.curDrawBuffer != framebuffer)
 		{
@@ -36,18 +36,18 @@ namespace Shit
 			mDrawBufferState.curDrawBuffer = framebuffer;
 		}
 	}
-	void GLStateManager::PushDrawBuffer(GLuint framebuffer)
+	void GLStateManager::PushDrawFramebuffer(GLuint framebuffer)
 	{
 		mDrawBufferState.drawBufferStack.emplace(mDrawBufferState.curDrawBuffer);
-		BindDrawBuffer(framebuffer);
+		BindDrawFramebuffer(framebuffer);
 	}
-	void GLStateManager::PopDrawBuffer()
+	void GLStateManager::PopDrawFramebuffer()
 	{
-		BindDrawBuffer(mDrawBufferState.drawBufferStack.top());
+		BindDrawFramebuffer(mDrawBufferState.drawBufferStack.top());
 		mDrawBufferState.drawBufferStack.pop();
 	}
 
-	void GLStateManager::BindReadBuffer(GLuint framebuffer)
+	void GLStateManager::BindReadFramebuffer(GLuint framebuffer)
 	{
 		if (mReadBufferState.curReadBuffer != framebuffer)
 		{
@@ -55,14 +55,14 @@ namespace Shit
 			mReadBufferState.curReadBuffer = framebuffer;
 		}
 	}
-	void GLStateManager::PushReadBuffer(GLuint framebuffer)
+	void GLStateManager::PushReadFramebuffer(GLuint framebuffer)
 	{
 		mReadBufferState.readBufferStack.emplace(mReadBufferState.curReadBuffer);
-		BindReadBuffer(framebuffer);
+		BindReadFramebuffer(framebuffer);
 	}
-	void GLStateManager::PopReadBuffer()
+	void GLStateManager::PopReadFramebuffer()
 	{
-		BindReadBuffer(mReadBufferState.readBufferStack.top());
+		BindReadFramebuffer(mReadBufferState.readBufferStack.top());
 		mReadBufferState.readBufferStack.pop();
 	}
 
@@ -130,7 +130,7 @@ namespace Shit
 				e = 0;
 		}
 	}
-	void GLStateManager::BindVAO(GLuint vao)
+	void GLStateManager::BindVertexArray(GLuint vao)
 	{
 		if (mVAOState.curVAO != vao)
 		{
@@ -138,17 +138,17 @@ namespace Shit
 			mVAOState.curVAO = vao;
 		}
 	}
-	void GLStateManager::PushVAO(GLuint vao)
+	void GLStateManager::PushVertexArray(GLuint vao)
 	{
 		mVAOState.vaoStack.emplace(mVAOState.curVAO);
-		BindVAO(vao);
+		BindVertexArray(vao);
 	}
-	void GLStateManager::PopVAO()
+	void GLStateManager::PopVertexArray()
 	{
-		BindVAO(mVAOState.vaoStack.top());
+		BindVertexArray(mVAOState.vaoStack.top());
 		mVAOState.vaoStack.pop();
 	}
-	void GLStateManager::NotifyReleasedVAO(GLuint vao)
+	void GLStateManager::NotifyReleasedVertexArray(GLuint vao)
 	{
 		if (mVAOState.curVAO == vao)
 			mVAOState.curVAO = 0;

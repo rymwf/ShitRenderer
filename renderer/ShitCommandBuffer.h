@@ -26,14 +26,15 @@ namespace Shit
 			return &mCreateInfo;
 		}
 
-		virtual void Reset(CommandBufferResetFlatBits flags) {}
-		virtual void Begin(const CommandBufferBeginInfo &beginInfo) {}
-		virtual void End() {}
-		virtual void ExecuteSecondaryCommandBuffer(const std::vector<CommandBuffer *> &secondaryCommandBuffers) {}
-		virtual void BeginRenderPass(const RenderPassBeginInfo &beginInfo, const SubpassBeginInfo &subpassBeginInfo) {}
-		virtual void EndRenderPass() {}
-		virtual void NextSubpass(const SubpassBeginInfo &subpassBeginInfo) {}
-		virtual void BindPipeline(PipelineBindPoint bindPoint,Pipeline* pPipeline){}
+		virtual void ExecuteSecondaryCommandBuffer(const ExecuteSecondaryCommandBufferInfo &secondaryCommandBufferInfo) = 0;
+
+		virtual void Reset(CommandBufferResetFlatBits flags) = 0;
+		virtual void Begin(const CommandBufferBeginInfo &beginInfo) = 0;
+		virtual void End() = 0;
+		virtual void BeginRenderPass(const RenderPassBeginInfo &beginInfo) = 0;
+		virtual void EndRenderPass() = 0;
+		virtual void NextSubpass(SubpassContents subpassContents) = 0;
+		virtual void BindPipeline(const BindPipelineInfo &info) = 0;
 
 		virtual void CopyBuffer(const CopyBufferInfo &copyInfo) = 0;
 		virtual void CopyImage(const CopyImageInfo &copyInfo) = 0;
@@ -41,14 +42,14 @@ namespace Shit
 		virtual void CopyImageToBuffer(const CopyImageToBufferInfo &copyInfo) = 0;
 		virtual void BlitImage(const BlitImageInfo &blitInfo) = 0;
 
-		virtual void BindVertexBuffer(const BindVertexBufferInfo& info){};
-		virtual void BindIndexBuffer(const BindIndexBufferInfo& info){}
+		virtual void BindVertexBuffer(const BindVertexBufferInfo &info) = 0;
+		virtual void BindIndexBuffer(const BindIndexBufferInfo &info) = 0;
 
-		virtual void Draw(const DrawIndirectCommand& info){};
-		virtual void DrawIndirect(const DrawIndirectInfo &info) {}
-		virtual void DrawIndirectCount(const DrawIndirectCountInfo &info) {}
-		virtual void DrawIndexed(const DrawIndexedIndirectCommand &info) {}
-		virtual void DrawIndexedIndirect(const DrawIndirectInfo &info){}
-		virtual void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) {}
+		virtual void Draw(const DrawIndirectCommand &info) = 0;
+		virtual void DrawIndirect(const DrawIndirectInfo &info) = 0;
+		virtual void DrawIndirectCount(const DrawIndirectCountInfo &info) = 0;
+		virtual void DrawIndexed(const DrawIndexedIndirectCommand &info) = 0;
+		virtual void DrawIndexedIndirect(const DrawIndirectInfo &info) = 0;
+		virtual void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) = 0;
 	};
 }

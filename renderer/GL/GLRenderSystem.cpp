@@ -8,7 +8,8 @@
  * 
  */
 #include "GLRenderSystem.h"
-#include <gl/wglext.h>
+#include "GLDevice.h"
+
 namespace Shit
 {
 
@@ -25,4 +26,14 @@ namespace Shit
 	{
 		LOG("currently GL do not support select gpus");
 	}
+
+	Device *GLRenderSystem::CreateDevice(const DeviceCreateInfo &createInfo)
+	{
+#ifdef _WIN32
+		mDevices.emplace_back(std::make_unique<GLDeviceWin32>(reinterpret_cast<ShitWindow *>(createInfo.physicalDevice.pPhysicalDevice), mCreateInfo));
+#else
+		static_assert(0, "GL CreateDevice is not implemented yet");
+#endif
+		return mDevices.back().get();
+	};
 } // namespace Shit

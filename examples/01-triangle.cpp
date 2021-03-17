@@ -9,8 +9,8 @@ const char *fragShaderName = "01.frag.spv";
 std::string vertShaderPath;
 std::string fragShaderPath;
 
-constexpr Shit::RendererVersion rendererVersion{Shit::RendererVersion::VULKAN};
-//constexpr Shit::RendererVersion rendererVersion{Shit::RendererVersion::GL};
+//constexpr Shit::RendererVersion rendererVersion{Shit::RendererVersion::VULKAN};
+constexpr Shit::RendererVersion rendererVersion{Shit::RendererVersion::GL};
 
 class Hello
 {
@@ -42,8 +42,8 @@ class Hello
 	RenderPass *renderPass;
 	Pipeline *pipeline;
 
-	Buffer* drawIndirectCmdsBuffer;
-	Buffer* drawCountBuffer;
+	Buffer *drawIndirectCmdsBuffer;
+	Buffer *drawCountBuffer;
 
 public:
 	void initRenderSystem()
@@ -95,10 +95,10 @@ public:
 			0,
 		};
 		graphicsQueue = device->CreateDeviceQueue(queueCreateInfo);
+		createSwapchains();
+
 		createShaders();
 		createDescriptors();
-
-		createSwapchains();
 		createRenderPasses();
 		createFramebuffers();
 		createPipeline();
@@ -147,7 +147,7 @@ public:
 		GetNextImageInfo nextImageInfo{
 			UINT64_MAX,
 			imageAvailableSemaphore};
-		swapchain->GetNextImage(nextImageInfo, imageIndex);
+		imageIndex = swapchain->GetNextImage(nextImageInfo);
 
 		std::vector<SubmitInfo> submitInfos{
 			{{imageAvailableSemaphore},
@@ -265,12 +265,44 @@ public:
 				"main",
 			},
 		};
+		VertexInputStateCreateInfo vertexInputState{};
+		PipelineInputAssemblyStateCreateInfo inputAssemblyState{
+			PrimitiveTopology::TRIANGLE_LIST,
+		};
 		PipelineViewportStateCreateInfo viewportStateCreateInfo{
 			{{0, 0, 800, 600, 0, 1}}, {{{0, 0}, {800, 600}}}};
+
+		PipelineTessellationStateCreateInfo tessellationState{};
+		PipelineRasterizationStateCreateInfo rasterizationState{
+			false,
+			false,
+			PolygonMode::FILL,
+			CullMode::NONE,
+			FrontFace::COUNTER_CLOCKWISE,
+			false,
+		};
+		PipelineMultisampleStateCreateInfo multisampleState{};
+		PipelineDepthStencilStateCreateInfo depthStencilState{};
+
+		PipelineColorBlendAttachmentState colorBlendAttachmentstate{};
+		colorBlendAttachmentstate.colorWriteMask = ColorComponentFlagBits::R_BIT | ColorComponentFlagBits::G_BIT | ColorComponentFlagBits::B_BIT | ColorComponentFlagBits::A_BIT;
+		PipelineColorBlendStateCreateInfo colorBlendState{
+			false,
+			{},
+			{std::move(colorBlendAttachmentstate)},
+		};
+
 		GraphicsPipelineCreateInfo pipelineCreateInfo{
 			std::move(shaderStageCreateInfos),
-			{},
+			std::move(vertexInputState),
+			std::move(inputAssemblyState),
 			std::move(viewportStateCreateInfo),
+			std::move(tessellationState),
+			std::move(rasterizationState),
+			std::move(multisampleState),
+			std::move(depthStencilState),
+			std::move(colorBlendState),
+			{},
 			pipelineLayout,
 			renderPass,
 			0};
@@ -296,45 +328,56 @@ public:
 	}
 	void createCommandBuffers()
 	{
-		int count = swapchainImageViews.size();
+		uint32_t count = swapchainImageViews.size();
 		CommandBufferCreateInfo cmdBufferCreateInfo{
 			CommandBufferLevel::PRIMARY, count};
 		commandPool->CreateCommandBuffers(cmdBufferCreateInfo, commandBuffers);
 
 		CommandBufferBeginInfo cmdBufferBeginInfo{};
+
+		std::vector<ClearValue> clearValues{std::array<float, 4>{0.8f, 0.2f, 0.6f, 1.f}};
+
 		RenderPassBeginInfo renderPassBeginInfo{
 			renderPass,
 			nullptr,
 			Rect2D{
 				{},
 				swapchain->GetCreateInfoPtr()->imageExtent},
-			{ClearValue{
-				std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f}}}};
-		SubpassBeginInfo subpassBeginInfo{
+			static_cast<uint32_t>(clearValues.size()),
+			clearValues.data(),
 			SubpassContents::INLINE};
 
-		for (int i = 0; i < count; ++i)
+		for (uint32_t i = 0; i < count; ++i)
 		{
 			renderPassBeginInfo.pFramebuffer = framebuffers[i];
 			commandBuffers[i]->Begin(cmdBufferBeginInfo);
-			commandBuffers[i]->BeginRenderPass(renderPassBeginInfo, subpassBeginInfo);
-			commandBuffers[i]->BindPipeline(PipelineBindPoint::GRAPHICS, pipeline);
+			commandBuffers[i]->BeginRenderPass(renderPassBeginInfo);
+			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
 
-			//DrawIndirectCountInfo drawCmdInfo{
-			//	drawIndirectCmdsBuffer,
-			//	0,
-			//	drawCountBuffer,
-			//	0,
-			//	1,
-			//	sizeof(DrawIndirectCommand)};
-			//commandBuffers[i]->DrawIndirectCount(drawCmdInfo);
+#if 1
+			DrawIndirectCommand drawIndirectCmd{3, 1, 0, 0};
+			commandBuffers[i]->Draw(drawIndirectCmd);
+#endif
+
+#if 0
+			DrawIndirectCountInfo drawCmdInfo{
+				drawIndirectCmdsBuffer,
+				0,
+				drawCountBuffer,
+				0,
+				1,
+				sizeof(DrawIndirectCommand)};
+			commandBuffers[i]->DrawIndirectCount(drawCmdInfo);
+#endif
+#if 0
 			DrawIndirectInfo drawCmdInfo{
 				drawIndirectCmdsBuffer,
 				0,
 				1,
 				sizeof(DrawIndirectCommand)};
 			commandBuffers[i]->DrawIndirect(drawCmdInfo);
-			//commandBuffers[i]->Draw({3, 1, 0, 0});
+			commandBuffers[i]->Draw({3, 1, 0, 0});
+#endif
 
 			commandBuffers[i]->EndRenderPass();
 			commandBuffers[i]->End();
@@ -372,4 +415,5 @@ int main()
 	{
 		std::cout << err.what() << std::endl;
 	}
+	std::getchar();
 }

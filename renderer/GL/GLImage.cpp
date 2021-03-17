@@ -11,10 +11,16 @@
 namespace Shit
 {
 	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo)
-		: mpStateManager(pStateManager), Image(createInfo)
+		: Image(createInfo), mpStateManager(pStateManager)
 	{
-		if (static_cast<bool>(createInfo.usageFlags & ImageUsageFlagBits::TRANSIENT_ATTACHMENT_BIT))
+		if (!static_cast<bool>(createInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT) &&
+			static_cast<bool>(createInfo.usageFlags & (ImageUsageFlagBits::COLOR_ATTACHMENT_BIT | ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+			!static_cast<bool>(createInfo.usageFlags & ImageUsageFlagBits::INPUT_ATTACHMENT_BIT) &&
+			createInfo.mipLevels == 1 &&
+			createInfo.extent.depth == 1 &&
+			createInfo.arrayLayers == 1)
 		{
+			mIsRenderbuffer = true;
 			glGenRenderbuffers(1, &mHandle);
 			mpStateManager->PushRenderbuffer(mHandle);
 			if (createInfo.samples > SampleCountFlagBits::BIT_1)
@@ -165,4 +171,73 @@ namespace Shit
 		}
 		mpStateManager->PopTexture();
 	}
+
+	//===================================================================
+
+	GLImageView::GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo)
+		: ImageView(createInfo), mpStateManger(pStateManger)
+	{
+		auto pImage=static_cast<GLImage *>(createInfo.pImage);
+		if (pImage->IsRenderbuffer())
+		{
+			mHandle = pImage->GetHandle();
+			return;
+		}
+		auto target = Map(createInfo.viewType, pImage->GetCreateInfoPtr()->samples);
+		auto externalFormat = MapInternalFormat(createInfo.format);
+		glGenTextures(1, &mHandle);
+		if (GLEW_VERSION_4_3)
+		{
+			glTextureView(mHandle,
+						  target,
+						  pImage->GetHandle(),
+						  externalFormat,
+						  createInfo.subresourceRange.baseMipLevel,
+						  createInfo.subresourceRange.levelCount,
+						  createInfo.subresourceRange.baseArrayLayer,
+						  createInfo.subresourceRange.layerCount);
+		}
+		else if (glIsExtensionSupported("GL_EXT_texture_view"))
+		{
+			glTextureViewEXT(mHandle,
+							 target,
+							 pImage->GetHandle(),
+							 externalFormat,
+							 createInfo.subresourceRange.baseMipLevel,
+							 createInfo.subresourceRange.levelCount,
+							 createInfo.subresourceRange.baseArrayLayer,
+							 createInfo.subresourceRange.layerCount);
+		}
+		else
+		{
+			THROW("texture view not supported");
+		}
+		mpStateManger->PushTexture(0, target, mHandle);
+		if (externalFormat == GL_DEPTH_STENCIL || externalFormat == GL_DEPTH_COMPONENT)
+		{
+			glTexParameteri(target, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_DEPTH_COMPONENT);
+		}
+		else if(externalFormat==GL_STENCIL_INDEX)
+		{
+			glTexParameteri(target, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+		}
+
+		GLint swizzles[4]{
+			GL_RED,
+			GL_GREEN,
+			GL_BLUE,
+			GL_ALPHA,
+		};
+		if (createInfo.components.r != ComponentSwizzle::IDENTITY)
+			swizzles[0] = Map(createInfo.components.r);
+		if (createInfo.components.g != ComponentSwizzle::IDENTITY)
+			swizzles[1] = Map(createInfo.components.g);
+		if (createInfo.components.b != ComponentSwizzle::IDENTITY)
+			swizzles[2] = Map(createInfo.components.b);
+		if (createInfo.components.a != ComponentSwizzle::IDENTITY)
+			swizzles[3] = Map(createInfo.components.a);
+		glTexParameteriv(target, GL_TEXTURE_SWIZZLE_RGBA, swizzles);
+		mpStateManger->PopTexture();
+	}
+
 } // namespace Shit

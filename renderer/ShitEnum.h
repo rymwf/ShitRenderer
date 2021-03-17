@@ -289,9 +289,9 @@ namespace Shit
 		FLOAT,
 		FLOAT_HALF,
 		DOUBLE,
-		INT_2_10_10_10_REV,
-		UNSIGNED_INT_2_10_10_10_REV,
-		UNSIGNED_INT_10F_11F_11F_REV
+		//INT_2_10_10_10_REV,
+		//UNSIGNED_INT_2_10_10_10_REV,
+		//UNSIGNED_INT_10F_11F_11F_REV
 	};
 
 	enum class ShadingLanguage
@@ -366,9 +366,9 @@ namespace Shit
 		COMPUTE_BIT = 0x00000020,
 		ALL_GRAPHICS = 0x0000001F,
 		ALL = 0x7FFFFFFF,
-		RAYGEN_BIT= 0x00000100,
-		ANY_HIT_BIT= 0x00000200,
-		CLOSEST_HIT_BIT= 0x00000400,
+		RAYGEN_BIT = 0x00000100,
+		ANY_HIT_BIT = 0x00000200,
+		CLOSEST_HIT_BIT = 0x00000400,
 		MISS_BIT = 0x00000800,
 		INTERSECTION_BIT = 0x00001000,
 		CALLABLE_BIT = 0x00002000,
@@ -435,6 +435,7 @@ namespace Shit
 	enum class ColorSpace
 	{
 		SRGB_NONLINEAR,
+		Num
 	};
 
 	enum class ShitFormat
@@ -463,8 +464,15 @@ namespace Shit
 		D24_UNORM_S8_UINT,
 		D32_SFLOAT_S8_UINT,
 		S8_UINT,
+		Num
 	};
 
+	/**
+	 * @brief Get the Format Size in bytes
+	 * 
+	 * @param format 
+	 * @return uint32_t 
+	 */
 	inline uint32_t GetFormatSize(ShitFormat format)
 	{
 		switch (format)
@@ -494,6 +502,33 @@ namespace Shit
 			return 5;
 		default:
 			return 0;
+		}
+	}
+	inline bool IsFormatNormalized(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::R8_SRGB:
+		case ShitFormat::S8_UINT:
+		case ShitFormat::RG8_SRGB:
+		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::BGR8_SRGB:
+		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::BGRA8_SRGB:
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+			return true;
+		default:
+		case ShitFormat::R8_UNORM:
+		case ShitFormat::RG8_UNORM:
+		case ShitFormat::D16_UNORM:
+		case ShitFormat::RGB8_UNORM:
+		case ShitFormat::BGR8_UNORM:
+		case ShitFormat::D24_UNORM:
+		case ShitFormat::RGBA8_UNORM:
+		case ShitFormat::BGRA8_UNORM:
+		case ShitFormat::D24_UNORM_S8_UINT:
+			return false;
 		}
 	}
 
@@ -585,7 +620,8 @@ namespace Shit
 
 	enum class ImageCreateFlagBits
 	{
-		MUTABLE_FORMAT_BIT = 0x1, //!< not used in opengl
+		//mean the format of imageview canbe different from the original, different from GL_IMMUTABLE_FORMAT_BIT
+		MUTABLE_FORMAT_BIT = 0x1,
 	};
 	ENABLE_BITMASK_OPERATORS(ImageCreateFlagBits);
 
@@ -753,10 +789,11 @@ namespace Shit
 	{
 		SUCCESS,
 		NOT_READY,
-		TIME_OUT,
+		TIMEOUT,
 		EVENT_SET,
 		EVENT_RESET,
 		INCOMPLETE,
+		SHIT_ERROR,
 	};
 	enum class SubpassContents
 	{
@@ -765,8 +802,8 @@ namespace Shit
 	};
 	enum class IndexType
 	{
-		NONE,  // Provided by VK_KHR_ray_tracing
-		UINT8, // Provided by VK_EXT_index_type_uint8
+		NONE,
+		UINT8,
 		UINT16,
 		UINT32,
 	};
@@ -775,5 +812,147 @@ namespace Shit
 		RELEASE_RESOURCES_BIT = 0x1,
 	};
 	ENABLE_BITMASK_OPERATORS(CommandBufferResetFlatBits);
-	
+
+	enum class PrimitiveTopology
+	{
+		POINT_LIST,
+		LINE_LIST,
+		LINE_STRIP,
+		TRIANGLE_LIST,
+		TRIANGLE_STRIP,
+		TRIANGLE_FAN,
+		LINE_LIST_WITH_ADJACENCY,
+		LINE_STRIP_WITH_ADJACENCY,
+		TRIANGLE_LIST_WITH_ADJACENCY,
+		TRIANGLE_STRIP_WITH_ADJACENCY,
+		PATCH_LIST
+	};
+	enum class PolygonMode
+	{
+		FILL,
+		LINE,
+		POINT,
+	};
+	enum class CullMode
+	{
+		NONE,
+		FRONT,
+		BACK,
+		FRONT_AND_BACK,
+	};
+	enum class FrontFace
+	{
+		COUNTER_CLOCKWISE,
+		CLOCKWISE,
+	};
+	enum class StencilOp
+	{
+		KEEP,
+		ZERO,
+		REPLACE,
+		INCREMENT_AND_CLAMP,
+		DECREMENT_AND_CLAMP,
+		INVERT,
+		INCREMENT_AND_WRAP,
+		DECREMENT_AND_WRAP,
+	};
+	enum class LogicOp
+	{
+		CLEAR,
+		AND,
+		AND_REVERSE,
+		COPY,
+		AND_INVERTED,
+		NO_OP,
+		XOR,
+		OR,
+		NOR,
+		EQUIVALENT,
+		INVERT,
+		OR_REVERSE,
+		COPY_INVERTED,
+		OR_INVERTED,
+		NAND,
+		SET,
+	};
+	enum class BlendFactor
+	{
+		ZERO,
+		ONE,
+		SRC_COLOR,
+		ONE_MINUS_SRC_COLOR,
+		DST_COLOR,
+		ONE_MINUS_DST_COLOR,
+		SRC_ALPHA,
+		ONE_MINUS_SRC_ALPHA,
+		DST_ALPHA,
+		ONE_MINUS_DST_ALPHA,
+		CONSTANT_COLOR,
+		ONE_MINUS_CONSTANT_COLOR,
+		CONSTANT_ALPHA,
+		ONE_MINUS_CONSTANT_ALPHA,
+		SRC_ALPHA_SATURATE,
+		SRC1_COLOR,
+		ONE_MINUS_SRC1_COLOR,
+		SRC1_ALPHA,
+		ONE_MINUS_SRC1_ALPHA,
+	};
+	enum class BlendOp
+	{
+		ADD,
+		SUBTRACT,
+		REVERSE_SUBTRACT,
+		MIN,
+		MAX,
+	};
+	enum class ColorComponentFlagBits
+	{
+		R_BIT = 0x1,
+		G_BIT = 0x2,
+		B_BIT = 0x4,
+		A_BIT = 0x8,
+	};
+	ENABLE_BITMASK_OPERATORS(ColorComponentFlagBits);
+	enum class DynamicState
+	{
+		VIEWPORT,
+		SCISSOR,
+		LINE_WIDTH,
+		DEPTH_BIAS,
+		BLEND_CONSTANTS,
+		DEPTH_BOUNDS,
+		STENCIL_COMPARE_MASK,
+		STENCIL_WRITE_MASK,
+		STENCIL_REFERENCE,
+		VIEWPORT_W_SCALING,
+		DISCARD_RECTANGLE,
+		SAMPLE_LOCATIONS,
+		VIEWPORT_SHADING_RATE_PALETTE,
+		VIEWPORT_COARSE_SAMPLE_ORDER,
+		EXCLUSIVE_SCISSOR,
+		LINE_STIPPLE,
+		CULL_MODE,
+		FRONT_FACE,
+		PRIMITIVE_TOPOLOGY,
+		VIEWPORT_WITH_COUNT,
+		SCISSOR_WITH_COUNT,
+		VERTEX_INPUT_BINDING_STRIDE,
+		DEPTH_TEST_ENABLE,
+		DEPTH_WRITE_ENABLE,
+		DEPTH_COMPARE_OP,
+		DEPTH_BOUNDS_TEST_ENABLE,
+		STENCIL_TEST_ENABLE,
+		STENCIL_OP,
+	};
+
+	enum class FenceCreateFlagBits
+	{
+		SIGNALED_BIT = 0x1
+	};
+	ENABLE_BITMASK_OPERATORS(FenceCreateFlagBits);
+	enum class SemaphoreType
+	{
+		BINARY,
+		TIMELINE,
+	};
 }

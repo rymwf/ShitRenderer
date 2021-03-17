@@ -48,6 +48,8 @@
 
 namespace Shit
 {
+	class GLDevice;
+
 	struct ShitGLVersion
 	{
 		int major;
@@ -92,9 +94,50 @@ namespace Shit
 		void listGLInfo();
 	}
 
-	GLint MapInternalFormat(ShitFormat format);
-	GLint MapExternalFormat(ShitFormat format);
+	constexpr GLenum glCapabilityArray[] = {
+		GL_BLEND,
+		//GL_CLIP_DISTANCE0,
+		GL_COLOR_LOGIC_OP,
+		GL_CULL_FACE,
+		GL_DEBUG_OUTPUT,
+		GL_DEBUG_OUTPUT_SYNCHRONOUS,
+		GL_DEPTH_CLAMP,
+		GL_DEPTH_TEST,
+		GL_DITHER,
+		GL_FRAMEBUFFER_SRGB,
+		GL_LINE_SMOOTH,
+		GL_MULTISAMPLE,
+		GL_POLYGON_OFFSET_FILL,
+		GL_POLYGON_OFFSET_LINE,
+		GL_POLYGON_OFFSET_POINT,
+		GL_POLYGON_SMOOTH,
+		GL_PRIMITIVE_RESTART,
+		GL_PRIMITIVE_RESTART_FIXED_INDEX,
+		GL_RASTERIZER_DISCARD,
+		GL_SAMPLE_ALPHA_TO_COVERAGE,
+		GL_SAMPLE_ALPHA_TO_ONE,
+		GL_SAMPLE_COVERAGE,
+		GL_SAMPLE_SHADING,
+		GL_SAMPLE_MASK,
+		GL_SCISSOR_TEST,
+		GL_STENCIL_TEST,
+		GL_TEXTURE_CUBE_MAP_SEAMLESS,
+		GL_PROGRAM_POINT_SIZE,
+	};
+
+	GLenum Map(BlendOp op);
+	GLenum Map(BlendFactor factor);
+	GLenum Map(LogicOp op);
+	GLenum Map(StencilOp op);
+	GLenum Map(FrontFace face);
+	GLenum Map(CullMode mode);
+	GLenum Map(PolygonMode mode);
+	GLenum Map(PrimitiveTopology topology);
+	GLenum Map(ComponentSwizzle swizzle);
+	GLenum MapInternalFormat(ShitFormat format);
+	GLenum MapExternalFormat(ShitFormat format);
 	GLenum Map(ShaderStageFlagBits flag);
+	GLbitfield MapShaderStageFlags(ShaderStageFlagBits flags);
 	GLenum Map(BufferUsageFlagBits flag);
 	GLenum Map(BufferMutableStorageUsage usage);
 	GLbitfield Map(BufferMapFlagBits flag);
@@ -105,5 +148,6 @@ namespace Shit
 	GLenum Map(ImageType imageType, SampleCountFlagBits sampleCountFlag);
 	GLenum Map(ImageViewType viewType, SampleCountFlagBits sampleCountFlag);
 	GLenum Map(DataType dataType);
+	GLenum Map(IndexType type);
 
 } // namespace Shit

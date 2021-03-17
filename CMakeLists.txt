@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
+project(ShitRenderer)
+find_package(GLEW CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 message("-- CMAKE_SYSTEM_INFO_FILE:" ${CMAKE_SYSTEM_INFO_FILE})
 message("-- CMAKE_SYSTEM_NAME:     " ${CMAKE_SYSTEM_NAME})
 message("-- CMAKE_SYSTEM_PROCESSOR:" ${CMAKE_SYSTEM_PROCESSOR})
@@ -10,14 +18,6 @@ message("-- CMAKE_GENERATOR:       " ${CMAKE_GENERATOR})
 message("-- CMAKE_GENERATOR_INSTANCE:" ${CMAKE_GENERATOR_INSTANCE})
 message("-- CMAKE_GENERATOR_PLATFORM:" ${CMAKE_GENERATOR_PLATFORM})
 
-project(ShitRenderer)
-find_package(GLEW CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 if (MSVC)
     # warning level 4 and all warnings as errors
     #how to deal with these warns??
@@ -26,8 +26,17 @@ if (MSVC)
 	add_compile_options(/W4)
 
 else()
-    # lots of warnings and all warnings as errors
-#    add_compile_options(-Wall -Wextra -pedantic -Werror)
+    # lots of warnings and all warnings as errors -Weffc++
+	add_compile_options(
+		-Wall 
+		-Wextra 
+		-pedantic 
+		#-Werror 
+		-Wshadow 
+		-ansi 
+		-Wno-missing-field-initializers
+		-Wnon-virtual-dtor 	
+	)
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS on)
@@ -43,15 +52,38 @@ endif()
 
 set(SHIT_OUTPUT_DIR ${CMAKE_BINARY_DIR}/bin)
 
-foreach(VAR ${CMAKE_CONFIGURATION_TYPES})
-string(TOUPPER ${VAR} VAR2)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
-endforeach()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SHIT_OUTPUT_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${SHIT_OUTPUT_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SHIT_OUTPUT_DIR})
+
 set(CMAKE_DEBUG_POSTFIX d)
 
+#foreach(VAR ${CMAKE_CONFIGURATION_TYPES})
+#string(TOUPPER ${VAR} VAR2)
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
+#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
+#endforeach()
+
 configure_file(renderer/config.h.in ${CMAKE_BINARY_DIR}/config.h)
+
+#===========================
+#add shit renderer lib
+file(GLOB rendererfile 
+renderer/*.h 
+renderer/sources/*.cpp 
+renderer/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
+)
+add_library(ShitRenderer ${rendererfile} )
+
+target_include_directories(ShitRenderer PRIVATE
+${CMAKE_SOURCE_DIR}
+${CMAKE_BINARY_DIR}
+${CMAKE_SOURCE_DIR}/renderer
+)
+set_target_properties(ShitRenderer PROPERTIES 
+PREFIX ""
+)
 
 #========================
 #add GL lib
@@ -64,16 +96,20 @@ renderer/GL/*.cpp
 add_library(GLRenderer SHARED ${glfile} )
 target_link_libraries(GLRenderer PRIVATE
 GLEW::GLEW
-Opengl32.lib
+#Opengl32.lib
+ShitRenderer
 )
 target_include_directories(GLRenderer PRIVATE	
 ${CMAKE_SOURCE_DIR}/
 ${CMAKE_SOURCE_DIR}/renderer/GL
-${CMAKE_BINARY_DIR} 
+${CMAKE_BINARY_DIR}
 )
 set_target_properties(GLRenderer PROPERTIES
 	COMPILE_FLAGS -DSHIT_DLL
+	PREFIX ""
 )
+add_dependencies(GLRenderer ShitRenderer)
+
 endif()
 
 #=====================================
@@ -81,12 +117,10 @@ endif()
 if(VKRENDERER)
 
 set(VULKAN_INCLUDE_DIR $ENV{VULKAN_SDK}/include)
-if(MSVC)
-if(${CMAKE_VS_PLATFORM_NAME} STREQUAL "x64")
+if(WIN32)
+#TODO: x64 x86?
     set(VULKAN_LIB_DIR $ENV{VULKAN_SDK}/lib)
-else()
-    set(VULKAN_LIB_DIR  $ENV{VULKAN_SDK}/lib32)
-endif()
+#    set(VULKAN_LIB_DIR  $ENV{VULKAN_SDK}/lib32)
 endif()
 
 file(GLOB vkfile 
@@ -106,24 +140,11 @@ ${VULKAN_INCLUDE_DIR}
 )
 set_target_properties(VKRenderer PROPERTIES
 	COMPILE_FLAGS -DSHIT_DLL
+	PREFIX ""
 )
+
+add_dependencies(VKRenderer ShitRenderer)
 endif()
-
-
-#===========================
-#add shit renderer lib
-file(GLOB rendererfile 
-renderer/*.h 
-renderer/sources/*.cpp 
-renderer/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
-)
-add_library(ShitRenderer ${rendererfile} )
-
-target_include_directories(ShitRenderer PRIVATE
-${CMAKE_SOURCE_DIR}/renderer
-${CMAKE_BINARY_DIR} 
-)
-add_dependencies(ShitRenderer GLRenderer VKRenderer)
 
 #===================
 #add examples
@@ -140,9 +161,9 @@ ${CMAKE_SOURCE_DIR}/examples
 ${CMAKE_BINARY_DIR} 
 )
 target_link_libraries(${examplename} PRIVATE
-${SHIT_OUTPUT_DIR}/ShitRenderer$<$<CONFIG:Debug>:d>.lib
 glm
 GLEW::GLEW
+ShitRenderer
 )
 add_dependencies(${examplename} ShitRenderer)
 #string(REGEX REPLACE "/" "\\\\" STR0 ${CMAKE_SOURCE_DIR}/3rdparty/assimp/build/bin/$(Configuration)/assimp-vc142-mt$<$<CONFIG:Debug>:d>.dll)

@@ -76,7 +76,7 @@ namespace Shit
 			queueInfos.data(),
 			0, //deprecated
 			0, //deprecated
-			extensionNames.size(),
+			static_cast<uint32_t>(extensionNames.size()),
 			extensionNames.data(),
 			&deviceFeatures};
 		if (vkCreateDevice(mPhysicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
@@ -98,7 +98,7 @@ namespace Shit
 		auto index = VK::findQueueFamilyIndexPresent(
 			mPhysicalDevice,
 			static_cast<uint32_t>(mQueueFamilyProperties.size()),
-			static_cast<VKSurface *>(pWindow->GetSurface())->GetHandle());
+			static_cast<const VKSurface *>(pWindow->GetSurfacePtr())->GetHandle());
 		if (index.has_value())
 			return std::optional<QueueFamilyIndex>{{*index, mQueueFamilyProperties[*index].queueCount}};
 		else
@@ -113,54 +113,21 @@ namespace Shit
 		else
 			return std::nullopt;
 	}
-	Swapchain *VKDevice::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	void VKDevice::GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats)
 	{
-		VkSurfaceKHR surface = static_cast<VKSurface *>(pWindow->GetSurface())->GetHandle();
-
-		auto presentQueueFamilyIndex = GetPresentQueueFamilyIndex(pWindow);
-
-		if (!presentQueueFamilyIndex.has_value())
-			THROW("current device do not support present to surface");
-
-		//set format
+		auto surface = static_cast<const VKSurface *>(pWindow->GetSurfacePtr())->GetHandle();
 		std::vector<VkSurfaceFormatKHR> surfaceFormats;
-
 		VK::querySurfaceFormats(mPhysicalDevice, surface, surfaceFormats);
-
-		VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0]; //default rgba8unorm
-
-		VkFormat format = Map(createInfo.format);
-		VkColorSpaceKHR colorSpace = Map(createInfo.colorSpace);
-		//change to srgba8
 		for (auto &&e : surfaceFormats)
 		{
-			if (e.format == format && e.colorSpace == colorSpace)
-			{
-				surfaceFormat = e;
-				break;
-			}
+			formats.emplace_back(
+				WindowPixelFormat{Map(e.format),
+								  Map(e.colorSpace)});
 		}
-
-		std::vector<VkPresentModeKHR> presentModes;
-		VK::querySurfacePresentModes(mPhysicalDevice, surface, presentModes);
-		VkPresentModeKHR presentMode;
-		auto dstmode = Map(createInfo.presentMode);
-		for (auto &&e : presentModes)
-		{
-			if (dstmode == e)
-			{
-				presentMode = e;
-				break;
-			}
-		}
-		mSwapchains.emplace_back(
-			std::make_unique<VKSwapchain>(
-				mDevice,
-				createInfo,
-				surface,
-				surfaceFormat,
-				presentMode,
-				presentQueueFamilyIndex.value()));
+	}
+	Swapchain *VKDevice::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	{
+		mSwapchains.emplace_back(std::make_unique<VKSwapchain>(this, pWindow, createInfo));
 		pWindow->SetSwapchain(mSwapchains.back().get());
 		return mSwapchains.back().get();
 	}
@@ -184,10 +151,6 @@ namespace Shit
 	{
 		mQueues.emplace_back(std::make_unique<VKQueue>(mDevice, createInfo));
 		return mQueues.back().get();
-	}
-	Result VKDevice::WaitForFence(Fence *fence, uint64_t timeout)
-	{
-		return Result::SUCCESS;
 	}
 	Buffer *VKDevice::CreateBuffer(const BufferCreateInfo &createInfo, void *pData)
 	{
@@ -218,11 +181,11 @@ namespace Shit
 				stagingbuffer.UnMapBuffer();
 
 				ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
+					BufferCopy bufferCopy{0, 0, createInfo.size};
 					pCommandBuffer->CopyBuffer({&stagingbuffer,
 												mBuffers.back().get(),
-												{{0,
-												  0,
-												  createInfo.size}}});
+												1,
+												&bufferCopy});
 				});
 			}
 			else
@@ -298,14 +261,17 @@ namespace Shit
 									 0, nullptr,
 									 0, nullptr,
 									 1, &barrier);
+				BufferImageCopy bufferImageCopy{
+					0,
+					0,
+					0,
+					{0, 0, createInfo.arrayLayers},
+					{},
+					createInfo.extent};
 				pCommandBuffer->CopyBufferToImage({&stagingbuffer,
-												   mImages.back().get(),
-												   {{0,
-													 0,
-													 0,
-													 {0, 0, createInfo.arrayLayers},
-													 {},
-													 createInfo.extent}}});
+												   image,
+												   1,
+												   &bufferImageCopy});
 			});
 		}
 		return mImages.back().get();
@@ -332,8 +298,8 @@ namespace Shit
 	}
 	Framebuffer *VKDevice::CreateFramebuffer(const FramebufferCreateInfo &createInfo)
 	{
-		mFramebuffer.emplace_back(std::make_unique<VKFramebuffer>(mDevice, createInfo));
-		return mFramebuffer.back().get();
+		mFramebuffers.emplace_back(std::make_unique<VKFramebuffer>(mDevice, createInfo));
+		return mFramebuffers.back().get();
 	}
 	Semaphore *VKDevice::CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo)
 	{

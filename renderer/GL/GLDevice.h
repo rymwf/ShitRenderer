@@ -29,8 +29,6 @@ namespace Shit
 
 		RenderSystemCreateInfo mRenderSystemCreatInfo;
 
-		//std::shared_ptr<Swapchain> CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) = 0;
-
 	public:
 		GLDevice(const RenderSystemCreateInfo &createInfo)
 			: mRenderSystemCreatInfo(createInfo) {}
@@ -41,19 +39,26 @@ namespace Shit
 		}
 		virtual void MakeCurrent() const = 0;
 
+		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
+
 		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
 
 		Pipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
 
 		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
 
-		Result WaitForFence(Fence *fence, uint64_t timeout) override;
-
 		Buffer *CreateBuffer(const BufferCreateInfo &createInfo, void *pData) override;
 
 		Image *CreateImage(const ImageCreateInfo &createInfo, void *pData) override;
 
 		DescriptorSetLayout *CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo) override;
+
+		ImageView *CreateImageView(const ImageViewCreateInfo &createInfo) override;
+		PipelineLayout *CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo) override;
+		RenderPass *CreateRenderPass(const RenderPassCreateInfo &createInfo) override;
+		Framebuffer *CreateFramebuffer(const FramebufferCreateInfo &createInfo) override;
+		Semaphore *CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo) override;
+		Fence *CreateFence(const FenceCreateInfo &createInfo) override;
 	};
 
 #ifdef _WIN32
@@ -76,6 +81,8 @@ namespace Shit
 		{
 			return mHDC;
 		}
+
+		void GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats) override;
 
 		Swapchain* CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 	};
