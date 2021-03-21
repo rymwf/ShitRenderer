@@ -38,7 +38,7 @@ namespace Shit
 		}
 		~VKSwapchain() override;
 
-		uint32_t GetNextImage(const GetNextImageInfo &info) override;
+		Result GetNextImage(const GetNextImageInfo &info, uint32_t& index) override;
 	};
 
 }

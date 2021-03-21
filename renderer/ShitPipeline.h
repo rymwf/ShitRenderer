@@ -41,7 +41,7 @@ namespace Shit
 
 	public:
 		virtual ~GraphicsPipeline() {}
-		constexpr const GraphicsPipelineCreateInfo *GetCreateInfoPtr() const
+		const GraphicsPipelineCreateInfo *GetCreateInfoPtr() const
 		{
 			return &mCreateInfo;
 		}
@@ -55,7 +55,7 @@ namespace Shit
 
 	public:
 		virtual ~ComputePipeline() {}
-		constexpr const ComputePipelineCreateInfo *GetCreateInfoPtr() const
+		const ComputePipelineCreateInfo *GetCreateInfoPtr() const
 		{
 			return &mCreateInfo;
 		}

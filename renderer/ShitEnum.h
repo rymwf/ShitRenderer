@@ -794,6 +794,7 @@ namespace Shit
 		EVENT_RESET,
 		INCOMPLETE,
 		SHIT_ERROR,
+		SHIT_ERROR_OUT_OF_DATE
 	};
 	enum class SubpassContents
 	{

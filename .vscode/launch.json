@@ -5,11 +5,13 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "(gdb) Launch",
+			"name": "(gdb) Launch GL",
 			"type": "cppdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}.exe",
-			"args": [],
+			"args": [
+				"GL"
+			],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
 			"environment": [],
@@ -25,11 +27,48 @@
 			]
 		},
 		{
-			"name": "(Windows) Launch",
+			"name": "(gdb) Launch Vulkan",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}.exe",
+			"args": [
+				"VK"
+			],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "gdb",
+			"miDebuggerPath": "gdb",
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				}
+			]
+		},
+		{
+			"name": "(Windows) Launch GL",
 			"type": "cppvsdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}.exe",
-			"args": [],
+			"args": [
+				"GL"
+			],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"console":"internalConsole"
+		},
+		{
+			"name": "(Windows) Launch VK",
+			"type": "cppvsdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/bin/${fileBasenameNoExtension}.exe",
+			"args": [
+				"VK"
+			],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
 			"environment": [],

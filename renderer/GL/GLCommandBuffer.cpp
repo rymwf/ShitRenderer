@@ -88,7 +88,163 @@ namespace Shit
 				mpStateManager->BindPipeline(pPipeline->GetHandle());
 				if (cmd->bindPoint == PipelineBindPoint::GRAPHICS)
 				{
-					mpStateManager->BindVertexArray(static_cast<GLGraphicsPipeline *>(pPipeline)->GetVertexArray());
+					auto pGraphicsPipeline = static_cast<GLGraphicsPipeline *>(pPipeline);
+					auto &&pGraphicsPipelineCreateInfo = pGraphicsPipeline->GetCreateInfoPtr();
+
+					mpStateManager->BindVertexArray(pGraphicsPipeline->GetVertexArray());
+
+					//primitive
+					mpStateManager->PrimitiveTopology(Map(pGraphicsPipelineCreateInfo->inputAssemblyState.topology));
+					if (pGraphicsPipelineCreateInfo->inputAssemblyState.primitiveRestartEnable)
+						mpStateManager->EnablePrimitiveRestart();
+					else
+						mpStateManager->DisablePrimitiveRestart();
+
+					//viewport
+					GLuint count = static_cast<GLuint>(pGraphicsPipelineCreateInfo->viewportState.viewports.size());
+					std::vector<float> viewportData(count * 6);
+					memcpy(viewportData.data(), pGraphicsPipelineCreateInfo->viewportState.viewports.data(), count * 6 * sizeof(float));
+					mpStateManager->SetViewports(0, count, viewportData.data());
+
+					//scissor
+					count = static_cast<GLuint>(pGraphicsPipelineCreateInfo->viewportState.scissors.size());
+					if (count == 0)
+					{
+						mpStateManager->DisableCapability(GL_SCISSOR_TEST);
+					}
+					else
+					{
+						mpStateManager->EnableCapability(GL_SCISSOR_TEST);
+						std::vector<int32_t> scissorsData(count * 4);
+						memcpy(scissorsData.data(), pGraphicsPipelineCreateInfo->viewportState.scissors.data(), count * 4 * sizeof(int32_t));
+						mpStateManager->SetScissors(0, count, scissorsData.data());
+					}
+
+					//rasterization
+					if (pGraphicsPipelineCreateInfo->rasterizationState.depthClampEnable)
+						mpStateManager->EnableCapability(GL_DEPTH_CLAMP); //no z clip
+					else
+						mpStateManager->DisableCapability(GL_DEPTH_CLAMP);
+
+					if (pGraphicsPipelineCreateInfo->rasterizationState.rasterizerDiscardEnbale)
+						mpStateManager->EnableCapability(GL_RASTERIZER_DISCARD);
+					else
+						mpStateManager->DisableCapability(GL_RASTERIZER_DISCARD);
+
+					mpStateManager->PolygonMode(Map(pGraphicsPipelineCreateInfo->rasterizationState.polygonMode));
+					if (pGraphicsPipelineCreateInfo->rasterizationState.cullMode == CullMode::NONE)
+						mpStateManager->DisableCapability(GL_CULL_FACE);
+					else
+					{
+						mpStateManager->EnableCapability(GL_CULL_FACE);
+						mpStateManager->CullFace(Map(pGraphicsPipelineCreateInfo->rasterizationState.cullMode));
+					}
+					mpStateManager->FrontFace(Map(pGraphicsPipelineCreateInfo->rasterizationState.frontFace));
+
+					//depth biase
+					if (pGraphicsPipelineCreateInfo->rasterizationState.depthBiasEnable)
+					{
+						if (pGraphicsPipelineCreateInfo->rasterizationState.polygonMode == PolygonMode::FILL)
+							mpStateManager->EnableCapability(GL_POLYGON_OFFSET_FILL);
+						else if (pGraphicsPipelineCreateInfo->rasterizationState.polygonMode == PolygonMode::LINE)
+							mpStateManager->EnableCapability(GL_POLYGON_OFFSET_LINE);
+						else if (pGraphicsPipelineCreateInfo->rasterizationState.polygonMode == PolygonMode::POINT)
+							mpStateManager->EnableCapability(GL_POLYGON_OFFSET_POINT);
+
+						mpStateManager->PolygonOffSetClamp(
+							pGraphicsPipelineCreateInfo->rasterizationState.depthBiasContantFactor,
+							pGraphicsPipelineCreateInfo->rasterizationState.depthBiasSlopeFactor,
+							pGraphicsPipelineCreateInfo->rasterizationState.depthBiasClamp);
+					}
+					else
+					{
+						if (pGraphicsPipelineCreateInfo->rasterizationState.polygonMode == PolygonMode::FILL)
+							mpStateManager->DisableCapability(GL_POLYGON_OFFSET_FILL);
+						else if (pGraphicsPipelineCreateInfo->rasterizationState.polygonMode == PolygonMode::LINE)
+							mpStateManager->DisableCapability(GL_POLYGON_OFFSET_LINE);
+						else if (pGraphicsPipelineCreateInfo->rasterizationState.polygonMode == PolygonMode::POINT)
+							mpStateManager->DisableCapability(GL_POLYGON_OFFSET_POINT);
+						mpStateManager->PolygonOffSetClamp(0.f, 0.f, 0.f);
+					}
+					//line width
+					mpStateManager->LineWidth(pGraphicsPipelineCreateInfo->rasterizationState.lineWidth);
+					//multisample
+					if (pGraphicsPipelineCreateInfo->multisampleState.sampleShadingEnable)
+					{
+						mpStateManager->EnableCapability(GL_SAMPLE_SHADING);
+						mpStateManager->MinSampleShading(pGraphicsPipelineCreateInfo->multisampleState.minSampleShading);
+						//TODO: sample mask
+					}
+					else
+					{
+						mpStateManager->DisableCapability(GL_SAMPLE_SHADING);
+					}
+
+					//depth test
+					if (pGraphicsPipelineCreateInfo->depthStencilState.depthTestEnable)
+					{
+						mpStateManager->EnableCapability(GL_DEPTH_TEST);
+						mpStateManager->DepthFunc(Map(pGraphicsPipelineCreateInfo->depthStencilState.depthCompareOp));
+						mpStateManager->DepthMask(pGraphicsPipelineCreateInfo->depthStencilState.depthWriteEnable);
+					}
+					else
+						mpStateManager->DisableCapability(GL_DEPTH_TEST);
+					//stencil test
+					if (pGraphicsPipelineCreateInfo->depthStencilState.stencilTestEnable)
+					{
+						mpStateManager->EnableCapability(GL_STENCIL_TEST);
+						//stencil op
+						mpStateManager->StencilOpState(
+							GL_FRONT,
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.front.compareOp),
+							pGraphicsPipelineCreateInfo->depthStencilState.front.reference,
+							pGraphicsPipelineCreateInfo->depthStencilState.front.compareMask,
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.front.failOp),
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.front.depthFailOp),
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.front.passOp),
+							pGraphicsPipelineCreateInfo->depthStencilState.front.writeMask);
+						mpStateManager->StencilOpState(
+							GL_BACK,
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.back.compareOp),
+							pGraphicsPipelineCreateInfo->depthStencilState.back.reference,
+							pGraphicsPipelineCreateInfo->depthStencilState.back.compareMask,
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.back.failOp),
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.back.depthFailOp),
+							Map(pGraphicsPipelineCreateInfo->depthStencilState.back.passOp),
+							pGraphicsPipelineCreateInfo->depthStencilState.back.writeMask);
+					}
+					else
+						mpStateManager->DisableCapability(GL_STENCIL_TEST);
+
+					//blend
+					GLuint i = 0;
+					for (auto &&e : pGraphicsPipelineCreateInfo->colorBlendState.attachments)
+					{
+						if (e.blendEnable)
+						{
+							mpStateManager->EnableBlend(i);
+							mpStateManager->BlendEquation(i, Map(e.colorBlendOp), Map(e.alphaBlendOp));
+							mpStateManager->BlendFunc(i,
+													  Map(e.srcColorBlendFactor),
+													  Map(e.dstColorBlendFactor),
+													  Map(e.srcAlphaBlendFactor),
+													  Map(e.dstAlphaBlendFactor));
+						}
+						else
+						{
+							mpStateManager->DisableBlend(i);
+						}
+						mpStateManager->ColorMask(i, static_cast<GLuint>(e.colorWriteMask));
+						++i;
+					}
+					if (pGraphicsPipelineCreateInfo->colorBlendState.logicOpEnable)
+					{
+						mpStateManager->EnableCapability(GL_COLOR_LOGIC_OP);
+						mpStateManager->LogicOp(Map(pGraphicsPipelineCreateInfo->colorBlendState.logicOp));
+					}
+					else
+						mpStateManager->DisableCapability(GL_COLOR_LOGIC_OP);
+					mpStateManager->BlendColor(pGraphicsPipelineCreateInfo->colorBlendState.blendConstants);
 				}
 			}
 			else
@@ -99,6 +255,7 @@ namespace Shit
 					mpStateManager->BindVertexArray(0);
 				}
 			}
+
 			return sizeof(*cmd);
 		}
 		case GLCommandCode::BindVertexBuffer:
@@ -111,7 +268,7 @@ namespace Shit
 			{
 				auto index = attrib.binding + cmd->firstBinding;
 				mpStateManager->BindBuffer(GL_ARRAY_BUFFER, static_cast<GLBuffer *>(&cmd->pBuffers[index])->GetHandle());
-				uint32_t offset = attrib.offset + cmd->pOffsets[index];
+				uint32_t offset = static_cast<uint32_t>(attrib.offset + cmd->pOffsets[index]);
 				glVertexAttribPointer(
 					attrib.location,
 					attrib.components,
@@ -154,7 +311,8 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectCommand *>(pCur);
 			//opengl 4.2
 			glDrawArraysInstancedBaseInstance(
-				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
+				//Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
+				mpStateManager->GetPrimitiveTopology(),
 				cmd->firstVertex,
 				cmd->vertexCount,
 				cmd->instanceCount,
@@ -166,7 +324,7 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			//opengl 4.3
-			uint32_t offset = cmd->offset;
+			uint32_t offset = static_cast<uint32_t>(cmd->offset);
 			glMultiDrawArraysIndirect(
 				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
 				&offset,
@@ -180,7 +338,7 @@ namespace Shit
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_PARAMETER_BUFFER, static_cast<GLBuffer *>(cmd->pCountBuffer)->GetHandle());
 			//opengl 4.6
-			uint32_t offset = cmd->offset;
+			uint32_t offset = static_cast<uint32_t>(cmd->offset);
 			glMultiDrawArraysIndirectCount(
 				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
 				&offset,
@@ -192,7 +350,7 @@ namespace Shit
 		case GLCommandCode::DrawIndexed:
 		{
 			auto cmd = reinterpret_cast<const DrawIndexedIndirectCommand *>(pCur);
-			uint32_t firstIndex = cmd->firstIndex + mCurIndexOffset * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType);
+			uint32_t firstIndex = static_cast<uint32_t>(cmd->firstIndex + mCurIndexOffset * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
 			//opengl 4.2
 			glDrawElementsInstancedBaseVertexBaseInstance(
 				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
@@ -208,7 +366,7 @@ namespace Shit
 		{
 			auto cmd = reinterpret_cast<const DrawIndirectInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
-			uint32_t offset = cmd->offset + mCurIndexOffset * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType);
+			uint32_t offset = static_cast<uint32_t>(cmd->offset + mCurIndexOffset * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
 			//opengl4.3
 			glMultiDrawElementsIndirect(
 				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
@@ -223,7 +381,7 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectCountInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_PARAMETER_BUFFER, static_cast<GLBuffer *>(cmd->pCountBuffer)->GetHandle());
-			uint32_t offset = cmd->offset + mCurIndexOffset;
+			uint32_t offset = static_cast<uint32_t>(cmd->offset + mCurIndexOffset);
 			//opengl 4.6
 			glMultiDrawElementsIndirectCount(
 				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
@@ -284,7 +442,7 @@ namespace Shit
 		auto offset = mBuffer.size();
 		mBuffer.resize(offset + sizeof(GLCommandCode) + extraSize);
 		mBuffer[offset] = static_cast<uint8_t>(commandCode);
-		return reinterpret_cast<void *>(&mBuffer[offset + sizeof(GLCommandCode)]);
+		return &mBuffer[offset];
 	}
 	void GLCommandBuffer::ExecuteSecondaryCommandBuffer(const ExecuteSecondaryCommandBufferInfo &secondaryCommandBufferInfo)
 	{

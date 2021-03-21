@@ -23,7 +23,7 @@ if (MSVC)
     #how to deal with these warns??
     #add_compile_options(/W4 /WX /wd4201 /wd4996 /wd4100 /wd4189 /wd4819) 
     #add_compile_options(/Wall /wd4514 /wd4625 /wd4626 /wd4668 /wd5045)
-	add_compile_options(/W4)
+	add_compile_options(/W4 /WX)
 
 else()
     # lots of warnings and all warnings as errors -Weffc++
@@ -31,7 +31,7 @@ else()
 		-Wall 
 		-Wextra 
 		-pedantic 
-		#-Werror 
+		-Werror 
 		-Wshadow 
 		-ansi 
 		-Wno-missing-field-initializers
@@ -43,6 +43,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS on)
 
 set(GLRENDERER on CACHE BOOL "gl")
 set(VKRENDERER on CACHE BOOL "vukan")
+set(EXAMPLES on CACHE BOOL "examples")
 
 if(VKRENDERER)
 set(SHIT_VK_VERSION_MAJOR 1 CACHE STRING 1)
@@ -58,13 +59,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SHIT_OUTPUT_DIR})
 
 set(CMAKE_DEBUG_POSTFIX d)
 
-#foreach(VAR ${CMAKE_CONFIGURATION_TYPES})
-#string(TOUPPER ${VAR} VAR2)
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
-#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
-#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${VAR2} ${SHIT_OUTPUT_DIR})
-#endforeach()
-
 configure_file(renderer/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 
 #===========================
@@ -72,7 +66,6 @@ configure_file(renderer/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 file(GLOB rendererfile 
 renderer/*.h 
 renderer/sources/*.cpp 
-renderer/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
 )
 add_library(ShitRenderer ${rendererfile} )
 
@@ -81,10 +74,9 @@ ${CMAKE_SOURCE_DIR}
 ${CMAKE_BINARY_DIR}
 ${CMAKE_SOURCE_DIR}/renderer
 )
-set_target_properties(ShitRenderer PROPERTIES 
-PREFIX ""
-)
-
+#set_target_properties(ShitRenderer PROPERTIES
+#	COMPILE_FLAGS -DSHIT_DLL
+#)
 #========================
 #add GL lib
 if(GLRENDERER)
@@ -106,7 +98,6 @@ ${CMAKE_BINARY_DIR}
 )
 set_target_properties(GLRenderer PROPERTIES
 	COMPILE_FLAGS -DSHIT_DLL
-	PREFIX ""
 )
 add_dependencies(GLRenderer ShitRenderer)
 
@@ -117,7 +108,7 @@ endif()
 if(VKRENDERER)
 
 set(VULKAN_INCLUDE_DIR $ENV{VULKAN_SDK}/include)
-if(WIN32)
+if(MSVC)
 #TODO: x64 x86?
     set(VULKAN_LIB_DIR $ENV{VULKAN_SDK}/lib)
 #    set(VULKAN_LIB_DIR  $ENV{VULKAN_SDK}/lib32)
@@ -140,13 +131,14 @@ ${VULKAN_INCLUDE_DIR}
 )
 set_target_properties(VKRenderer PROPERTIES
 	COMPILE_FLAGS -DSHIT_DLL
-	PREFIX ""
 )
 
 add_dependencies(VKRenderer ShitRenderer)
 endif()
 
 #===================
+if(EXAMPLES)
+#find_package(Boost REQUIRED COMPONENTS program_options)
 #add examples
 function(newexample examplename)
 message(${examplename})
@@ -160,11 +152,24 @@ ${CMAKE_SOURCE_DIR}
 ${CMAKE_SOURCE_DIR}/examples
 ${CMAKE_BINARY_DIR} 
 )
+
+if(MSVC)
 target_link_libraries(${examplename} PRIVATE
 glm
+)
+else()
+target_link_libraries(${examplename} PRIVATE
+glm::glm
+)
+endif()
+
+target_link_libraries(${examplename} PRIVATE
 GLEW::GLEW
 ShitRenderer
+#Boost::program_options
 )
+
+
 add_dependencies(${examplename} ShitRenderer)
 #string(REGEX REPLACE "/" "\\\\" STR0 ${CMAKE_SOURCE_DIR}/3rdparty/assimp/build/bin/$(Configuration)/assimp-vc142-mt$<$<CONFIG:Debug>:d>.dll)
 #string(REGEX REPLACE "/" "\\\\" STR1 ${SHIT_OUTPUT_DIR}/)
@@ -176,6 +181,7 @@ endfunction()
 newexample(00-init)
 newexample(01-triangle)
 
+endif()
 
 
 

@@ -11,27 +11,31 @@
 
 #include <renderer/ShitDevice.h>
 #include "GLPrerequisites.h"
-#include "GLSwapchain.h"
-#include "GLShader.h"
-#include "GLPipeline.h"
-#include "GLCommandBuffer.h"
-#include "GLBuffer.h"
-#include "GLImage.h"
-#include "GLDescriptor.h"
-#include "GLSampler.h"
 
 namespace Shit
 {
+	/**
+	 * @brief in opengl, device is created based on windows, one window has its own device
+	 * 
+	 */
 	class GLDevice : public Device
 	{
 	protected:
 		GLStateManager mStateManager{};
 
-		RenderSystemCreateInfo mRenderSystemCreatInfo;
+		RenderSystemCreateInfo mRenderSystemCreateInfo;
+
+		ShitWindow* mpWindow{};
+
+		void EnableDebugOutput(const void *userParam);
+
+		virtual void CreateRenderContext() = 0;
+
+		virtual void SetPresentMode(PresentMode mode) const = 0;
 
 	public:
-		GLDevice(const RenderSystemCreateInfo &createInfo)
-			: mRenderSystemCreatInfo(createInfo) {}
+		GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo)
+			: Device(createInfo), mRenderSystemCreateInfo(renderSystemCreateInfo) {}
 
 		constexpr GLStateManager *GetStateManager()
 		{
@@ -39,26 +43,30 @@ namespace Shit
 		}
 		virtual void MakeCurrent() const = 0;
 
-		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
+		virtual void SwapBuffer() const = 0;
 
-		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
+		Swapchain *Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 
-		Pipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
+		CommandPool *Create(const CommandPoolCreateInfo &createInfo) override;
 
-		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
+		Shader *Create(const ShaderCreateInfo &createInfo) override;
 
-		Buffer *CreateBuffer(const BufferCreateInfo &createInfo, void *pData) override;
+		Pipeline *Create(const GraphicsPipelineCreateInfo &createInfo) override;
 
-		Image *CreateImage(const ImageCreateInfo &createInfo, void *pData) override;
+		Queue *Create(const QueueCreateInfo &createInfo) override;
 
-		DescriptorSetLayout *CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo) override;
+		Buffer *Create(const BufferCreateInfo &createInfo, void *pData) override;
 
-		ImageView *CreateImageView(const ImageViewCreateInfo &createInfo) override;
-		PipelineLayout *CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo) override;
-		RenderPass *CreateRenderPass(const RenderPassCreateInfo &createInfo) override;
-		Framebuffer *CreateFramebuffer(const FramebufferCreateInfo &createInfo) override;
-		Semaphore *CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo) override;
-		Fence *CreateFence(const FenceCreateInfo &createInfo) override;
+		Image *Create(const ImageCreateInfo &createInfo, void *pData) override;
+
+		DescriptorSetLayout *Create(const DescriptorSetLayoutCreateInfo &createInfo) override;
+
+		ImageView *Create(const ImageViewCreateInfo &createInfo) override;
+		PipelineLayout *Create(const PipelineLayoutCreateInfo &createInfo) override;
+		RenderPass *Create(const RenderPassCreateInfo &createInfo) override;
+		Framebuffer *Create(const FramebufferCreateInfo &createInfo) override;
+		Semaphore *Create(const SemaphoreCreateInfo &createInfo) override;
+		Fence *Create(const FenceCreateInfo &createInfo) override;
 	};
 
 #ifdef _WIN32
@@ -67,24 +75,31 @@ namespace Shit
 		HDC mHDC;
 		HGLRC mHRenderContext; //false context
 
+		void CreateRenderContext() override;
+
+		void SetPresentMode(PresentMode mode) const override;
+
 	public:
-		GLDeviceWin32(ShitWindow *pWindow, const RenderSystemCreateInfo &createInfo);
+		GLDeviceWin32(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo);
 		~GLDeviceWin32() override
 		{
 			wglDeleteContext(mHRenderContext);
 		}
-		void MakeCurrent() const override
-		{
-			wglMakeCurrent(mHDC, mHRenderContext);
-		}
+
+		void MakeCurrent() const override;
+
+		void SwapBuffer() const override;
+
 		constexpr HDC GetHDC() const
 		{
 			return mHDC;
 		}
+		constexpr HGLRC GetRenderContext() const
+		{
+			return mHRenderContext;
+		}
 
 		void GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats) override;
-
-		Swapchain* CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 	};
 #endif
 

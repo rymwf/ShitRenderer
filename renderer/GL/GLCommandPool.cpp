@@ -20,8 +20,4 @@ namespace Shit
 			commandBuffers[i] = (mCommandBuffers.back().get());
 		}
 	}
-	void GLCommandPool::DestroyCommandBuffer(CommandBuffer *pCommandBuffer)
-	{
-		RemoveFromUniqueVector(mCommandBuffers, pCommandBuffer);
-	}
 }

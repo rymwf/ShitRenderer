@@ -70,7 +70,7 @@ namespace Shit
 														 static_cast<uint32_t>(i * constantVaule_T_size),
 														 constantVaule_T_size};
 			}
-			specInfos[i].mapEntryCount = count;
+			specInfos[i].mapEntryCount = static_cast<uint32_t>(count);
 			specInfos[i].dataSize = shaderModuleInfo.specializationInfo.constantValues.size() * constantVaule_T_size;
 			specInfos[i].pData = shaderModuleInfo.specializationInfo.constantValues.data();
 			specInfos[i].pMapEntries = entries[i].data();
@@ -78,7 +78,7 @@ namespace Shit
 			shaderStageCreateInfos[i].pSpecializationInfo = &specInfos[i];
 		}
 
-		uint32_t vertexInputBindingCount = createInfo.vertexInputState.vertexBindingDescriptions.size();
+		uint32_t vertexInputBindingCount = static_cast<uint32_t>(createInfo.vertexInputState.vertexBindingDescriptions.size());
 		std::vector<VkVertexInputBindingDescription> vertexInputBindingDescs(vertexInputBindingCount);
 		for (uint32_t i = 0; i < vertexInputBindingCount; ++i)
 		{
@@ -87,7 +87,7 @@ namespace Shit
 				createInfo.vertexInputState.vertexBindingDescriptions[i].stride,
 				createInfo.vertexInputState.vertexBindingDescriptions[i].divisor ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX};
 		}
-		uint32_t vertexAttribCount = createInfo.vertexInputState.vertexAttributeDescriptions.size();
+		uint32_t vertexAttribCount = static_cast<uint32_t>(createInfo.vertexInputState.vertexAttributeDescriptions.size());
 		std::vector<VkVertexInputAttributeDescription> vertexAttributes(vertexAttribCount);
 		for (uint32_t i = 0; i < vertexAttribCount; ++i)
 		{

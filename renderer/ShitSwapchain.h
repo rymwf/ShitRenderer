@@ -17,7 +17,7 @@ namespace Shit
 	{
 	protected:
 		SwapchainCreateInfo mCreateInfo;
-		QueueFamilyIndex mPresentQueueFamilyIndex{0, INT_MAX};
+		QueueFamilyIndex mPresentQueueFamilyIndex{0, 1};
 
 		std::vector<std::unique_ptr<Image>> mImages;
 
@@ -34,9 +34,9 @@ namespace Shit
 		}
 		void GetImages(std::vector<Image *> &images) const
 		{
-			for (auto &&e : mImages)
-				images.emplace_back(e.get());
+			images.resize(mImages.size());
+			std::transform(mImages.begin(), mImages.end(), images.begin(), [](auto &&e) { return e.get(); });
 		}
-		virtual uint32_t GetNextImage(const GetNextImageInfo &info) = 0;
+		virtual Result GetNextImage(const GetNextImageInfo &info, uint32_t& index) = 0;
 	};
 } // namespace Shit

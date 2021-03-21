@@ -1,5 +1,6 @@
 #include "common.h"
 #include <GL/glew.h>
+#include <variant>
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 
@@ -8,9 +9,6 @@ const char *fragShaderName = "01.frag.spv";
 
 std::string vertShaderPath;
 std::string fragShaderPath;
-
-//constexpr Shit::RendererVersion rendererVersion{Shit::RendererVersion::VULKAN};
-constexpr Shit::RendererVersion rendererVersion{Shit::RendererVersion::GL};
 
 class Hello
 {
@@ -22,6 +20,7 @@ class Hello
 	QueueFamilyIndex presentQueueFamilyIndex;
 	std::optional<QueueFamilyIndex> transferQueueFamilyIndex;
 
+	SwapchainCreateInfo swapchainCreateInfo;
 	Swapchain *swapchain;
 	std::vector<ImageView *> swapchainImageViews;
 	std::vector<Image *> swapchainImages;
@@ -58,13 +57,13 @@ public:
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
-			std::bind(&Hello::ProcessEvent, this, std::placeholders::_1)};
+			std::make_shared<std::function<void(const Event &)>>(std::bind(&Hello::ProcessEvent, this, std::placeholders::_1))};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
 		DeviceCreateInfo deviceCreateInfo{};
 		if ((rendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
-			deviceCreateInfo.physicalDevice = PhysicalDevice{window};
+			deviceCreateInfo = {window};
 
 		device = renderSystem->CreateDevice(deviceCreateInfo);
 
@@ -76,36 +75,33 @@ public:
 		LOG_VAR(graphicsQueueFamilyIndex->index);
 		LOG_VAR(graphicsQueueFamilyIndex->count);
 
-		transferQueueFamilyIndex = device->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {graphicsQueueFamilyIndex->index, presentQueueFamilyIndex.index});
-		if (!transferQueueFamilyIndex.has_value())
-			THROW("failed to find a transfer queue");
-
-		LOG_VAR(transferQueueFamilyIndex->index);
-		LOG_VAR(transferQueueFamilyIndex->count);
 
 		//4. command pool
 		CommandPoolCreateInfo commandPoolCreateInfo{
 			{},
 			graphicsQueueFamilyIndex->index};
-		commandPool = device->CreateCommandPool(commandPoolCreateInfo);
+		commandPool = device->Create(commandPoolCreateInfo);
 
 		//5
 		QueueCreateInfo queueCreateInfo{
 			graphicsQueueFamilyIndex->index,
 			0,
 		};
-		graphicsQueue = device->CreateDeviceQueue(queueCreateInfo);
-		createSwapchains();
+		graphicsQueue = device->Create(queueCreateInfo);
 
 		createShaders();
 		createDescriptors();
-		createRenderPasses();
-		createFramebuffers();
-		createPipeline();
-
 		createDrawCommandBuffers();
-		createCommandBuffers();
 		createSyncObjects();
+
+		recreateSwapchain();
+
+		transferQueueFamilyIndex = device->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {graphicsQueueFamilyIndex->index, presentQueueFamilyIndex.index});
+		if (!transferQueueFamilyIndex.has_value())
+			THROW("failed to find a transfer queue");
+
+		LOG_VAR(transferQueueFamilyIndex->index);
+		LOG_VAR(transferQueueFamilyIndex->count);
 	}
 	/**
 	 * @brief process window event, do not write render code here
@@ -114,21 +110,25 @@ public:
 	 */
 	void ProcessEvent(const Event &ev)
 	{
-		switch (ev.type)
-		{
-		case EventType::KEYBOARD:
-			if (ev.key.keyCode == KeyCode::KEY_ESCAPE)
-				ev.pWindow->Close();
-			break;
-		}
+		std::visit(overloaded{
+					   [&ev](const KeyEvent &value) {
+						   if (value.keyCode == KeyCode::KEY_ESCAPE)
+							   ev.pWindow->Close();
+					   },
+					   [](auto &&) {},
+					   [&ev]([[maybe_unused]] const WindowResizeEvent &value) {
+					   },
+				   },
+				   ev.value);
 	}
 
 	void mainLoop()
 	{
-		while (window->PollEvent())
+		while (window->PollEvents())
 		{
 			drawFrame();
 		}
+		presentQueue->WaitIdle();
 	}
 	void cleanUp()
 	{
@@ -139,15 +139,46 @@ public:
 		mainLoop();
 		cleanUp();
 	}
-
+	void cleanupSwapchain()
+	{
+		for (auto &&e : swapchainImageViews)
+			device->Destroy(e);
+		device->Destroy(renderPass);
+		for (auto &&e : framebuffers)
+			device->Destroy(e);
+		device->Destroy(pipelineLayout);
+		device->Destroy(pipeline);
+		for (auto &&e : commandBuffers)
+			commandPool->DestroyCommandBuffer(e);
+		device->Destroy(swapchain);
+	}
+	void recreateSwapchain()
+	{
+		cleanupSwapchain();
+		createSwapchains();
+		createRenderPasses();
+		createFramebuffers();
+		createPipeline();
+		createCommandBuffers();
+	}
 	void drawFrame()
 	{
-		static uint32_t currentFrame{};
+		//static uint32_t currentFrame{};
 		uint32_t imageIndex{};
 		GetNextImageInfo nextImageInfo{
 			UINT64_MAX,
 			imageAvailableSemaphore};
-		imageIndex = swapchain->GetNextImage(nextImageInfo);
+		auto ret = swapchain->GetNextImage(nextImageInfo, imageIndex);
+		if (ret == Result::SHIT_ERROR_OUT_OF_DATE)
+		{
+			presentQueue->WaitIdle();
+			recreateSwapchain();
+			return;
+		}
+		else if (ret != Result::SUCCESS)
+		{
+			THROW("failed to get next image");
+		}
 
 		std::vector<SubmitInfo> submitInfos{
 			{{imageAvailableSemaphore},
@@ -159,7 +190,16 @@ public:
 			{renderFinishedSemaphore},
 			{swapchain},
 			{imageIndex}};
-		presentQueue->Present(presentInfo);
+		auto res = presentQueue->Present(presentInfo);
+		if (res == Result::SHIT_ERROR_OUT_OF_DATE)
+		{
+			presentQueue->WaitIdle();
+			recreateSwapchain();
+		}
+		else if (res != Result::SUCCESS)
+		{
+			THROW("failed to present swapchain image");
+		}
 		presentQueue->WaitIdle();
 	}
 
@@ -171,16 +211,11 @@ public:
 		std::string vertCode = readFile(vertShaderPath.c_str());
 		std::string fragCode = readFile(fragShaderPath.c_str());
 
-		ShaderCreateInfo vertShaderCreateInfo{
-			ShaderStageFlagBits::VERTEX_BIT,
-			vertCode};
+		ShaderCreateInfo vertShaderCreateInfo{vertCode};
+		ShaderCreateInfo fragShaderCreateInfo{fragCode};
 
-		ShaderCreateInfo fragShaderCreateInfo{
-			ShaderStageFlagBits::FRAGMENT_BIT,
-			fragCode};
-
-		vertShader = device->CreateShader(vertShaderCreateInfo);
-		fragShader = device->CreateShader(fragShaderCreateInfo);
+		vertShader = device->Create(vertShaderCreateInfo);
+		fragShader = device->Create(fragShaderCreateInfo);
 	}
 
 	void createVertexBuffer()
@@ -188,14 +223,30 @@ public:
 	}
 	void createSwapchains()
 	{
-		SwapchainCreateInfo swapchainCreateInfo{
+		auto swapchainFormat = chooseSwapchainFormat(
+			{
+				{ShitFormat::BGRA8_SRGB, ColorSpace::SRGB_NONLINEAR},
+				{ShitFormat::RGBA8_SRGB, ColorSpace::SRGB_NONLINEAR},
+			},
+			device,
+			window);
+		LOG_VAR(static_cast<int>(swapchainFormat.format));
+		LOG_VAR(static_cast<int>(swapchainFormat.colorSpace));
+
+		swapchainCreateInfo = SwapchainCreateInfo{
 			2,
-			ShitFormat::BGRA8_SRGB,
-			ColorSpace::SRGB_NONLINEAR,
+			swapchainFormat.format,
+			swapchainFormat.colorSpace,
 			{800, 600},
 			1,
 			PresentMode::FIFO};
-		swapchain = device->CreateSwapchain(swapchainCreateInfo, window);
+		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
+		while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)
+		{
+			window->WaitEvents();
+			window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
+		}
+		swapchain = device->Create(swapchainCreateInfo, window);
 		swapchain->GetImages(swapchainImages);
 		ImageViewCreateInfo imageViewCreateInfo{
 			nullptr,
@@ -203,12 +254,13 @@ public:
 			swapchainCreateInfo.format,
 			{},
 			{0, 1, 0, 1}};
-		for (auto &&e : swapchainImages)
+		auto swapchainImageCount = swapchainImages.size();
+		swapchainImageViews.resize(swapchainImageCount);
+		while (swapchainImageCount-- > 0)
 		{
-			imageViewCreateInfo.pImage = e;
-			swapchainImageViews.emplace_back(device->CreateImageView(imageViewCreateInfo));
+			imageViewCreateInfo.pImage = swapchainImages[swapchainImageCount];
+			swapchainImageViews[swapchainImageCount] = device->Create(imageViewCreateInfo);
 		}
-
 		presentQueueFamilyIndex = swapchain->GetPresentQueueFamilyIndex();
 
 		LOG_VAR(presentQueueFamilyIndex.index);
@@ -218,11 +270,11 @@ public:
 			presentQueueFamilyIndex.index,
 			0,
 		};
-		presentQueue = device->CreateDeviceQueue(queueCreateInfo);
+		presentQueue = device->Create(queueCreateInfo);
 	}
 	void createDescriptors()
 	{
-		descriptorSetLayout = device->CreateDescriptorSetLayout({});
+		descriptorSetLayout = device->Create(DescriptorSetLayoutCreateInfo{});
 	}
 	void createRenderPasses()
 	{
@@ -248,11 +300,11 @@ public:
 			attachmentDescriptions,
 			subPasses};
 
-		renderPass = device->CreateRenderPass(renderPassCreateInfo);
+		renderPass = device->Create(renderPassCreateInfo);
 	}
 	void createPipeline()
 	{
-		pipelineLayout = device->CreatePipelineLayout({});
+		pipelineLayout = device->Create(PipelineLayoutCreateInfo{});
 		std::vector<PipelineShaderStageCreateInfo> shaderStageCreateInfos{
 			PipelineShaderStageCreateInfo{
 				ShaderStageFlagBits::VERTEX_BIT,
@@ -270,8 +322,8 @@ public:
 			PrimitiveTopology::TRIANGLE_LIST,
 		};
 		PipelineViewportStateCreateInfo viewportStateCreateInfo{
-			{{0, 0, 800, 600, 0, 1}}, {{{0, 0}, {800, 600}}}};
-
+			{{0, 0, static_cast<float>(swapchain->GetCreateInfoPtr()->imageExtent.width), static_cast<float>(swapchain->GetCreateInfoPtr()->imageExtent.height), 0, 1}},
+			{{{0, 0}, swapchain->GetCreateInfoPtr()->imageExtent}}};
 		PipelineTessellationStateCreateInfo tessellationState{};
 		PipelineRasterizationStateCreateInfo rasterizationState{
 			false,
@@ -281,7 +333,11 @@ public:
 			FrontFace::COUNTER_CLOCKWISE,
 			false,
 		};
-		PipelineMultisampleStateCreateInfo multisampleState{};
+		rasterizationState.lineWidth = 1.f;
+
+		PipelineMultisampleStateCreateInfo multisampleState{
+			SampleCountFlagBits::BIT_1,
+		};
 		PipelineDepthStencilStateCreateInfo depthStencilState{};
 
 		PipelineColorBlendAttachmentState colorBlendAttachmentstate{};
@@ -307,28 +363,26 @@ public:
 			renderPass,
 			0};
 
-		QueueCreateInfo queueCreateInfo{};
-
-		graphicsQueue = device->CreateDeviceQueue(queueCreateInfo);
-
-		pipeline = device->CreateGraphicsPipeline(pipelineCreateInfo);
+		pipeline = device->Create(pipelineCreateInfo);
 	}
 	void createFramebuffers()
 	{
 		FramebufferCreateInfo framebufferCreateInfo{
 			renderPass,
 			{},
-			{800, 600},
+			swapchain->GetCreateInfoPtr()->imageExtent,
 			1};
-		for (auto &&e : swapchainImageViews)
+		auto count = swapchainImageViews.size();
+		framebuffers.resize(count);
+		while (count-- > 0)
 		{
-			framebufferCreateInfo.attachments = {e};
-			framebuffers.emplace_back(device->CreateFramebuffer(framebufferCreateInfo));
+			framebufferCreateInfo.attachments = {swapchainImageViews[count]};
+			framebuffers[count] = device->Create(framebufferCreateInfo);
 		}
 	}
 	void createCommandBuffers()
 	{
-		uint32_t count = swapchainImageViews.size();
+		uint32_t count = static_cast<uint32_t>(swapchainImageViews.size());
 		CommandBufferCreateInfo cmdBufferCreateInfo{
 			CommandBufferLevel::PRIMARY, count};
 		commandPool->CreateCommandBuffers(cmdBufferCreateInfo, commandBuffers);
@@ -386,8 +440,8 @@ public:
 
 	void createSyncObjects()
 	{
-		imageAvailableSemaphore = device->CreateDeviceSemaphore({});
-		renderFinishedSemaphore = device->CreateDeviceSemaphore({});
+		imageAvailableSemaphore = device->Create(SemaphoreCreateInfo{});
+		renderFinishedSemaphore = device->Create(SemaphoreCreateInfo{});
 	}
 	void createDrawCommandBuffers()
 	{
@@ -397,15 +451,16 @@ public:
 			sizeof(DrawIndirectCommand) * drawIndirectCmds.size(),
 			BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
-		drawIndirectCmdsBuffer = device->CreateBuffer(bufferCreateInfo, drawIndirectCmds.data());
+		drawIndirectCmdsBuffer = device->Create(bufferCreateInfo, drawIndirectCmds.data());
 		bufferCreateInfo.size = sizeof(uint32_t);
 		uint32_t drawCount = 1;
-		drawCountBuffer = device->CreateBuffer(bufferCreateInfo, &drawCount);
+		drawCountBuffer = device->Create(bufferCreateInfo, &drawCount);
 	}
 };
 
-int main()
+int main(int ac, char **av)
 {
+	parseArgument(ac, av);
 	Hello app;
 	try
 	{
@@ -415,5 +470,4 @@ int main()
 	{
 		std::cout << err.what() << std::endl;
 	}
-	std::getchar();
 }

@@ -37,7 +37,7 @@ namespace Shit
 			static_cast<GLFence *>(pFence)->Reset();
 	}
 
-	void GLQueue::Present(const PresentInfo &presentInfo)
+	Result GLQueue::Present(const PresentInfo &presentInfo)
 	{
 		for (auto &&e : presentInfo.waitSemaphores)
 		{
@@ -58,5 +58,6 @@ namespace Shit
 							  GL_NEAREST);
 			pSwapchain->SwapBuffer();
 		}
+		return Result::SUCCESS;
 	}
 }

@@ -28,6 +28,9 @@ namespace Shit
 		GLDevice *mpDevice;
 		GLStateManager *mpStateManager;
 		uint32_t mAvailableImageIndex{};
+		bool mOutDated{};
+
+		std::shared_ptr<std::function<void(const Event &)>> mProcessWindowEventCallable;
 
 	protected:
 		void CreateImages(uint32_t count);
@@ -40,63 +43,29 @@ namespace Shit
 
 		constexpr uint32_t GetSwapchainImageCount() const
 		{
-			return (std::min)((std::max)(mCreateInfo.minImageCount, 8U), 16U);
+			return (std::min)((std::max)(mCreateInfo.minImageCount, 8U), 8U);
 		}
 
 		void EnableDebugOutput(const void *userParam);
 
+		void ProcessWindowEvent(const Event &ev);
+
 	public:
-		GLSwapchain(GLDevice *pDevice, GLStateManager *pStateManager, const SwapchainCreateInfo &createInfo)
-			: Swapchain(createInfo), mpDevice(pDevice), mpStateManager(pStateManager) {}
+		GLSwapchain(GLDevice *pDevice, GLStateManager *pStateManager, const SwapchainCreateInfo &createInfo);
 
 		~GLSwapchain() override;
 
-		uint32_t GetNextImage(const GetNextImageInfo &info) override;
+		Result GetNextImage(const GetNextImageInfo &info, uint32_t& index) override;
 
-		virtual void SwapBuffer() = 0;
+		void SwapBuffer() const;
 
 		constexpr const Framebuffer *GetFramebufferPtr() const
 		{
 			return mpFramebuffer;
 		}
-	};
-
-#ifdef _WIN32
-	class GLSwapchainWin32 final : public GLSwapchain
-	{
-		HGLRC mHglrc;
-		HDC mHdc;
-
-	public:
-		GLSwapchainWin32(GLDevice *pDevice,
-						 GLStateManager *pStateManager,
-						 HDC hdc,
-						 const SwapchainCreateInfo &createInfo,
-						 RendererVersion version,
-						 RenderSystemCreateFlagBits flags);
-
-		~GLSwapchainWin32() override
+		std::shared_ptr<std::function<void(const Event &)>> GetProcessWindowEventCallable()
 		{
-			wglDeleteContext(mHglrc);
-		}
-
-		constexpr HGLRC GetHandle() const
-		{
-			return mHglrc;
-		}
-		void MakeCurrent() const
-		{
-			if (!wglMakeContextCurrentARB(mHdc, mHdc, mHglrc))
-			{
-				LOG_VAR(GetLastError());
-				THROW("failed to make context current");
-			}
-		}
-		void SwapBuffer()
-		{
-			SwapBuffers(mHdc);
+			return mProcessWindowEventCallable;
 		}
 	};
-#endif
-
 } // namespace Shit

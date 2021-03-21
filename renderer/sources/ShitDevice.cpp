@@ -9,61 +9,63 @@
  */
 #include "ShitDevice.h"
 
-#define DESTROY_OBJECT(containers, x)                 \
-	for (int i = containers.size() - 1; i >= 0; --i)  \
-	{                                                 \
-		if (containers[i].get() == x)                 \
-		{                                             \
-			containers.erase(containers.begin() + i); \
-			break;                                    \
-		}                                             \
-	}
-
 namespace Shit
 {
 	void Device::Destroy(const Shader *pShader)
 	{
-		DESTROY_OBJECT(mShaders, pShader);
+		RemoveSmartPtrFromContainer(mShaders, pShader);
 	}
 	void Device::Destroy(const CommandPool *pCommandPool)
 	{
-		DESTROY_OBJECT(mCommandPools, pCommandPool);
+		RemoveSmartPtrFromContainer(mCommandPools, pCommandPool);
 	}
 	void Device::Destroy(const Buffer *pBuffer)
 	{
-		DESTROY_OBJECT(mBuffers, pBuffer);
+		RemoveSmartPtrFromContainer(mBuffers, pBuffer);
 	}
 	void Device::Destroy(const Image *pImage)
 	{
-		DESTROY_OBJECT(mImages, pImage);
+		RemoveSmartPtrFromContainer(mImages, pImage);
 	}
 	void Device::Destroy(const ImageView *pImageView)
 	{
-		DESTROY_OBJECT(mImageViews, pImageView);
+		RemoveSmartPtrFromContainer(mImageViews, pImageView);
 	}
 	void Device::Destroy(const Semaphore *pSemaphore)
 	{
-		DESTROY_OBJECT(mSemaphores, pSemaphore);
+		RemoveSmartPtrFromContainer(mSemaphores, pSemaphore);
 	}
 	void Device::Destroy(const Fence *pFence)
 	{
-		DESTROY_OBJECT(mFences, pFence);
+		RemoveSmartPtrFromContainer(mFences, pFence);
 	}
 	void Device::Destroy(const DescriptorSetLayout *pSetLayout)
 	{
-		DESTROY_OBJECT(mDescriptorSetLayouts, pSetLayout);
+		RemoveSmartPtrFromContainer(mDescriptorSetLayouts, pSetLayout);
 	}
 	void Device::Destroy(const PipelineLayout *pLayout)
 	{
-		DESTROY_OBJECT(mPipelineLayouts, pLayout);
+		RemoveSmartPtrFromContainer(mPipelineLayouts, pLayout);
 	}
 	void Device::Destroy(const RenderPass *pRenderPass)
 	{
-		DESTROY_OBJECT(mRenderPasses, pRenderPass);
+		RemoveSmartPtrFromContainer(mRenderPasses, pRenderPass);
 	}
 	void Device::Destroy(const Framebuffer *pFramebuffer)
 	{
-		DESTROY_OBJECT(mFramebuffers, pFramebuffer);
+		RemoveSmartPtrFromContainer(mFramebuffers, pFramebuffer);
+	}
+	void Device::Destroy(const Swapchain *pSwapchain)
+	{
+		RemoveSmartPtrFromContainer(mSwapchains, pSwapchain);
+	}
+	void Device::Destroy(const Pipeline *pPipeline)
+	{
+		RemoveSmartPtrFromContainer(mPipelines, pPipeline);
+	}
+	void Device::Destroy(const DescriptorSet *pDescriptorSet)
+	{
+		RemoveSmartPtrFromContainer(mDescriptorSets, pDescriptorSet);
 	}
 
 } // namespace Shit

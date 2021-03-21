@@ -23,7 +23,6 @@ namespace Shit
 			: CommandPool(createInfo), mpStateManager(pStateManger) {}
 		~GLCommandPool() override {}
 		void CreateCommandBuffers(const CommandBufferCreateInfo &createInfo, std::vector<CommandBuffer *> &commandBuffers) override;
-		void DestroyCommandBuffer(CommandBuffer *pCommandBuffer) override;
 	};
 
 } // namespace Shit

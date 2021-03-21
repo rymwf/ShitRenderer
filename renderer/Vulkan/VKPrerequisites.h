@@ -18,9 +18,10 @@
 #endif
 
 #define LAYER_VALIDATION_KHRONOS_validation "VK_LAYER_KHRONOS_validation"
-#define CHECK_VK_RESULT(res) \
-	if (res != VK_SUCCESS)   \
-	THROW(#res " failed")
+#define CHECK_VK_RESULT(x) \
+	auto res = x;          \
+	if (res != VK_SUCCESS) \
+		THROW(#x " failed" + std::to_string(res));
 
 namespace Shit
 {

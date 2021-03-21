@@ -30,12 +30,14 @@
 namespace Shit
 {
 
-	VKDevice::VKDevice(PhysicalDevice physicalDevice) : mPhysicalDevice(static_cast<VkPhysicalDevice>(physicalDevice.pPhysicalDevice))
+	VKDevice::VKDevice(const DeviceCreateInfo &createInfo) : Device(createInfo)
 	{
-		VK::queryQueueFamilyProperties(mPhysicalDevice, mQueueFamilyProperties);
+		VkPhysicalDevice physicalDevice = GetPhysicalDevice();
+
+		VK::queryQueueFamilyProperties(physicalDevice, mQueueFamilyProperties);
 
 		std::vector<VkExtensionProperties> properties;
-		VK::queryDeviceExtensionProperties(mPhysicalDevice, properties);
+		VK::queryDeviceExtensionProperties(physicalDevice, properties);
 
 		std::vector<const char *> extensionNames;
 		extensionNames.reserve(properties.size());
@@ -48,13 +50,13 @@ namespace Shit
 
 		//physical device  features
 		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceFeatures(mPhysicalDevice, &deviceFeatures);
+		vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 
 		deviceFeatures.sampleRateShading = true;
 
 		std::vector<VkDeviceQueueCreateInfo> queueInfos;
 		std::vector<float> queuePriorities;
-		for (uint32_t i = 0, len = mQueueFamilyProperties.size(); i < len; ++i)
+		for (uint32_t i = 0, len = static_cast<uint32_t>(mQueueFamilyProperties.size()); i < len; ++i)
 		{
 			queuePriorities.clear();
 			//TODO: how to arrange queue priorities
@@ -79,24 +81,24 @@ namespace Shit
 			static_cast<uint32_t>(extensionNames.size()),
 			extensionNames.data(),
 			&deviceFeatures};
-		if (vkCreateDevice(mPhysicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
+		if (vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
 			THROW("create logical device failed");
 
 		//create a transfer command pool for memory transfer operation
 		auto transferQueueFamilyIndex = GetQueueFamilyIndexByFlag(
 			QueueFlagBits::TRANSFER_BIT | QueueFlagBits::GRAPHICS_BIT | QueueFlagBits::COMPUTE_BIT,
 			{});
-		mpOneTimeCommandPool = CreateCommandPool(
+		mpOneTimeCommandPool = Create(
 			//{CommandPoolCreateFlagBits::TRANSIENT_BIT,
 			{CommandPoolCreateFlagBits::RESET_COMMAND_BUFFER_BIT,
 			 transferQueueFamilyIndex.value()});
-		mpOneTimeCommandQueue = CreateDeviceQueue({transferQueueFamilyIndex->index, 0});
+		mpOneTimeCommandQueue = Create({transferQueueFamilyIndex->index, 0});
 	}
 
 	std::optional<QueueFamilyIndex> VKDevice::GetPresentQueueFamilyIndex(ShitWindow *pWindow)
 	{
 		auto index = VK::findQueueFamilyIndexPresent(
-			mPhysicalDevice,
+			GetPhysicalDevice(),
 			static_cast<uint32_t>(mQueueFamilyProperties.size()),
 			static_cast<const VKSurface *>(pWindow->GetSurfacePtr())->GetHandle());
 		if (index.has_value())
@@ -117,44 +119,42 @@ namespace Shit
 	{
 		auto surface = static_cast<const VKSurface *>(pWindow->GetSurfacePtr())->GetHandle();
 		std::vector<VkSurfaceFormatKHR> surfaceFormats;
-		VK::querySurfaceFormats(mPhysicalDevice, surface, surfaceFormats);
-		for (auto &&e : surfaceFormats)
-		{
-			formats.emplace_back(
-				WindowPixelFormat{Map(e.format),
-								  Map(e.colorSpace)});
-		}
+		VK::querySurfaceFormats(GetPhysicalDevice(), surface, surfaceFormats);
+		formats.resize(surfaceFormats.size());
+		std::transform(std::execution::par, surfaceFormats.begin(), surfaceFormats.end(), formats.begin(), [](auto &&e) {
+			return WindowPixelFormat{Map(e.format), Map(e.colorSpace)};
+		});
 	}
-	Swapchain *VKDevice::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	Swapchain *VKDevice::Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
 		mSwapchains.emplace_back(std::make_unique<VKSwapchain>(this, pWindow, createInfo));
 		pWindow->SetSwapchain(mSwapchains.back().get());
 		return mSwapchains.back().get();
 	}
 
-	Shader *VKDevice::CreateShader(const ShaderCreateInfo &createInfo)
+	Shader *VKDevice::Create(const ShaderCreateInfo &createInfo)
 	{
 		mShaders.emplace_back(std::make_unique<VKShader>(mDevice, createInfo));
 		return mShaders.back().get();
 	}
-	Pipeline *VKDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
+	Pipeline *VKDevice::Create(const GraphicsPipelineCreateInfo &createInfo)
 	{
 		mPipelines.emplace_back(std::make_unique<VKGraphicsPipeline>(mDevice, createInfo));
 		return mPipelines.back().get();
 	}
-	CommandPool *VKDevice::CreateCommandPool(const CommandPoolCreateInfo &createInfo)
+	CommandPool *VKDevice::Create(const CommandPoolCreateInfo &createInfo)
 	{
 		mCommandPools.emplace_back(std::make_unique<VKCommandPool>(mDevice, createInfo));
 		return mCommandPools.back().get();
 	}
-	Queue *VKDevice::CreateDeviceQueue(const QueueCreateInfo &createInfo)
+	Queue *VKDevice::Create(const QueueCreateInfo &createInfo)
 	{
 		mQueues.emplace_back(std::make_unique<VKQueue>(mDevice, createInfo));
 		return mQueues.back().get();
 	}
-	Buffer *VKDevice::CreateBuffer(const BufferCreateInfo &createInfo, void *pData)
+	Buffer *VKDevice::Create(const BufferCreateInfo &createInfo, void *pData)
 	{
-		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, mPhysicalDevice, createInfo));
+		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, GetPhysicalDevice(), createInfo));
 
 		if (pData)
 		{
@@ -174,7 +174,7 @@ namespace Shit
 					BufferUsageFlagBits::TRANSFER_SRC_BIT,
 					MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
 				};
-				VKBuffer stagingbuffer{mDevice, mPhysicalDevice, stagingBufferCreateInfo};
+				VKBuffer stagingbuffer{mDevice, GetPhysicalDevice(), stagingBufferCreateInfo};
 				void *data;
 				stagingbuffer.MapBuffer(0, createInfo.size, &data);
 				memcpy(data, pData, static_cast<size_t>(createInfo.size));
@@ -214,9 +214,9 @@ namespace Shit
 		mpOneTimeCommandQueue->WaitIdle();
 		pOneTimeCommandBuffer->Reset(CommandBufferResetFlatBits::RELEASE_RESOURCES_BIT);
 	}
-	Image *VKDevice::CreateImage(const ImageCreateInfo &createInfo, void *pData)
+	Image *VKDevice::Create(const ImageCreateInfo &createInfo, void *pData)
 	{
-		mImages.emplace_back(std::make_unique<VKImage>(mDevice, mPhysicalDevice, createInfo));
+		mImages.emplace_back(std::make_unique<VKImage>(mDevice, GetPhysicalDevice(), createInfo));
 		if (pData)
 		{
 			uint64_t size = createInfo.extent.width * createInfo.extent.height * createInfo.extent.depth * GetFormatSize(createInfo.format);
@@ -228,7 +228,7 @@ namespace Shit
 				MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::DEVICE_LOCAL_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
 			};
 
-			VKBuffer stagingbuffer{mDevice, mPhysicalDevice, stagingBufferCreateInfo};
+			VKBuffer stagingbuffer{mDevice, GetPhysicalDevice(), stagingBufferCreateInfo};
 			void *data;
 			stagingbuffer.MapBuffer(0, size, &data);
 			memcpy(data, pData, static_cast<size_t>(size));
@@ -276,37 +276,37 @@ namespace Shit
 		}
 		return mImages.back().get();
 	}
-	ImageView *VKDevice::CreateImageView(const ImageViewCreateInfo &createInfo)
+	ImageView *VKDevice::Create(const ImageViewCreateInfo &createInfo)
 	{
 		mImageViews.emplace_back(std::make_unique<VKImageView>(mDevice, createInfo));
 		return mImageViews.back().get();
 	}
-	DescriptorSetLayout *VKDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo)
+	DescriptorSetLayout *VKDevice::Create(const DescriptorSetLayoutCreateInfo &createInfo)
 	{
 		mDescriptorSetLayouts.emplace_back(std::make_unique<VKDescriptorSetLayout>(mDevice, createInfo));
 		return mDescriptorSetLayouts.back().get();
 	}
-	PipelineLayout *VKDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo)
+	PipelineLayout *VKDevice::Create(const PipelineLayoutCreateInfo &createInfo)
 	{
 		mPipelineLayouts.emplace_back(std::make_unique<VKPipelineLayout>(mDevice, createInfo));
 		return mPipelineLayouts.back().get();
 	}
-	RenderPass *VKDevice::CreateRenderPass(const RenderPassCreateInfo &createInfo)
+	RenderPass *VKDevice::Create(const RenderPassCreateInfo &createInfo)
 	{
 		mRenderPasses.emplace_back(std::make_unique<VKRenderPass>(mDevice, createInfo));
 		return mRenderPasses.back().get();
 	}
-	Framebuffer *VKDevice::CreateFramebuffer(const FramebufferCreateInfo &createInfo)
+	Framebuffer *VKDevice::Create(const FramebufferCreateInfo &createInfo)
 	{
 		mFramebuffers.emplace_back(std::make_unique<VKFramebuffer>(mDevice, createInfo));
 		return mFramebuffers.back().get();
 	}
-	Semaphore *VKDevice::CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo)
+	Semaphore *VKDevice::Create(const SemaphoreCreateInfo &createInfo)
 	{
 		mSemaphores.emplace_back(std::make_unique<VKSemaphore>(mDevice, createInfo));
 		return mSemaphores.back().get();
 	}
-	Fence *VKDevice::CreateFence(const FenceCreateInfo &createInfo)
+	Fence *VKDevice::Create(const FenceCreateInfo &createInfo)
 	{
 		mFences.emplace_back(std::make_unique<VKFence>(mDevice, createInfo));
 		return mFences.back().get();

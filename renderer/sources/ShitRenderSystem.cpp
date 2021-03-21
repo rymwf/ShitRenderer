@@ -21,15 +21,15 @@ namespace Shit
 		switch (type)
 		{
 		case RendererVersion::GL:
-			return SHIT_RENDERER_GL_NAME;
+			return LIBPREFIX SHIT_RENDERER_GL_NAME;
 		case RendererVersion::VULKAN:
-			return SHIT_RENDERER_VULKAN_NAME;
+			return LIBPREFIX SHIT_RENDERER_VULKAN_NAME;
 		case RendererVersion::D3D11:
-			return SHIT_RENDERER_D3D11_NAME;
+			return LIBPREFIX SHIT_RENDERER_D3D11_NAME;
 		case RendererVersion::D3D12:
-			return SHIT_RENDERER_D3D12_NAME;
+			return LIBPREFIX SHIT_RENDERER_D3D12_NAME;
 		case RendererVersion::METAL:
-			return SHIT_RENDERER_METAL_NAME;
+			return LIBPREFIX SHIT_RENDERER_METAL_NAME;
 		default:
 			THROW("renderer type do not exist");
 		}
@@ -45,7 +45,7 @@ namespace Shit
 		f(pRenderSystem);
 	}
 
-	RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo)
+	SHIT_API RenderSystem *LoadRenderSystem(const RenderSystemCreateInfo &createInfo)
 	{
 		using RENDERER_LOAD_FUNC = Shit::RenderSystem *(*)(const RenderSystemCreateInfo &);
 		auto module = ModuleManager::Get()->GetModule(GetRendererName(createInfo.version & RendererVersion::TypeBitmask));
@@ -64,9 +64,8 @@ namespace Shit
 		static_assert(0, "create render Window method not implemented");
 #endif
 		auto window = mWindows.back().get();
-		window->AttachEventHandle(createInfo.eventHandle);
 		mSurfaces.emplace_back(std::move(CreateSurface({}, window)));
-		window->SetSurface(mSurfaces.back().get());	
+		window->SetSurface(mSurfaces.back().get());
 		return mWindows.back().get();
 	}
 

@@ -15,10 +15,14 @@ namespace Shit
 	class Shader
 	{
 	protected:
-		ShaderStageFlagBits mStageFlagBit;
+		ShaderCreateInfo mCreateInfo;
 
 	public:
-		Shader(const ShaderCreateInfo &createInfo) : mStageFlagBit(createInfo.stage) {}
+		Shader(const ShaderCreateInfo &createInfo) : mCreateInfo(createInfo) {}
 		virtual ~Shader() {}
+		constexpr const ShaderCreateInfo *GetCreateInfoPtr() const
+		{
+			return &mCreateInfo;
+		}
 	};
 }

@@ -54,7 +54,7 @@ namespace Shit
 		if (VK_SUCCESS != vkQueueSubmit(mHandle, static_cast<uint32_t>(infos.size()), infos.data(), pFence ? static_cast<VKFence *>(pFence)->GetHandle() : VK_NULL_HANDLE))
 			THROW("failed to submit command");
 	}
-	void VKQueue::Present(const PresentInfo &presentInfo)
+	Result VKQueue::Present(const PresentInfo &presentInfo)
 	{
 		std::vector<VkSemaphore> waitSemaphores;
 		for (auto &&a : presentInfo.waitSemaphores)
@@ -76,9 +76,19 @@ namespace Shit
 			swapchains.data(),
 			presentInfo.imageIndices.data(),
 		};
-			//results.data()};
-		if (vkQueuePresentKHR(mHandle, &info) != VK_SUCCESS)
-			THROW("failed to present");
+		//results.data()};
+		auto res=vkQueuePresentKHR(mHandle, &info);
+
+		switch (res)
+		{
+		case VK_SUCCESS:
+		case VK_SUBOPTIMAL_KHR:
+			return Result::SUCCESS;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			return Result::SHIT_ERROR_OUT_OF_DATE;
+		default:
+			return Result::SHIT_ERROR;
+		}
 	}
 	void VKQueue::WaitIdle()
 	{

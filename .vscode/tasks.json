@@ -79,7 +79,7 @@
 		},
 		{
 			"type": "cppbuild",
-			"label": "C/C++: config project ninja x64 debug",
+			"label": "C/C++: config project ninja msvc debug",
 			"command": "cmake",
 			"args": [
 				"-B",
@@ -87,9 +87,12 @@
 				"-DCMAKE_TOOLCHAIN_FILE=D:\\Workspace\\3rdparty\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
 				"-G",
 				"Ninja",
-				"-DCMAKE_C_COMPILER='gcc;'",
-				"-DCMAKE_CXX_COMPILER='g++;'",
-				"-DCMAKE_BUILD_TYPE=Debug"
+				//"-DCMAKE_C_COMPILER='C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/Llvm/x64/bin/clang-cl.exe'",
+				//"-DCMAKE_CXX_COMPILER='C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/Llvm/x64/bin/clang-cl.exe'",
+				//"-DCMAKE_C_COMPILER='gcc'",
+				//"-DCMAKE_CXX_COMPILER='g++'",
+				"-DCMAKE_BUILD_TYPE=Debug",
+				//"-DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"
@@ -101,7 +104,7 @@
 		},
 		{
 			"type": "cppbuild",
-			"label": "C/C++: config project ninja x64 release",
+			"label": "C/C++: config project ninja msvc release",
 			"command": "cmake",
 			"args": [
 				"-B",
@@ -109,9 +112,27 @@
 				"-DCMAKE_TOOLCHAIN_FILE=D:\\Workspace\\3rdparty\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
 				"-G",
 				"Ninja",
-				"-DCMAKE_C_COMPILER='gcc;'",
-				"-DCMAKE_CXX_COMPILER='g++;'",
-				"-DCMAKE_BUILD_TYPE=Release"
+				"-DCMAKE_BUILD_TYPE=Release",
+				//"-DCMAKE_C_COMPILER='gcc'",
+				//"-DCMAKE_CXX_COMPILER='g++'",
+				//"-DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build",
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: config project MSVC",
+			"command": "cmake",
+			"args": [
+				"-B",
+				"buildMSVC",
+				"-DCMAKE_TOOLCHAIN_FILE=D:\\Workspace\\3rdparty\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"

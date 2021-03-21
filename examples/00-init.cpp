@@ -17,11 +17,12 @@ public:
 
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
+		//auto func=std::make_shared<void()>
 		WindowCreateInfo windowCreateInfo{
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
-			std::bind(&Hello::ProcessEvent, this, std::placeholders::_1)};
+			std::make_shared<std::function<void(const Event&)>>(std::bind(&Hello::ProcessEvent, this, std::placeholders::_1)) };
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 	}
 
@@ -32,17 +33,18 @@ public:
 	 */
 	void ProcessEvent(const Event &ev)
 	{
-		switch (ev.type)
-		{
-		case EventType::KEYBOARD:
-			if (ev.key.keyCode == KeyCode::KEY_ESCAPE)
-				ev.pWindow->Close();
-			break;
-		}
+		std::visit(overloaded{
+					   [](auto &&) {},
+					   [&ev](const KeyEvent &value) {
+						   if (value.keyCode == KeyCode::KEY_ESCAPE)
+							   ev.pWindow->Close();
+					   },
+				   },
+				   ev.value);
 	}
 	void mainLoop()
 	{
-		while (window->PollEvent())
+		while (window->PollEvents())
 		{
 		}
 	}

@@ -41,7 +41,7 @@ namespace Shit
 		{
 			vkDestroyPipeline(mDevice, mHandle, nullptr);
 		}
-		constexpr VkPipeline GetHandle() const
+		VkPipeline GetHandle() const
 		{
 			return mHandle;
 		}
@@ -54,7 +54,7 @@ namespace Shit
 		~VKGraphicsPipeline() override
 		{
 		}
-		constexpr VkPipeline GetHandle() const
+		VkPipeline GetHandle() const
 		{
 			return mHandle;
 		}

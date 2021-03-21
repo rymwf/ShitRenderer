@@ -18,8 +18,8 @@ namespace Shit
 {
 	struct MouseMoveEvent
 	{
-		float xpos;
-		float ypos;
+		int xpos;
+		int ypos;
 	};
 	struct MouseEnterEvent
 	{
@@ -49,76 +49,74 @@ namespace Shit
 		uint32_t count;
 		char **paths;
 	};
-	struct CreateEvent
+	struct WindowCreateEvent
 	{
 	};
-	struct CloseEvent
+	struct WindowCloseEvent
 	{
 	};
-	struct QuitEvent
+	struct WindowQuitEvent
 	{
 	};
-	struct ResizeEvent
+	struct WindowResizeEvent
 	{
 		uint32_t width;
 		uint32_t height;
 	};
-	struct ContentScaleEvent
+	struct WindowContentScaleEvent
 	{
 		float xscale;
 		float yscale;
 	};
-	struct PosEvent
+	struct WindowPosEvent
 	{
 		int xpos;
 		int ypos;
 	};
-	struct IconifyEvent
+	struct WindowIconifyEvent
 	{
 		bool iconified;
 	};
-	struct MaximizeEvent
+	struct WindowMaximizeEvent
 	{
 		bool maximized;
 	};
-	struct FocusEvent
+	struct WindowFocusEvent
 	{
 		bool focused;
 	};
-	struct RefreshEvent
+	struct WindowRefreshEvent
 	{
 	};
 
 	struct Event
 	{
-		EventType type;
+		using EventType=
+		std::variant<
+			KeyEvent,
+			MouseMoveEvent,
+			MouseButtonEvent,
+			MouseEnterEvent,
+			CharEvent,
+			MouseWheelEvent,
+			DropEvent,
+
+			WindowCreateEvent,
+			WindowCloseEvent,
+			WindowQuitEvent,
+			WindowResizeEvent,
+			WindowContentScaleEvent,
+			WindowPosEvent,
+			WindowIconifyEvent,
+			WindowMaximizeEvent,
+			WindowFocusEvent,
+			WindowRefreshEvent
+			>;
+
 		EventModifierBits modifier;
 		ShitWindow *pWindow;
-		union
-		{
-			KeyEvent key;
-			MouseMoveEvent mouseMove;
-			MouseButtonEvent mouseButton;
-			MouseEnterEvent mouseEnter;
-			CharEvent charInput;
-			MouseWheelEvent mouseWheel;
-			DropEvent drop;
-
-			//window event
-			CreateEvent windowCreate;
-			CloseEvent windowClose;
-			QuitEvent windowQuit;
-			ResizeEvent windowResize;
-			ContentScaleEvent windowConstentScale;
-			PosEvent windowPos;
-			IconifyEvent windowIconify;
-			MaximizeEvent windowMaximize;
-			FocusEvent windowFocus;
-			RefreshEvent windowRefresh;
-		};
+		EventType value;
 	};
-
-
 
 	uint32_t MapKey(KeyCode keycode);
 	KeyCode MapKey(uint32_t keycode);

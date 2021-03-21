@@ -24,7 +24,8 @@ namespace Shit
 	{
 	protected:
 		GLuint mHandle;
-		std::vector<GLuint> mPrograms;
+		GLuint mProgram;
+		std::vector<GLuint> mShaders;
 		GLStateManager *mpStateManager;
 
 	public:
@@ -32,8 +33,10 @@ namespace Shit
 
 		~GLPipeline() override
 		{
-			for (auto &&e : mPrograms)
-				glDeleteProgram(e);
+			mpStateManager->NotifyReleasedPipeline(mHandle);
+			for (auto e : mShaders)
+				glDeleteShader(e);
+			glDeleteProgram(mProgram);
 			glDeleteProgramPipelines(1, &mHandle);
 		}
 		GLuint CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable);
@@ -47,7 +50,11 @@ namespace Shit
 	class GLGraphicsPipeline final : public GraphicsPipeline, public GLPipeline
 	{
 		GLuint mVAO{};
+
 		void CreateVertexArray();
+
+		GLuint CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo);
+
 	public:
 		GLGraphicsPipeline(GLStateManager *stateManager, const GraphicsPipelineCreateInfo &createInfo);
 		constexpr GLuint GetVertexArray() const

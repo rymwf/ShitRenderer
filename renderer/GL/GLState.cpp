@@ -10,6 +10,36 @@
 #include "GLState.h"
 namespace Shit
 {
+	static const std::unordered_map<GLenum, int> glCapabilityTable{
+		//{GL_CLIP_DISTANCE,},
+		{GL_BLEND, 0},
+		{GL_COLOR_LOGIC_OP, 1},
+		{GL_CULL_FACE, 2},
+		{GL_DEBUG_OUTPUT, 3},
+		{GL_DEBUG_OUTPUT_SYNCHRONOUS, 4},
+		{GL_DEPTH_CLAMP, 5},
+		{GL_DEPTH_TEST, 6},
+		{GL_DITHER, 7},
+		{GL_FRAMEBUFFER_SRGB, 8},
+		{GL_LINE_SMOOTH, 9},
+		{GL_MULTISAMPLE, 10},
+		{GL_POLYGON_OFFSET_FILL, 11},
+		{GL_POLYGON_OFFSET_LINE, 12},
+		{GL_POLYGON_OFFSET_POINT, 13},
+		{GL_POLYGON_SMOOTH, 14},
+		{GL_PRIMITIVE_RESTART, 15},
+		{GL_PRIMITIVE_RESTART_FIXED_INDEX, 16},
+		{GL_RASTERIZER_DISCARD, 17},
+		{GL_SAMPLE_ALPHA_TO_COVERAGE, 18},
+		{GL_SAMPLE_ALPHA_TO_ONE, 19},
+		{GL_SAMPLE_COVERAGE, 20},
+		{GL_SAMPLE_SHADING, 21},
+		{GL_SAMPLE_MASK, 22},
+		{GL_SCISSOR_TEST, 23},
+		{GL_STENCIL_TEST, 24},
+		{GL_TEXTURE_CUBE_MAP_SEAMLESS, 25},
+		{GL_PROGRAM_POINT_SIZE, 26},
+	};
 	static const std::unordered_map<GLenum, int> glBufferBindTargetMap{
 		{GL_ARRAY_BUFFER, 0},
 		{GL_ATOMIC_COUNTER_BUFFER, 1},
@@ -30,15 +60,15 @@ namespace Shit
 
 	void GLStateManager::BindDrawFramebuffer(GLuint framebuffer)
 	{
-		if (mDrawBufferState.curDrawBuffer != framebuffer)
+		if (mDrawBufferState.buffer != framebuffer)
 		{
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-			mDrawBufferState.curDrawBuffer = framebuffer;
+			mDrawBufferState.buffer = framebuffer;
 		}
 	}
 	void GLStateManager::PushDrawFramebuffer(GLuint framebuffer)
 	{
-		mDrawBufferState.drawBufferStack.emplace(mDrawBufferState.curDrawBuffer);
+		mDrawBufferState.drawBufferStack.emplace(mDrawBufferState.buffer);
 		BindDrawFramebuffer(framebuffer);
 	}
 	void GLStateManager::PopDrawFramebuffer()
@@ -49,15 +79,15 @@ namespace Shit
 
 	void GLStateManager::BindReadFramebuffer(GLuint framebuffer)
 	{
-		if (mReadBufferState.curReadBuffer != framebuffer)
+		if (mReadBufferState.buffer!= framebuffer)
 		{
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
-			mReadBufferState.curReadBuffer = framebuffer;
+			mReadBufferState.buffer= framebuffer;
 		}
 	}
 	void GLStateManager::PushReadFramebuffer(GLuint framebuffer)
 	{
-		mReadBufferState.readBufferStack.emplace(mReadBufferState.curReadBuffer);
+		mReadBufferState.readBufferStack.emplace(mReadBufferState.buffer);
 		BindReadFramebuffer(framebuffer);
 	}
 	void GLStateManager::PopReadFramebuffer()
@@ -68,10 +98,10 @@ namespace Shit
 
 	void GLStateManager::NotifyReleasedFramebuffer(GLuint framebuffer)
 	{
-		if (mDrawBufferState.curDrawBuffer == framebuffer)
-			mDrawBufferState.curDrawBuffer = 0;
-		if (mReadBufferState.curReadBuffer == framebuffer)
-			mReadBufferState.curReadBuffer = 0;
+		if (mDrawBufferState.buffer == framebuffer)
+			mDrawBufferState.buffer = 0;
+		if (mReadBufferState.buffer == framebuffer)
+			mReadBufferState.buffer = 0;
 	}
 	void GLStateManager::BindRenderbuffer(GLuint renderbuffer)
 	{
@@ -137,16 +167,6 @@ namespace Shit
 			glBindVertexArray(vao);
 			mVAOState.curVAO = vao;
 		}
-	}
-	void GLStateManager::PushVertexArray(GLuint vao)
-	{
-		mVAOState.vaoStack.emplace(mVAOState.curVAO);
-		BindVertexArray(vao);
-	}
-	void GLStateManager::PopVertexArray()
-	{
-		BindVertexArray(mVAOState.vaoStack.top());
-		mVAOState.vaoStack.pop();
 	}
 	void GLStateManager::NotifyReleasedVertexArray(GLuint vao)
 	{
@@ -247,19 +267,309 @@ namespace Shit
 			mPipelineState.curPipeline = pipeline;
 		}
 	}
-	void GLStateManager::PushPipeline(GLuint pipeline)
-	{
-		mPipelineState.pipelineStack.emplace(mPipelineState.curPipeline);
-		BindPipeline(pipeline);
-	}
-	void GLStateManager::PopPipeline()
-	{
-		BindPipeline(mPipelineState.pipelineStack.top());
-		mPipelineState.pipelineStack.pop();
-	}
 	void GLStateManager::NotifyReleasedPipeline(GLuint pipeline)
 	{
 		if (mPipelineState.curPipeline == pipeline)
 			mPipelineState.curPipeline = 0;
+	}
+	void GLStateManager::EnableCapability(GLenum cap)
+	{
+		auto index = glCapabilityTable.at(cap);
+		if (!mCapabilityState.capbilityStates[index])
+		{
+			glEnable(cap);
+			mCapabilityState.capbilityStates[index] = true;
+		}
+	}
+	void GLStateManager::DisableCapability(GLenum cap)
+	{
+		auto index = glCapabilityTable.at(cap);
+		if (mCapabilityState.capbilityStates[index])
+		{
+			glDisable(cap);
+			mCapabilityState.capbilityStates[index] = false;
+		}
+	}
+	void GLStateManager::UpdateCapbilityState()
+	{
+		mCapabilityState.capbilityStates.resize(glCapabilityTable.size());
+		for (auto &&e : glCapabilityTable)
+		{
+			mCapabilityState.capbilityStates[e.second] = glIsEnabled(e.first);
+		}
+	}
+	void GLStateManager::PolygonMode(GLenum mode)
+	{
+		if (mPolygonState.mode != mode)
+		{
+			glPolygonMode(GL_FRONT_AND_BACK, mode);
+			mPolygonState.mode = mode;
+		}
+	}
+	void GLStateManager::PolygonOffSetClamp(GLfloat factor, GLfloat units, GLfloat clamp)
+	{
+		if (mPolygonState.offsetFactor != factor || mPolygonState.offsetUnits != units || mPolygonState.clamp != clamp)
+		{
+			glPolygonOffsetClamp(factor, units, clamp);
+			mPolygonState.offsetFactor = factor;
+			mPolygonState.offsetUnits = units;
+			mPolygonState.clamp = clamp;
+		}
+	}
+	//cull face mode
+	void GLStateManager::CullFace(GLenum mode)
+	{
+		if (mCullModeState.mode != mode)
+		{
+			glCullFace(mode);
+			mCullModeState.mode = mode;
+		}
+	}
+
+	//front face
+	void GLStateManager::FrontFace(GLenum dir)
+	{
+		if (mFrontFaceState.dir != dir)
+		{
+			glFrontFace(dir);
+			mFrontFaceState.dir = dir;
+		}
+	}
+	void GLStateManager::SetViewports(GLuint first, GLuint count, float *v)
+	{
+		GLuint i = 0;
+		while (first < count)
+		{
+			if (
+				mViewportState.viewports[first].x != v[i * 6 + 0] ||
+				mViewportState.viewports[first].y != v[i * 6 + 1] ||
+				mViewportState.viewports[first].width != v[i * 6 + 2] ||
+				mViewportState.viewports[first].height != v[i * 6 + 3])
+			{
+				glViewportIndexedf(i, v[first * 6 + 0], v[i * 6 + 1], v[i * 6 + 2], v[i * 6 + 3]);
+				mViewportState.viewports[first].x = v[i * 6 + 0];
+				mViewportState.viewports[first].y = v[i * 6 + 1];
+				mViewportState.viewports[first].width = v[i * 6 + 2];
+				mViewportState.viewports[first].height = v[i * 6 + 3];
+			}
+			if (
+				mViewportState.viewports[first].minDepth != v[i * 6 + 4] ||
+				mViewportState.viewports[first].maxDepth != v[i * 6 + 5])
+			{
+				glDepthRangeIndexed(i, v[first * 6 + 4], v[i * 6 + 5]);
+				mViewportState.viewports[first].minDepth = v[i * 6 + 4];
+				mViewportState.viewports[first].maxDepth = v[i * 6 + 5];
+			}
+			++first;
+			++i;
+		}
+	}
+	void GLStateManager::SetScissors(GLuint first, GLuint count, int32_t *v)
+	{
+		GLuint i = 0;
+		while (first < count)
+		{
+			//if (!mScissorState.scissors[first].enabled)
+			//{
+			//	glEnablei(GL_SCISSOR_TEST, first);
+			//	mScissorState.scissors[first].enabled = true;
+			//}
+			if (
+				mScissorState.scissors[first].x != v[i * 4 + 0] ||
+				mScissorState.scissors[first].y != v[i * 4 + 1] ||
+				mScissorState.scissors[first].width != v[i * 4 + 2] ||
+				mScissorState.scissors[first].height != v[i * 4 + 3])
+			{
+				glScissorIndexed(i, v[first * 4 + 0], v[i * 4 + 1], v[i * 4 + 2], v[i * 4 + 3]);
+				mScissorState.scissors[first].x = v[i * 4 + 0];
+				mScissorState.scissors[first].y = v[i * 4 + 1];
+				mScissorState.scissors[first].width = v[i * 4 + 2];
+				mScissorState.scissors[first].height = v[i * 4 + 3];
+			}
+			++first;
+			++i;
+		}
+	}
+	void GLStateManager::LineWidth(GLfloat width)
+	{
+		if (mLineWidth != width)
+		{
+			glLineWidth(width);
+			mLineWidth = width;
+		}
+	}
+	void GLStateManager::StencilOpState(GLenum face, GLenum func, GLint ref, GLuint mask, GLenum sfail, GLenum dpfail, GLenum dppass, GLuint writeMask)
+	{
+		if (face == GL_FRONT)
+		{
+			if (
+				mStencilOpState.frontOpState.compareOp != func ||
+				mStencilOpState.frontOpState.reference != ref ||
+				mStencilOpState.frontOpState.compareMask != mask)
+			{
+				glStencilFuncSeparate(face, func, ref, mask);
+				mStencilOpState.frontOpState.compareOp = func;
+				mStencilOpState.frontOpState.reference = ref;
+				mStencilOpState.frontOpState.compareMask = mask;
+			}
+			if (
+				mStencilOpState.frontOpState.failOp != sfail ||
+				mStencilOpState.frontOpState.passOp != dpfail ||
+				mStencilOpState.frontOpState.depthFailOp != dpfail)
+			{
+				glStencilOpSeparate(face, sfail, dpfail, dppass);
+				mStencilOpState.frontOpState.failOp = sfail;
+				mStencilOpState.frontOpState.passOp = dpfail;
+				mStencilOpState.frontOpState.depthFailOp = dpfail;
+			}
+			if (mStencilOpState.frontOpState.writeMask != writeMask)
+			{
+				glStencilMaskSeparate(face, writeMask);
+				mStencilOpState.frontOpState.writeMask = writeMask;
+			}
+		}
+		else if (face == GL_BACK)
+		{
+			if (
+				mStencilOpState.backOpState.compareOp != func ||
+				mStencilOpState.backOpState.reference != ref ||
+				mStencilOpState.backOpState.compareMask != mask)
+			{
+				glStencilFuncSeparate(face, func, ref, mask);
+				mStencilOpState.backOpState.compareOp = func;
+				mStencilOpState.backOpState.reference = ref;
+				mStencilOpState.backOpState.compareMask = mask;
+			}
+			if (
+				mStencilOpState.backOpState.failOp != sfail ||
+				mStencilOpState.backOpState.passOp != dpfail ||
+				mStencilOpState.backOpState.depthFailOp != dpfail)
+			{
+				glStencilOpSeparate(face, sfail, dpfail, dppass);
+				mStencilOpState.backOpState.failOp = sfail;
+				mStencilOpState.backOpState.passOp = dpfail;
+				mStencilOpState.backOpState.depthFailOp = dpfail;
+			}
+			if (mStencilOpState.backOpState.writeMask != writeMask)
+			{
+				glStencilMaskSeparate(face, writeMask);
+				mStencilOpState.backOpState.writeMask = writeMask;
+			}
+		}
+		else if (face == GL_FRONT_AND_BACK)
+		{
+			StencilOpState(GL_FRONT, func, ref, mask, sfail, dpfail, dppass, writeMask);
+			StencilOpState(GL_BACK, func, ref, mask, sfail, dpfail, dppass, writeMask);
+		}
+	}
+	void GLStateManager::DepthFunc(GLenum func)
+	{
+		if (mDepthTestState.compareFunc != func)
+		{
+			glDepthFunc(func);
+			mDepthTestState.compareFunc = func;
+		}
+	}
+	void GLStateManager::DepthMask(bool enable)
+	{
+		if (mDepthTestState.writeEnable != enable)
+		{
+			glDepthMask(enable);
+			mDepthTestState.writeEnable = enable;
+		}
+	}
+	void GLStateManager::MinSampleShading(GLfloat value)
+	{
+		if (mMultisampleState.minSampleShading != value)
+		{
+			glMinSampleShading(value);
+			mMultisampleState.minSampleShading = value;
+		}
+	}
+	void GLStateManager::BlendColor(const std::array<float, 4> &color)
+	{
+		if (mBlendState.blendColor != color)
+		{
+			glBlendColor(color[0], color[1], color[2], color[3]);
+			mBlendState.blendColor = color;
+		}
+	}
+	void GLStateManager::ColorMask(GLuint index, GLuint mask)
+	{
+		if (mBlendState.attachmentBlendStates[index].writeMask != mask)
+		{
+			glColorMaski(index, mask & 0x1, mask & 0x2, mask & 0x4, mask & 0x8);
+			mBlendState.attachmentBlendStates[index].writeMask = mask;
+		}
+	}
+	void GLStateManager::EnableBlend(GLuint index)
+	{
+		if (!mBlendState.attachmentBlendStates[index].enable)
+		{
+			glEnablei(GL_BLEND, index);
+			mBlendState.attachmentBlendStates[index].enable = true;
+		}
+	}
+	void GLStateManager::DisableBlend(GLuint index)
+	{
+		if (mBlendState.attachmentBlendStates[index].enable)
+		{
+			glDisablei(GL_BLEND, index);
+			mBlendState.attachmentBlendStates[index].enable = false;
+		}
+	}
+	void GLStateManager::BlendEquation(GLuint index, GLenum modeRGB, GLenum modeAlpha)
+	{
+		if (
+			mBlendState.attachmentBlendStates[index].modeRGB != modeRGB ||
+			mBlendState.attachmentBlendStates[index].modeAlpha != modeAlpha)
+		{
+			glBlendEquationSeparatei(index, modeRGB, modeAlpha);
+			mBlendState.attachmentBlendStates[index].modeRGB = modeRGB;
+			mBlendState.attachmentBlendStates[index].modeAlpha = modeAlpha;
+		}
+	}
+	void GLStateManager::BlendFunc(GLuint index, GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
+	{
+		if (
+			mBlendState.attachmentBlendStates[index].srcRGB != srcRGB ||
+			mBlendState.attachmentBlendStates[index].dstRGB != dstRGB ||
+			mBlendState.attachmentBlendStates[index].srcAlpha != srcAlpha ||
+			mBlendState.attachmentBlendStates[index].dstAlpha != dstAlpha)
+		{
+			glBlendFuncSeparatei(index, srcRGB, dstRGB, srcAlpha, dstAlpha);
+			mBlendState.attachmentBlendStates[index].srcRGB = srcRGB;
+			mBlendState.attachmentBlendStates[index].dstRGB = dstRGB;
+			mBlendState.attachmentBlendStates[index].srcAlpha = srcAlpha;
+			mBlendState.attachmentBlendStates[index].dstAlpha = dstAlpha;
+		}
+	}
+	void GLStateManager::LogicOp(GLenum op)
+	{
+		if (mBlendState.logicOp != op)
+		{
+			glLogicOp(op);
+			mBlendState.logicOp = op;
+		}
+	}
+	void GLStateManager::EnablePrimitiveRestart()
+	{
+		if (!mAssemblyState.enable)
+		{
+			glEnable(GL_PRIMITIVE_RESTART);
+			mAssemblyState.enable = true;
+		}
+	}
+	void GLStateManager::DisablePrimitiveRestart()
+	{
+		if (mAssemblyState.enable)
+		{
+			glDisable(GL_PRIMITIVE_RESTART);
+			mAssemblyState.enable = false;
+		}
+	}
+	void GLStateManager::PrimitiveTopology(GLenum topology)
+	{
+		mAssemblyState.primitiveTopology = topology;
 	}
 }

@@ -15,7 +15,7 @@ namespace Shit
 	{
 	protected:
 		CommandPoolCreateInfo mCreateInfo;
-		std::vector<std::unique_ptr<CommandBuffer>> mCommandBuffers;
+		std::list<std::unique_ptr<CommandBuffer>> mCommandBuffers;
 
 		CommandPool(const CommandPoolCreateInfo &createInfo) : mCreateInfo(createInfo) {}
 
@@ -23,8 +23,10 @@ namespace Shit
 		virtual ~CommandPool() {}
 
 		virtual void CreateCommandBuffers(const CommandBufferCreateInfo &createInfo, std::vector<CommandBuffer *> &commandBuffers) = 0;
-		virtual void DestroyCommandBuffer(CommandBuffer *pCommandBuffer) = 0;
-
+		void DestroyCommandBuffer(CommandBuffer *pCommandBuffer)
+		{
+			RemoveSmartPtrFromContainer(mCommandBuffers, pCommandBuffer);
+		}
 		constexpr const CommandPoolCreateInfo *GetCreateInfoPtr() const
 		{
 			return &mCreateInfo;

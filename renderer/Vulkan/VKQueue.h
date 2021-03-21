@@ -28,7 +28,7 @@ namespace Shit
 		}
 		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *fence) override;
 
-		void Present(const PresentInfo &presentInfo) override;
+		Result Present(const PresentInfo &presentInfo) override;
 
 		void WaitIdle() override;
 	};

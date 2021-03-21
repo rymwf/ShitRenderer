@@ -32,8 +32,11 @@ namespace Shit
 		void SetTitle(const char *title) override;
 		void SetPos(int x, int y) override;
 		void Close() override;
+		void GetWindowSize(uint32_t &width, uint32_t& height) override;
+		void GetFramebufferSize(uint32_t &width, uint32_t &height) override;
 
-		bool PollEvent() override;
+		bool PollEvents() override;
+		void WaitEvents() override;
 		HWND GetHWND() const { return mHwnd; }
 		HINSTANCE GetInstance() const { return mHInstance; }
 	};

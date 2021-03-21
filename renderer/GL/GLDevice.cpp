@@ -15,6 +15,14 @@
 #include "GLPipeline.h"
 #include "GLRenderPass.h"
 #include "GLCommandPool.h"
+#include "GLSwapchain.h"
+#include "GLShader.h"
+#include "GLCommandBuffer.h"
+#include "GLBuffer.h"
+#include "GLImage.h"
+#include "GLDescriptor.h"
+#include "GLSampler.h"
+
 
 #ifdef _WIN32
 #include <renderer/ShitWindowWin32.h>
@@ -22,36 +30,157 @@
 
 namespace Shit
 {
-	CommandPool *GLDevice::CreateCommandPool(const CommandPoolCreateInfo &createInfo)
+	static void APIENTRY DebugOutputCallback(GLenum source, GLenum type, GLuint id,
+											 GLenum severity, GLsizei length,
+											 const GLchar *message,
+											 const void *userParam)
+	{
+		if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
+			return; // ignore these non-significant error codes
+		std::stringstream sstr;
+		sstr << "Debug message id:" << id << " length:" << length
+			 << " useParam:" << userParam << " message:" << message << "\n";
+		//		LOG_DEBUG(":{}, message:{}", id, message);
+		switch (source)
+		{
+		case GL_DEBUG_SOURCE_API:
+			sstr << "Source: API :0x" << std::hex << GL_DEBUG_SOURCE_API;
+			break;
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+			sstr << "Source: Window System :0x" << std::hex
+				 << GL_DEBUG_SOURCE_WINDOW_SYSTEM;
+			break;
+		case GL_DEBUG_SOURCE_SHADER_COMPILER:
+			sstr << "Source: Shader Compiler :0x" << std::hex
+				 << GL_DEBUG_SOURCE_SHADER_COMPILER;
+			break;
+		case GL_DEBUG_SOURCE_THIRD_PARTY:
+			sstr << "Source: Third Party :0x" << std::hex
+				 << GL_DEBUG_SOURCE_THIRD_PARTY;
+			break;
+		case GL_DEBUG_SOURCE_APPLICATION:
+			sstr << "Source: Application :0x" << std::hex
+				 << GL_DEBUG_SOURCE_APPLICATION;
+			break;
+		case GL_DEBUG_SOURCE_OTHER:
+			sstr << "Source: Other :0x" << std::hex << GL_DEBUG_SOURCE_OTHER;
+			break;
+		}
+		sstr << "\n";
+		switch (type)
+		{
+		case GL_DEBUG_TYPE_ERROR:
+			sstr << "Type: Error :0x" << std::hex << GL_DEBUG_TYPE_ERROR;
+			break;
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+			sstr << "Type: Deprecated Behaviour :0x" << std::hex
+				 << GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR;
+			break;
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+			sstr << "Type: Undefined Behaviour :0x" << std::hex
+				 << GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR;
+			break;
+		case GL_DEBUG_TYPE_PORTABILITY:
+			sstr << "Type: Portability :0x" << std::hex << GL_DEBUG_TYPE_PORTABILITY;
+			break;
+		case GL_DEBUG_TYPE_PERFORMANCE:
+			sstr << "Type: Performance :0x" << std::hex << GL_DEBUG_TYPE_PERFORMANCE;
+			break;
+		case GL_DEBUG_TYPE_MARKER:
+			sstr << "Type: Marker :0x" << std::hex << GL_DEBUG_TYPE_MARKER;
+			break;
+		case GL_DEBUG_TYPE_PUSH_GROUP:
+			sstr << "Type: Push Group :0x" << std::hex << GL_DEBUG_TYPE_PUSH_GROUP;
+			break;
+		case GL_DEBUG_TYPE_POP_GROUP:
+			sstr << "Type: Pop Group :0x" << std::hex << GL_DEBUG_TYPE_POP_GROUP;
+			break;
+		case GL_DEBUG_TYPE_OTHER:
+			sstr << "Type: Other :0x" << std::hex << GL_DEBUG_TYPE_OTHER;
+			break;
+		}
+
+		sstr << "\n";
+		switch (severity)
+		{
+		case GL_DEBUG_SEVERITY_HIGH:
+			sstr << "Severity: high :0x" << std::hex << GL_DEBUG_SEVERITY_HIGH;
+			break;
+		case GL_DEBUG_SEVERITY_MEDIUM:
+			sstr << "Severity: medium :0x" << std::hex << GL_DEBUG_SEVERITY_MEDIUM;
+			break;
+		case GL_DEBUG_SEVERITY_LOW:
+			sstr << "Severity: low :0x" << std::hex << GL_DEBUG_SEVERITY_LOW;
+			break;
+		case GL_DEBUG_SEVERITY_NOTIFICATION:
+			sstr << "Severity: notification :0x" << std::hex
+				 << GL_DEBUG_SEVERITY_NOTIFICATION;
+			break;
+		}
+		LOG(sstr.str());
+	}
+	void GLDevice::EnableDebugOutput(const void *userParam)
+	{
+		// enable OpenGL debug context if context allows for debug context
+		GLint flags;
+		glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+		if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+		{
+			glEnable(GL_DEBUG_OUTPUT);
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // makes sure errors are displayed
+												   // synchronously
+			if (GLEW_VERSION_4_3)
+			{
+				glDebugMessageCallback(DebugOutputCallback, userParam);
+				glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0,
+									  NULL, GL_TRUE);
+			}
+			else
+			{
+#ifdef GL_ARB_debug_output
+				glDebugMessageCallbackARB(DebugOutputCallback, userParam);
+				glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0,
+										 NULL, GL_TRUE);
+#else
+				LOG("current opengl version do not support debug output");
+#endif
+			}
+		}
+		else
+		{
+			LOG("current context do not support debug output");
+		}
+	}
+	CommandPool *GLDevice::Create(const CommandPoolCreateInfo &createInfo)
 	{
 		mCommandPools.emplace_back(std::make_unique<GLCommandPool>(&mStateManager, createInfo));
 		return mCommandPools.back().get();
 	}
 
-	Shader *GLDevice::CreateShader(const ShaderCreateInfo &createInfo)
+	Shader *GLDevice::Create(const ShaderCreateInfo &createInfo)
 	{
-		mShaders.emplace_back(std::make_unique<GLShader>(&mStateManager, createInfo));
+		mShaders.emplace_back(std::make_unique<GLShader>(createInfo));
 		return mShaders.back().get();
 	}
 
-	Pipeline *GLDevice::CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo)
+	Pipeline *GLDevice::Create(const GraphicsPipelineCreateInfo &createInfo)
 	{
 		mPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(&mStateManager, createInfo));
 		return mPipelines.back().get();
 	}
 
-	Queue *GLDevice::CreateDeviceQueue(const QueueCreateInfo &createInfo)
+	Queue *GLDevice::Create(const QueueCreateInfo &createInfo)
 	{
 		mQueues.emplace_back(std::make_unique<GLQueue>(this, &mStateManager, createInfo));
 		return mQueues.back().get();
 	}
-	Buffer *GLDevice::CreateBuffer(const BufferCreateInfo &createInfo, void *pData)
+	Buffer *GLDevice::Create(const BufferCreateInfo &createInfo, void *pData)
 	{
 		mBuffers.emplace_back(std::make_unique<GLBuffer>(&mStateManager, createInfo, pData));
 		return mBuffers.back().get();
 	}
 
-	Image *GLDevice::CreateImage(const ImageCreateInfo &createInfo, void *pData)
+	Image *GLDevice::Create(const ImageCreateInfo &createInfo, void *pData)
 	{
 		mImages.emplace_back(std::make_unique<GLImage>(&mStateManager, createInfo));
 		auto pImage = mImages.back().get();
@@ -68,47 +197,154 @@ namespace Shit
 		}
 		return pImage;
 	}
-	DescriptorSetLayout *GLDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo)
+	DescriptorSetLayout *GLDevice::Create(const DescriptorSetLayoutCreateInfo &createInfo)
 	{
 		mDescriptorSetLayouts.emplace_back(std::make_unique<GLDescriptorSetLayout>(createInfo));
 		return mDescriptorSetLayouts.back().get();
 	}
 
-	ImageView *GLDevice::CreateImageView(const ImageViewCreateInfo &createInfo)
+	ImageView *GLDevice::Create(const ImageViewCreateInfo &createInfo)
 	{
 		mImageViews.emplace_back(std::make_unique<GLImageView>(&mStateManager, createInfo));
 		return mImageViews.back().get();
 	}
-	PipelineLayout *GLDevice::CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo)
+	PipelineLayout *GLDevice::Create(const PipelineLayoutCreateInfo &createInfo)
 	{
 		mPipelineLayouts.emplace_back(std::make_unique<GLPipelineLayout>(createInfo));
 		return mPipelineLayouts.back().get();
 	}
-	RenderPass *GLDevice::CreateRenderPass(const RenderPassCreateInfo &createInfo)
+	RenderPass *GLDevice::Create(const RenderPassCreateInfo &createInfo)
 	{
 		mRenderPasses.emplace_back(std::make_unique<GLRenderPass>(createInfo));
 		return mRenderPasses.back().get();
 	}
-	Framebuffer *GLDevice::CreateFramebuffer(const FramebufferCreateInfo &createInfo)
+	Framebuffer *GLDevice::Create(const FramebufferCreateInfo &createInfo)
 	{
 		mFramebuffers.emplace_back(std::make_unique<GLFramebuffer>(&mStateManager, createInfo));
 		return mFramebuffers.back().get();
 	}
-	Semaphore *GLDevice::CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo)
+	Semaphore *GLDevice::Create(const SemaphoreCreateInfo &createInfo)
 	{
 		mSemaphores.emplace_back(std::make_unique<GLSemaphore>(&mStateManager, createInfo));
 		return mSemaphores.back().get();
 	}
-	Fence *GLDevice::CreateFence(const FenceCreateInfo &createInfo)
+	Fence *GLDevice::Create(const FenceCreateInfo &createInfo)
 	{
 		mFences.emplace_back(std::make_unique<GLFence>(&mStateManager, createInfo));
 		return mFences.back().get();
 	}
+	Swapchain *GLDevice::Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	{
+		if (pWindow != std::get<ShitWindow *>(mCreateInfo.physicalDevice))
+			THROW("you should use a new device to create swapchain for a new window");
+
+		mSwapchains.emplace_back(std::make_unique<GLSwapchain>(this, &mStateManager, createInfo));
+		auto pSwapchain = mSwapchains.back().get();
+		pWindow->SetSwapchain(pSwapchain);
+		pWindow->AddEventListener(static_cast<GLSwapchain *>(pSwapchain)->GetProcessWindowEventCallable());
+		return pSwapchain;
+	}
 
 #ifdef _WIN32
 
+	void GLDeviceWin32::CreateRenderContext()
+	{
+		const int attribList[] =
+			{
+				WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+				//WGL_ACCELERATION_ARB,WGL_FULL_ACCELERATION_ARB,
+				WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+				WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+				WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB, //or WGL_TYPE_COLORINDEX_ARB
+				WGL_COLOR_BITS_ARB, 32,
+				WGL_DEPTH_BITS_ARB, 24,
+				WGL_STENCIL_BITS_ARB, 8,
+				WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,
+				0, // End
+			};
+
+		int pixelFormat{};
+		UINT numFormats;
+		if (!wglChoosePixelFormatARB(mHDC, attribList, NULL, 1, &pixelFormat, &numFormats))
+		{
+			THROW("wglChoosePixelFormatARB failed");
+		}
+		LOG_VAR(pixelFormat);
+
+		int majorversion = (std::max)((static_cast<int>(mRenderSystemCreateInfo.version) >> 2) & 1, 1);
+		int minorversion = (static_cast<int>(mRenderSystemCreateInfo.version) >> 1) & 1;
+
+		int contexFlag{};
+		if (static_cast<bool>(mRenderSystemCreateInfo.flags & RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT))
+			contexFlag |= WGL_CONTEXT_DEBUG_BIT_ARB;
+		if (static_cast<bool>(mRenderSystemCreateInfo.flags & RenderSystemCreateFlagBits::SHIT_GL_CONTEXT_FORWARD_COMPATIBLE_BIT))
+			contexFlag |= WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+		int profileMaskFlag{WGL_CONTEXT_CORE_PROFILE_BIT_ARB};
+		if (static_cast<bool>(mRenderSystemCreateInfo.flags & RenderSystemCreateFlagBits::SHIT_GL_CONTEXT_COMPATIBILITY_PROFILE_BIT))
+			profileMaskFlag |= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+
+		const int attribList2[] = {
+			WGL_CONTEXT_MAJOR_VERSION_ARB,
+			majorversion, //seems to be not support < 330
+			WGL_CONTEXT_MINOR_VERSION_ARB,
+			minorversion,
+			WGL_CONTEXT_FLAGS_ARB, contexFlag,
+			WGL_CONTEXT_PROFILE_MASK_ARB,
+			profileMaskFlag,
+			0};
+
+		auto renderContext = wglCreateContextAttribsARB(mHDC, 0, attribList2);
+		if (!renderContext)
+		{
+			THROW("failed to create render context");
+		}
+		if (!wglMakeContextCurrentARB(mHDC, mHDC, renderContext))
+		{
+			LOG_VAR(GetLastError());
+			THROW("failed to make context current");
+		}
+		wglDeleteContext(mHRenderContext);
+		mHRenderContext = renderContext;
+
+		//reinit opengl and wgl
+		LOADGL
+		LOADWGL
+		if (static_cast<bool>(mRenderSystemCreateInfo.flags & RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT))
+			EnableDebugOutput(this);
+
+		//
+		glGetIntegerv(GL_MAJOR_VERSION, &GLVersion.major);
+		glGetIntegerv(GL_MINOR_VERSION, &GLVersion.minor);
+
+		LOG_VAR(GLVersion.major);
+		LOG_VAR(GLVersion.minor);
+
+		LOG_VAR(GL::queryWGLExtensionNames(mHDC));
+	}
+
+	void GLDeviceWin32::SetPresentMode(PresentMode mode) const
+	{
+		if (mode == PresentMode::IMMEDIATE)
+			wglSwapIntervalEXT(0);
+		else if (mode == PresentMode::FIFO)
+			wglSwapIntervalEXT(1);
+	}
+
+	void GLDeviceWin32::MakeCurrent() const
+	{
+		if (!wglMakeContextCurrentARB(mHDC, mHDC, mHRenderContext))
+		{
+			LOG_VAR(GetLastError());
+			THROW("failed to make context current");
+		}
+	}
+	void GLDeviceWin32::SwapBuffer() const
+	{
+		SwapBuffers(mHDC);
+	}
 	void GLDeviceWin32::GetWindowPixelFormats([[maybe_unused]] const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats)
 	{
+		formats.clear();
 		if (wglIsExtensionSupported("WGL_EXT_framebuffer_sRGB"))
 		{
 			formats.emplace_back(
@@ -125,15 +361,10 @@ namespace Shit
 			WindowPixelFormat{ShitFormat::RGBA8_UNORM,
 							  ColorSpace::SRGB_NONLINEAR});
 	}
-	Swapchain *GLDeviceWin32::CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
+	GLDeviceWin32::GLDeviceWin32(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo)
+		: GLDevice(createInfo, renderSystemCreateInfo)
 	{
-		mSwapchains.emplace_back(std::make_unique<GLSwapchainWin32>(this, &mStateManager, mHDC, createInfo, mRenderSystemCreatInfo.version, mRenderSystemCreatInfo.flags));
-		pWindow->SetSwapchain(mSwapchains.back().get());
-		return mSwapchains.back().get();
-	}
-	GLDeviceWin32::GLDeviceWin32(ShitWindow *pWindow, const RenderSystemCreateInfo &createInfo) : GLDevice(createInfo)
-	{
-		mHDC = GetDC(static_cast<WindowWin32 *>(pWindow)->GetHWND());
+		mHDC = GetDC(static_cast<WindowWin32 *>(std::get<ShitWindow *>(createInfo.physicalDevice))->GetHWND());
 		if (!mHDC)
 			THROW("failed to create window context");
 
@@ -193,6 +424,8 @@ namespace Shit
 
 		LOADGL
 		LOADWGL
+		CreateRenderContext();
+		mStateManager.UpdateCapbilityState();
 	}
 #endif
 }

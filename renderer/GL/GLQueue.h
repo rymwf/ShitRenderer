@@ -23,7 +23,7 @@ namespace Shit
 			: Queue(createInfo), mpStateManager(pStateManager), mpDevice(pDevice) {}
 
 		void Submit(const std::vector<SubmitInfo> &submitInfos, Fence *pFence) override;
-		void Present(const PresentInfo &presentInfo) override;
+		Result Present(const PresentInfo &presentInfo) override;
 		void WaitIdle() override
 		{
 			glFinish();

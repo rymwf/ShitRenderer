@@ -63,6 +63,7 @@ namespace Shit
 		rect.bottom = rect.top + static_cast<int>(mCreateInfo.rect.extent.height);
 		AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_ACCEPTFILES);
 		SetWindowPos(mHwnd, HWND_NOTOPMOST, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_SHOWWINDOW);
+		ShowWindow(mHwnd, SW_SHOW);
 	}
 
 	LRESULT CALLBACK WindowWin32::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -71,11 +72,6 @@ namespace Shit
 		pThis = (WindowWin32 *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 		Event ev{};
 		ev.pWindow = pThis;
-		//if (uMsg == WM_CREATE)
-		//{
-		//}
-		//else if (pThis)
-		//{
 		switch (uMsg)
 		{
 		case WM_CREATE:
@@ -84,97 +80,80 @@ namespace Shit
 			pThis = (WindowWin32 *)pCreate->lpCreateParams;
 			SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
 
-			ev.type = EventType::WINDOW_CREATE;
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{WindowCreateEvent{}};
+			pThis->mListener.notify(ev);
 			break;
 		}
 		case WM_CLOSE:
-			ev.type = EventType::WINDOW_CLOSE;
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{WindowCloseEvent{}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_DESTROY:
-			ev.type = EventType::WINDOW_DESTROY;
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{WindowCloseEvent{}};
+			pThis->mListener.notify(ev);
 			PostQuitMessage(0);
 			break;
 		case WM_SIZE:
-			ev.type = EventType::WINDOW_RESIZE;
-			pThis->mCreateInfo.rect.extent.width = ev.windowResize.width = LOWORD(lParam);
-			pThis->mCreateInfo.rect.extent.height = ev.windowResize.height = HIWORD(lParam);
-			pThis->mObserver.Notify(ev);
+			pThis->mCreateInfo.rect.extent.width = LOWORD(lParam);
+			pThis->mCreateInfo.rect.extent.height = HIWORD(lParam);
+			ev.value = Event::EventType{WindowResizeEvent{pThis->mCreateInfo.rect.extent.width, pThis->mCreateInfo.rect.extent.height}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_MOUSEMOVE:
-			ev.type = EventType::MOUSEMOVE;
-			ev.mouseMove.xpos = LOWORD(lParam);
-			ev.mouseMove.ypos = HIWORD(lParam);
-			ev.modifier = MapKeyModifier(wParam);
-			pThis->mObserver.Notify(ev);
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			ev.value = Event::EventType{MouseMoveEvent{static_cast<int>(LOWORD(lParam)), static_cast<int>(HIWORD(lParam))}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_MOUSEWHEEL:
-			ev.type = EventType::MOUSEWHEEL;
-			ev.mouseWheel.yoffset = int((wParam >> 31) ? ((wParam >> 16) & 0x7fff) - 0x8000 : HIWORD(wParam)) / WHEEL_DELTA;
 			ev.modifier = MapKeyModifier(LOWORD(wParam));
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{MouseWheelEvent{0, int((wParam >> 31) ? ((wParam >> 16) & 0x7fff) - 0x8000 : HIWORD(wParam)) / WHEEL_DELTA}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_LBUTTONDOWN:
-			ev.type = EventType::MOUSEBUTTON;
-			ev.mouseButton.action = PressAction::DOWN;
-			ev.mouseButton.button = MouseButton::MOUSE_L;
-			ev.modifier = MapKeyModifier(wParam);
-			pThis->mObserver.Notify(ev);
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			ev.value = Event::EventType{MouseButtonEvent{MouseButton::MOUSE_L, PressAction::DOWN}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_LBUTTONUP:
-			ev.type = EventType::MOUSEBUTTON;
-			ev.mouseButton.action = PressAction::UP;
-			ev.mouseButton.button = MouseButton::MOUSE_L;
-			ev.modifier = MapKeyModifier(wParam);
-			pThis->mObserver.Notify(ev);
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			ev.value = Event::EventType{MouseButtonEvent{MouseButton::MOUSE_L, PressAction::UP}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_RBUTTONDOWN:
-			ev.type = EventType::MOUSEBUTTON;
-			ev.mouseButton.action = PressAction::DOWN;
-			ev.mouseButton.button = MouseButton::MOUSE_R;
-			ev.modifier = MapKeyModifier(wParam);
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{MouseButtonEvent{MouseButton::MOUSE_R, PressAction::DOWN}};
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			pThis->mListener.notify(ev);
 			break;
 		case WM_RBUTTONUP:
-			ev.type = EventType::MOUSEBUTTON;
-			ev.mouseButton.action = PressAction::UP;
-			ev.mouseButton.button = MouseButton::MOUSE_R;
-			ev.modifier = MapKeyModifier(wParam);
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{MouseButtonEvent{MouseButton::MOUSE_R, PressAction::UP}};
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			pThis->mListener.notify(ev);
 			break;
 		case WM_KEYDOWN:
-			ev.type = EventType::KEYBOARD;
 			if ((lParam >> 24) & 0xff)
 			{
 				ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
 															 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
 															 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
 			}
-			ev.key.keyCode = MapKey(wParam);
-			ev.key.action = PressAction::DOWN;
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{KeyEvent{MapKey(static_cast<uint32_t>(wParam)), PressAction::DOWN}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_KEYUP:
-			ev.type = EventType::KEYBOARD;
 			if ((lParam >> 24) & 0xff)
 			{
 				ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
 															 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
 															 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
 			}
-			ev.key.keyCode = MapKey(wParam);
-			ev.key.action = PressAction::UP;
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{KeyEvent{MapKey(static_cast<uint32_t>(wParam)), PressAction::UP}};
+			pThis->mListener.notify(ev);
 			break;
 		case WM_CHAR:
-			ev.type = EventType::CHAR;
-			ev.charInput.codepoint = wParam;
-			pThis->mObserver.Notify(ev);
+			ev.value = Event::EventType{CharEvent{static_cast<uint32_t>(wParam)}};
+			pThis->mListener.notify(ev);
 			break;
 		}
-		//}
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 
@@ -199,7 +178,7 @@ namespace Shit
 		//PostQuitMessage(0);
 		PostMessage(mHwnd, WM_CLOSE, 0, 0);
 	}
-	bool WindowWin32::PollEvent()
+	bool WindowWin32::PollEvents()
 	{
 		MSG msg{};
 		//while (GetMessage(&msg, NULL, 0, 0))
@@ -215,5 +194,40 @@ namespace Shit
 				return false;
 		}
 		return true;
+	}
+	void WindowWin32::WaitEvents()
+	{
+		WaitMessage();
+		PollEvents();
+		//		MSG msg{};
+		//		BOOL bRet;
+		//
+		//		if ((bRet = GetMessage(&msg, mHwnd, 0, 0)) != 0)
+		//		{
+		//			if (bRet == -1)
+		//			{
+		//				// handle the error and possibly exit
+		//				THROW("get meesage error");
+		//			}
+		//			else
+		//			{
+		//				TranslateMessage(&msg);
+		//				DispatchMessage(&msg);
+		//			}
+		//		}
+	}
+	void WindowWin32::GetWindowSize(uint32_t &width, uint32_t &height)
+	{
+		RECT rect{};
+		GetWindowRect(mHwnd, &rect);
+		width = rect.right - rect.left;
+		height = rect.bottom - rect.top;
+	}
+	void WindowWin32::GetFramebufferSize(uint32_t &width, uint32_t &height)
+	{
+		RECT rect{};
+		GetClientRect(mHwnd, &rect);
+		width = rect.right - rect.left;
+		height = rect.bottom - rect.top;
 	}
 }

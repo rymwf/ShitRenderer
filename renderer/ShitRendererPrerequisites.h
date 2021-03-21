@@ -19,6 +19,12 @@
 #define SHIT_API
 #endif // SHIT_DLL
 
+#ifdef __GNUC__
+#define LIBPREFIX "lib"
+#else
+#define LIBPREFIX ""
+#endif
+
 #define SHIT_DEFAULT_WINDOW_X 100
 #define SHIT_DEFAULT_WINDOW_Y 60
 #define SHIT_DEFAULT_WINDOW_WIDTH 800
@@ -26,6 +32,7 @@
 
 #define SHIT_RENDERER_LOAD_FUNC "ShitLoadRenderSystem"
 #define SHIT_RENDERER_DELETE_FUNC "ShitDeleteRenderSystem"
+
 #define SHIT_RENDERER_GL_NAME "GLRenderer"
 #define SHIT_RENDERER_D3D11_NAME "D3D11Renderer"
 #define SHIT_RENDERER_D3D12_NAME "D3D12Renderer"
@@ -112,21 +119,18 @@ namespace Shit
 		RenderSystemCreateFlagBits flags;
 	};
 
-	struct PhysicalDevice
-	{
-		void *pPhysicalDevice;
-	};
+	using PhysicalDevice = void *;
 
 	struct DeviceCreateInfo
 	{
-		PhysicalDevice physicalDevice; //use shitwindow for vulkan
+		std::variant<PhysicalDevice, ShitWindow *> physicalDevice; //use shitwindow for vulkan
 	};
 
 	struct WindowCreateInfo
 	{
 		const char *name;
 		Rect2D rect;
-		std::function<void(const Event &)> eventHandle;
+		std::shared_ptr<std::function<void(const Event &)>> eventListener;
 	};
 
 	struct SurfaceCreateInfo
@@ -142,8 +146,8 @@ namespace Shit
 	struct SwapchainCreateInfo
 	{
 		uint32_t minImageCount;
-		ShitFormat format;		   //!<no use for opengl, opengl is always RGBA
-		ColorSpace colorSpace;	   //!<sRGB
+		ShitFormat format;		   //!<opengl can choose  RGBA8_UNORM, RGBA8_SRGB
+		ColorSpace colorSpace;	   //!<only sRGB
 		Extent2D imageExtent;	   //!<no use for opengl
 		uint32_t imageArrayLayers; //!< alway 1 unless you are developing a stereoscopic 3D applicaiton
 		PresentMode presentMode;
@@ -151,7 +155,6 @@ namespace Shit
 
 	struct ShaderCreateInfo
 	{
-		ShaderStageFlagBits stage;
 		std::string code;
 	};
 
@@ -216,18 +219,18 @@ namespace Shit
 	{
 		bool depthClampEnable;
 		bool rasterizerDiscardEnbale;
-		PolygonMode polygonMode{PolygonMode::FILL};
-		CullMode cullMode{CullMode::BACK};
-		FrontFace frontFace{FrontFace::COUNTER_CLOCKWISE};
+		PolygonMode polygonMode;
+		CullMode cullMode;
+		FrontFace frontFace;
 		bool depthBiasEnable;
 		float depthBiasContantFactor;
 		float depthBiasClamp;
 		float depthBiasSlopeFactor;
-		float lineWidth{1.f};
+		float lineWidth;
 	};
 	struct PipelineMultisampleStateCreateInfo
 	{
-		SampleCountFlagBits rasterizationSamples{SampleCountFlagBits::BIT_1};
+		SampleCountFlagBits rasterizationSamples;
 		bool sampleShadingEnable;
 		float minSampleShading;
 		const uint32_t *pSampleMask; //array size is sampleCount

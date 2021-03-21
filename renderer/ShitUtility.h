@@ -26,11 +26,13 @@
 #include <algorithm>
 #include <execution>
 #include <sstream>
+#include <list>
+#include <forward_list>
 
 namespace Shit
 {
-	template <class T>
-	void RemoveFromUniqueVector(std::vector<std::unique_ptr<T>> &container, const T *entry)
+	template <class T_, class Container_>
+	void RemoveSmartPtrFromContainer(Container_ &container, const T_ *entry)
 	{
 		if (entry)
 		{

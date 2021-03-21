@@ -14,15 +14,14 @@
 namespace Shit
 {
 
-	class VKDevice final:public Device
+	class VKDevice final : public Device
 	{
 		VkDevice mDevice;
-		VkPhysicalDevice mPhysicalDevice;
 
 		std::vector<VkQueueFamilyProperties> mQueueFamilyProperties;
 
 	public:
-		VKDevice(PhysicalDevice physicalDevice);
+		VKDevice(const DeviceCreateInfo &createInfo);
 		~VKDevice() override
 		{
 		}
@@ -31,46 +30,46 @@ namespace Shit
 			return mDevice;
 		}
 
-		void ExecuteOneTimeCommands(const std::function<void(CommandBuffer*)> &func);
+		void ExecuteOneTimeCommands(const std::function<void(CommandBuffer *)> &func);
 
 		std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex(ShitWindow *pWindow) override;
 
-		constexpr VkPhysicalDevice GetPhysicalDevice()const
+		constexpr VkPhysicalDevice GetPhysicalDevice() const
 		{
-			return mPhysicalDevice;
+			return static_cast<VkPhysicalDevice>(std::get<PhysicalDevice>(mCreateInfo.physicalDevice));
 		}
 
 		std::optional<QueueFamilyIndex> GetQueueFamilyIndexByFlag(QueueFlagBits flag, const std::unordered_set<uint32_t> &skipIndices) override;
 
-		void GetWindowPixelFormats(const ShitWindow *pWindow,std::vector<WindowPixelFormat> &format)override;
+		void GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &format) override;
 
-		Swapchain* CreateSwapchain(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
+		Swapchain *Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 
-		Shader *CreateShader(const ShaderCreateInfo &createInfo) override;
+		Shader *Create(const ShaderCreateInfo &createInfo) override;
 
-		Pipeline *CreateGraphicsPipeline(const GraphicsPipelineCreateInfo &createInfo) override;
+		Pipeline *Create(const GraphicsPipelineCreateInfo &createInfo) override;
 
-		CommandPool *CreateCommandPool(const CommandPoolCreateInfo &createInfo) override;
+		CommandPool *Create(const CommandPoolCreateInfo &createInfo) override;
 
-		Queue *CreateDeviceQueue(const QueueCreateInfo &createInfo) override;
+		Queue *Create(const QueueCreateInfo &createInfo) override;
 
-		Buffer *CreateBuffer(const BufferCreateInfo &createInfo, void *pData) override;
+		Buffer *Create(const BufferCreateInfo &createInfo, void *pData) override;
 
-		Image *CreateImage(const ImageCreateInfo &createInfo, void *pData) override;
+		Image *Create(const ImageCreateInfo &createInfo, void *pData) override;
 
-		ImageView *CreateImageView(const ImageViewCreateInfo &createInfo) override;
+		ImageView *Create(const ImageViewCreateInfo &createInfo) override;
 
-		DescriptorSetLayout *CreateDescriptorSetLayout(const DescriptorSetLayoutCreateInfo &createInfo) override;
+		DescriptorSetLayout *Create(const DescriptorSetLayoutCreateInfo &createInfo) override;
 
-		PipelineLayout *CreatePipelineLayout(const PipelineLayoutCreateInfo &createInfo) override;
+		PipelineLayout *Create(const PipelineLayoutCreateInfo &createInfo) override;
 
-		RenderPass *CreateRenderPass(const RenderPassCreateInfo &createInfo) override;
+		RenderPass *Create(const RenderPassCreateInfo &createInfo) override;
 
-		Framebuffer *CreateFramebuffer(const FramebufferCreateInfo &createInfo) override;
+		Framebuffer *Create(const FramebufferCreateInfo &createInfo) override;
 
-		Semaphore *CreateDeviceSemaphore(const SemaphoreCreateInfo &createInfo) override;
+		Semaphore *Create(const SemaphoreCreateInfo &createInfo) override;
 
-		Fence *CreateFence(const FenceCreateInfo &createInfo) override;
+		Fence *Create(const FenceCreateInfo &createInfo) override;
 	};
 
 } // namespace Shit

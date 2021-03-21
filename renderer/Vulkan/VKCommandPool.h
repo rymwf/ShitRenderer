@@ -40,21 +40,11 @@ namespace Shit
 
 		void CreateCommandBuffers(const CommandBufferCreateInfo &createInfo, std::vector<CommandBuffer *> &commandBuffers) override
 		{
+			commandBuffers.resize(createInfo.count);
 			for (uint32_t i = 0; i < createInfo.count; ++i)
 			{
 				mCommandBuffers.emplace_back(std::make_unique<VKCommandBuffer>(mDevice, mHandle, createInfo));
-				commandBuffers.emplace_back(mCommandBuffers.back().get());
-			}
-		}
-		void DestroyCommandBuffer(CommandBuffer *pCommandBuffer) override
-		{
-			for (auto it = mCommandBuffers.begin(), end = mCommandBuffers.end(); it != end; ++it)
-			{
-				if (it->get() == pCommandBuffer)
-				{
-					mCommandBuffers.erase(it);
-					break;
-				}
+				commandBuffers[i] = mCommandBuffers.back().get();
 			}
 		}
 	};

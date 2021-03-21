@@ -32,6 +32,18 @@ namespace Shit
 		delete pRenderSystem;
 	}
 
+	VKRenderSystem::~VKRenderSystem()
+	{
+		mWindows.clear();
+		VkDevice device;
+		for (auto it = mDevices.begin(); it != mDevices.end();)
+		{
+			device = static_cast<VKDevice *>(it->get())->GetHandle();
+			it = mDevices.erase(it);
+			vkDestroyDevice(device, nullptr);
+		}
+	}
+
 	bool VKRenderSystem::CheckLayerSupport(const char *layerName)
 	{
 		if (mInstanceLayerProperties.empty())
@@ -122,7 +134,7 @@ namespace Shit
 		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(vk_instance, &DestroyVKInstance);
 	}
 
-	std::unique_ptr<Surface> VKRenderSystem::CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow)
+	std::unique_ptr<Surface> VKRenderSystem::CreateSurface(const SurfaceCreateInfo &createInfo, ShitWindow *pWindow)
 	{
 		return std::make_unique<VKSurface>(createInfo, pWindow);
 	}
@@ -133,9 +145,9 @@ namespace Shit
 
 	Device *VKRenderSystem::CreateDevice([[maybe_unused]] const DeviceCreateInfo &createInfo)
 	{
-		static PhysicalDevice physicalDevice;
-		physicalDevice.pPhysicalDevice = VK::pickPhysicalDevice(vk_instance);
-		mDevices.emplace_back(std::make_unique<VKDevice>(physicalDevice));
+		static PhysicalDevice physicalDevice = VK::pickPhysicalDevice(vk_instance);
+		auto info = DeviceCreateInfo{physicalDevice};
+		mDevices.emplace_back(std::make_unique<VKDevice>(info));
 		return mDevices.back().get();
 	}
 

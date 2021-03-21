@@ -30,7 +30,7 @@ namespace Shit
 	Device *GLRenderSystem::CreateDevice(const DeviceCreateInfo &createInfo)
 	{
 #ifdef _WIN32
-		mDevices.emplace_back(std::make_unique<GLDeviceWin32>(reinterpret_cast<ShitWindow *>(createInfo.physicalDevice.pPhysicalDevice), mCreateInfo));
+		mDevices.emplace_back(std::make_unique<GLDeviceWin32>(createInfo, mCreateInfo));
 #else
 		static_assert(0, "GL CreateDevice is not implemented yet");
 #endif

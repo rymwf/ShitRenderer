@@ -17,8 +17,8 @@ namespace Shit
 		GLuint mHandle;
 		GLStateManager *mpStateManager;
 
-		uint32_t mReadBuffer;
-		std::vector<uint32_t> mDrawBuffers;
+		uint32_t mReadBuffer{};
+		std::vector<uint32_t> mDrawBuffers{};
 
 	public:
 		GLFramebuffer(GLStateManager *pStateManager, const FramebufferCreateInfo &createInfo);

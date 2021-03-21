@@ -16,50 +16,59 @@ namespace Shit
 		if (mVAO == 0)
 			THROW("failed to create vertex array object");
 	}
+	GLuint GLGraphicsPipeline::CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo)
+	{
+		auto shader = glCreateShader(Map(shaderStageCreateInfo.stage));
+		if (shader)
+			glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V,
+						   shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.data(),
+						   static_cast<GLsizei>(shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.size()));
+		else
+			THROW("failed to create shader");
+
+		//equal to compilation
+		glSpecializeShader(
+			shader,
+			shaderStageCreateInfo.entryName,
+			static_cast<GLsizei>(shaderStageCreateInfo.specializationInfo.constantIDs.size()),
+			shaderStageCreateInfo.specializationInfo.constantIDs.data(),
+			shaderStageCreateInfo.specializationInfo.constantValues.data());
+
+		// Specialization is equivalent to compilation.
+		GLint isCompiled = 0;
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+		if (isCompiled == GL_FALSE)
+		{
+			GLint maxLength = 0;
+			glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+			// The maxLength includes the NULL character
+			std::string infoLog;
+			infoLog.resize(maxLength);
+			glGetShaderInfoLog(shader, maxLength, &maxLength, infoLog.data());
+
+			LOG(infoLog);
+			// Use the infoLog as you see fit.
+			THROW("failed to specialize shader");
+		}
+		return shader;
+	}
 	GLGraphicsPipeline::GLGraphicsPipeline(GLStateManager *pStateManager, const GraphicsPipelineCreateInfo &createInfo)
 		: GraphicsPipeline(createInfo), GLPipeline(pStateManager)
 	{
-		if (SHIT_GL_410)
-			glGenProgramPipelines(1, &mHandle);
-		else
-			THROW("failed to create pipelines");
+		ShaderStageFlagBits stageFlags{};
+		for (auto &&e : createInfo.stages)
+		{
+			mShaders.emplace_back(CreateShader(e));
+			stageFlags |= e.stage;
+		}
+		mProgram = CreateProgram(mShaders, true, false);
+
+		glGenProgramPipelines(1, &mHandle);
+
 		mpStateManager->BindPipeline(mHandle);
 
-		for (auto &&stageCreateInfo : createInfo.stages)
-		{
-			auto shader = static_cast<GLShader *>(stageCreateInfo.pShader)->GetHandle();
-			//equal to compilation
-			glSpecializeShader(
-				shader,
-				stageCreateInfo.entryName,
-				stageCreateInfo.specializationInfo.constantIDs.size(),
-				stageCreateInfo.specializationInfo.constantIDs.data(),
-				stageCreateInfo.specializationInfo.constantValues.data());
-
-			// Specialization is equivalent to compilation.
-			GLint isCompiled = 0;
-			glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
-			if (isCompiled == GL_FALSE)
-			{
-				GLint maxLength = 0;
-				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
-
-				// The maxLength includes the NULL character
-				std::string infoLog;
-				infoLog.resize(maxLength);
-				glGetShaderInfoLog(shader, maxLength, &maxLength, infoLog.data());
-
-				LOG(infoLog);
-				// We don't need the shader anymore.
-				glDeleteShader(shader);
-
-				// Use the infoLog as you see fit.
-				THROW("failed to specialize shader");
-			}
-			auto program = CreateProgram({shader}, true, false);
-			mPrograms.emplace_back(program);
-			glUseProgramStages(mHandle, MapShaderStageFlags(stageCreateInfo.stage), program);
-		}
+		glUseProgramStages(mHandle, MapShaderStageFlags(stageFlags), mProgram);
 		CreateVertexArray();
 	}
 	GLuint GLPipeline::CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable)

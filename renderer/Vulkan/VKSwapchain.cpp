@@ -30,6 +30,7 @@ namespace Shit
 
 		if (!presentQueueFamilyIndex.has_value())
 			THROW("current device do not support present to surface");
+		mPresentQueueFamilyIndex = presentQueueFamilyIndex.value();
 
 		//set format
 		std::vector<VkSurfaceFormatKHR> surfaceFormats;
@@ -53,7 +54,7 @@ namespace Shit
 
 		std::vector<VkPresentModeKHR> presentModes;
 		VK::querySurfacePresentModes(mpDevice->GetPhysicalDevice(), surface, presentModes);
-		VkPresentModeKHR presentMode;
+		VkPresentModeKHR presentMode{VK_PRESENT_MODE_IMMEDIATE_KHR};
 		auto dstmode = Map(createInfo.presentMode);
 		for (auto &&e : presentModes)
 		{
@@ -98,13 +99,30 @@ namespace Shit
 			mImages.emplace_back(std::make_unique<VKImage>(mpDevice->GetHandle(), e, true));
 		}
 	}
-	uint32_t VKSwapchain::GetNextImage(const GetNextImageInfo &info)
+	Result VKSwapchain::GetNextImage(const GetNextImageInfo &info, uint32_t& index)
 	{
-		uint32_t ret;
-		CHECK_VK_RESULT(vkAcquireNextImageKHR(mpDevice->GetHandle(), mHandle, info.timeout,
-											  info.pSemaphore ? static_cast<VKSemaphore *>(info.pSemaphore)->GetHandle() : VK_NULL_HANDLE,
-											  info.pFence ? static_cast<VKFence *>(info.pFence)->GetHandle() : VK_NULL_HANDLE,
-											  &ret));
-		return ret;
+		auto res = vkAcquireNextImageKHR(mpDevice->GetHandle(), mHandle, info.timeout,
+										 info.pSemaphore ? static_cast<VKSemaphore *>(info.pSemaphore)->GetHandle() : VK_NULL_HANDLE,
+										 info.pFence ? static_cast<VKFence *>(info.pFence)->GetHandle() : VK_NULL_HANDLE,
+										 &index);
+		switch (res)
+		{
+		case VK_SUCCESS:
+		case VK_SUBOPTIMAL_KHR:
+			return Result::SUCCESS;
+		case VK_TIMEOUT:
+			return Result::TIMEOUT;
+		case VK_NOT_READY:
+			return Result::NOT_READY;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			return Result::SHIT_ERROR_OUT_OF_DATE;
+		//case VK_ERROR_OUT_OF_HOST_MEMORY:
+		//case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+		//case VK_ERROR_DEVICE_LOST:
+		//case VK_ERROR_SURFACE_LOST_KHR:
+		//case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+		default:
+			THROW("failed to aquire next image, error code: " + std::to_string(res));
+		}
 	}
 } // namespace Shit

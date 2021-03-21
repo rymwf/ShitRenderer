@@ -29,17 +29,7 @@ namespace Shit
 	public:
 		VKRenderSystem(const RenderSystemCreateInfo &createInfo);
 
-		~VKRenderSystem() override
-		{
-			mWindows.clear();
-			VkDevice device;
-			for (int i = mDevices.size() - 1; i >= 0; --i)
-			{
-				device = static_cast<VKDevice *>(mDevices[i].get())->GetHandle();
-				mDevices.erase(mDevices.begin() + i);
-				vkDestroyDevice(device, nullptr);
-			}
-		}
+		~VKRenderSystem() override;
 
 		Device *CreateDevice(const DeviceCreateInfo &createInfo) override;
 	};

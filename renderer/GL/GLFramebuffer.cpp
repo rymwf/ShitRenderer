@@ -60,7 +60,7 @@ namespace Shit
 			std::transform(indices.begin(), indices.end(), bufs.begin(), [](auto e) {
 				return GL_COLOR_ATTACHMENT0 + e;
 			});
-			glDrawBuffers(bufs.size(), bufs.data());
+			glDrawBuffers(static_cast<GLsizei>(bufs.size()), bufs.data());
 			mDrawBuffers = indices;
 		}
 	}
