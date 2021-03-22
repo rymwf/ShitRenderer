@@ -43,7 +43,6 @@ namespace Shit
 		uint32_t mCurSubpass{};
 		Pipeline *mCurPipeline{};
 		IndexType mCurIndexType{};
-		uint64_t mCurIndexOffset{};
 
 		template <class T>
 		T *AllocateCommand(GLCommandCode commandCode, size_t extraSize = 0);

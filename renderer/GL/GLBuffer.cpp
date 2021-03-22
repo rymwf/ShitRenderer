@@ -33,7 +33,8 @@ namespace Shit
 				flags |= GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 
 			//(GLVersion.major * 10 + GLVersion.minor < 44 || GL_ARB_buffer_storage)
-			glBufferStorage(GL_ARRAY_BUFFER, createInfo.size, pData, flags);
+			glBufferStorage(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(createInfo.size), pData, flags);
+			//glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(createInfo.size), pData, GL_DYNAMIC_DRAW);
 		}
 		mpStateManager->PopBuffer();
 	}

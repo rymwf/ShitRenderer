@@ -73,9 +73,8 @@ namespace Shit
 		case GLCommandCode::BindIndexBuffer:
 		{
 			auto cmd = reinterpret_cast<const BindIndexBufferInfo *>(pCur);
-			mpStateManager->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
+			mpStateManager->BindIndexBuffer(static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle(), Map(cmd->indexType), cmd->offset);
 			mCurIndexType = cmd->indexType;
-			mCurIndexOffset = cmd->offset;
 			return sizeof(*cmd);
 		}
 		case GLCommandCode::BindPipeline:
@@ -262,24 +261,44 @@ namespace Shit
 		{
 			//TODO: optimize???
 			auto cmd = reinterpret_cast<const BindVertexBufferInfo *>(pCur);
-			auto graphicsPipeline = dynamic_cast<GLGraphicsPipeline *>(mCurPipeline);
-			auto &&vertexInputState = graphicsPipeline->GetCreateInfoPtr()->vertexInputState;
-			for (auto &&attrib : vertexInputState.vertexAttributeDescriptions)
+			auto pBuffers = reinterpret_cast<Buffer *>(cmd->pBuffers);
+			auto pOffsets = reinterpret_cast<const uint64_t *>(&cmd->pBuffers + cmd->bindingCount);
+			//auto graphicsPipeline = ;
+			auto &&vertexInputState = dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->vertexInputState;
+
+			std::vector<GLuint> vertexBuffers(cmd->bindingCount);
+			std::vector<GLintptr> offsets(cmd->bindingCount);
+			std::vector<GLsizei> strides(cmd->bindingCount);
+			for (uint32_t i = 0; i < cmd->bindingCount; ++i)
 			{
-				auto index = attrib.binding + cmd->firstBinding;
-				mpStateManager->BindBuffer(GL_ARRAY_BUFFER, static_cast<GLBuffer *>(&cmd->pBuffers[index])->GetHandle());
-				uint32_t offset = static_cast<uint32_t>(attrib.offset + cmd->pOffsets[index]);
-				glVertexAttribPointer(
-					attrib.location,
-					attrib.components,
-					Map(attrib.dataType),
-					attrib.normalized,
-					vertexInputState.vertexBindingDescriptions[attrib.binding].stride,
-					&offset);
-				glVertexAttribDivisor(attrib.location, vertexInputState.vertexBindingDescriptions[attrib.binding].divisor);
-				glEnableVertexAttribArray(attrib.location);
+				vertexBuffers[i] = static_cast<GLBuffer *>(&pBuffers[i])->GetHandle();
+				offsets[i] = pOffsets[i];
+				strides[i] = vertexInputState.vertexBindingDescriptions[i].stride;
 			}
-			return sizeof(*cmd);
+			mpStateManager->BindVertexBuffer(cmd->firstBinding,
+											 cmd->bindingCount,
+											 vertexBuffers,
+											 offsets,
+											 strides);
+			//do not render
+			//for (auto &&attrib : vertexInputState.vertexAttributeDescriptions)
+			//{
+			//	auto index = attrib.binding + cmd->firstBinding;
+			//	mpStateManager->BindBuffer(GL_ARRAY_BUFFER, static_cast<GLBuffer *>(&pBuffers[index])->GetHandle());
+			//	uint32_t offset = static_cast<uint32_t>(attrib.offset + pOffsets[index]);
+			//	glVertexAttribPointer(
+			//		attrib.location,
+			//		attrib.components,
+			//		Map(attrib.dataType),
+			//		attrib.normalized,
+			//		vertexInputState.vertexBindingDescriptions[attrib.binding].stride,
+			//		&offset);
+			//	glVertexAttribDivisor(attrib.location, vertexInputState.vertexBindingDescriptions[attrib.binding].divisor);
+			//	glEnableVertexAttribArray(attrib.location);
+			//}
+			return sizeof(BindVertexBufferInfo::bindingCount) +
+				   sizeof(BindVertexBufferInfo::firstBinding) +
+				   (sizeof(uint64_t) + sizeof(Buffer *)) * cmd->bindingCount;
 		}
 		case GLCommandCode::BlitImage:
 		{
@@ -311,7 +330,6 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectCommand *>(pCur);
 			//opengl 4.2
 			glDrawArraysInstancedBaseInstance(
-				//Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
 				mpStateManager->GetPrimitiveTopology(),
 				cmd->firstVertex,
 				cmd->vertexCount,
@@ -324,12 +342,24 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			//opengl 4.3
-			uint32_t offset = static_cast<uint32_t>(cmd->offset);
+			//uint32_t offset= static_cast<uint32_t>(cmd->offset);
+			//TODO: offset
+#if 1
 			glMultiDrawArraysIndirect(
-				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
-				&offset,
+				mpStateManager->GetPrimitiveTopology(),
+				nullptr,
 				cmd->drawCount,
 				cmd->stride);
+#else
+			for (uint32_t i = 0; i < cmd->drawCount; ++i)
+			{
+				//offset += i * sizeof(DrawIndirectCommand);
+				glDrawArraysIndirect(
+					mpStateManager->GetPrimitiveTopology(),
+					(void *)&offset[i]);
+			}
+
+#endif
 			return sizeof(*cmd);
 		}
 		case GLCommandCode::DrawIndirectCount:
@@ -338,10 +368,11 @@ namespace Shit
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_PARAMETER_BUFFER, static_cast<GLBuffer *>(cmd->pCountBuffer)->GetHandle());
 			//opengl 4.6
-			uint32_t offset = static_cast<uint32_t>(cmd->offset);
+			//uint32_t offset = static_cast<uint32_t>(cmd->offset);
 			glMultiDrawArraysIndirectCount(
-				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
-				&offset,
+				mpStateManager->GetPrimitiveTopology(),
+				//&offset,
+				nullptr,
 				static_cast<GLintptr>(cmd->countBufferOffset),
 				cmd->maxDrawCount,
 				cmd->stride);
@@ -350,13 +381,15 @@ namespace Shit
 		case GLCommandCode::DrawIndexed:
 		{
 			auto cmd = reinterpret_cast<const DrawIndexedIndirectCommand *>(pCur);
-			uint32_t firstIndex = static_cast<uint32_t>(cmd->firstIndex + mCurIndexOffset * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
+			//TODO: 
+			//uint32_t firstIndex = static_cast<uint32_t>(cmd->firstIndex + mpStateManager->GetIndexOffset() * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
 			//opengl 4.2
 			glDrawElementsInstancedBaseVertexBaseInstance(
-				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
+				mpStateManager->GetPrimitiveTopology(),
 				cmd->indexCount,
 				Map(mCurIndexType),
-				&firstIndex,
+				//&firstIndex,
+				nullptr,
 				cmd->instanceCount,
 				cmd->vertexOffset,
 				cmd->firstInstance);
@@ -366,12 +399,14 @@ namespace Shit
 		{
 			auto cmd = reinterpret_cast<const DrawIndirectInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
-			uint32_t offset = static_cast<uint32_t>(cmd->offset + mCurIndexOffset * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
+			//auto indexOffset=;
+			//uint32_t offset = static_cast<uint32_t>(cmd->offset + mpStateManager->GetIndexOffset() * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
 			//opengl4.3
 			glMultiDrawElementsIndirect(
-				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
+				mpStateManager->GetPrimitiveTopology(),
 				Map(mCurIndexType),
-				&offset,
+				//&offset,
+				nullptr,
 				cmd->drawCount,
 				cmd->stride);
 			return sizeof(*cmd);
@@ -381,12 +416,13 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectCountInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_PARAMETER_BUFFER, static_cast<GLBuffer *>(cmd->pCountBuffer)->GetHandle());
-			uint32_t offset = static_cast<uint32_t>(cmd->offset + mCurIndexOffset);
+			//uint32_t offset = static_cast<uint32_t>(cmd->offset + mpStateManager->GetIndexOffset());
 			//opengl 4.6
 			glMultiDrawElementsIndirectCount(
-				Map(dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->inputAssemblyState.topology),
+				mpStateManager->GetPrimitiveTopology(),
 				Map(mCurIndexType),
-				&offset,
+				//&offset,
+				nullptr,
 				static_cast<GLintptr>(cmd->countBufferOffset),
 				cmd->maxDrawCount,
 				cmd->stride);
@@ -494,7 +530,14 @@ namespace Shit
 	}
 	void GLCommandBuffer::BindVertexBuffer(const BindVertexBufferInfo &info)
 	{
-		memcpy(AllocateCommand<BindVertexBufferInfo>(GLCommandCode::BindVertexBuffer), &info, sizeof(BindVertexBufferInfo));
+		auto p = AllocateCommand<BindVertexBufferInfo>(GLCommandCode::BindVertexBuffer, (sizeof(Buffer *) + sizeof(uint64_t)) * info.bindingCount - sizeof(Buffer **) - sizeof(uint64_t *));
+
+		size_t size = sizeof(BindVertexBufferInfo::bindingCount) + sizeof(BindVertexBufferInfo::firstBinding);
+		memcpy(p, &info, size);
+		size = info.bindingCount * sizeof(BindVertexBufferInfo::pBuffers);
+		memcpy(&p->pBuffers, info.pBuffers, size);
+		size = info.bindingCount * sizeof(BindVertexBufferInfo::pOffsets);
+		memcpy(&p->pBuffers + info.bindingCount, info.pOffsets, size);
 	}
 	void GLCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
 	{

@@ -109,7 +109,7 @@ struct Vertex
 			 binding,
 			 3,
 			 DataType::FLOAT,
-			 true,
+			 false,
 			 offsetof(Vertex, color)},
 			{startLocation + 2,
 			 binding,

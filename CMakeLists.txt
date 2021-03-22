@@ -74,9 +74,7 @@ ${CMAKE_SOURCE_DIR}
 ${CMAKE_BINARY_DIR}
 ${CMAKE_SOURCE_DIR}/renderer
 )
-#set_target_properties(ShitRenderer PROPERTIES
-#	COMPILE_FLAGS -DSHIT_DLL
-#)
+
 #========================
 #add GL lib
 if(GLRENDERER)
@@ -180,7 +178,7 @@ endfunction()
 #======================
 newexample(00-init)
 newexample(01-triangle)
-
+newexample(02-triangle-vbo)
 endif()
 
 

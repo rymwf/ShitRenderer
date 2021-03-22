@@ -18,6 +18,10 @@
 #define BUFFER_TARGET_NUM 15
 #define MAX_VIEWPORTS 16
 #define MAX_DRAW_BUFFERS 8
+#define MAX_VERTEX_ATTRIBS 16
+#define MAX_VERTEX_TEXTURE_IMAGE_UNITS 16
+#define MAX_UNIFORM_BUFFER_BINDING 36
+
 namespace Shit
 {
 	class GLStateManager
@@ -89,14 +93,23 @@ namespace Shit
 			std::stack<StackEntry> bufferStack;
 		} mBufferState;
 
-		struct GLVertexArrayState
-		{
-			GLuint curVAO;
-		} mVAOState;
-
 		struct GLPipelineState
 		{
-			GLuint curPipeline;
+			struct VertexBuffer
+			{
+				GLuint firstBinding;
+				GLsizei bindingCount;
+				std::vector<GLuint> buffers;
+				std::vector<GLintptr> offsets;
+			}vertexBuffer;
+			struct IndexBufferState
+			{
+				GLuint buffer;
+				GLenum type;
+				uint64_t offset;
+			}indexBuffer;
+			GLuint pipeline;
+			GLuint vao;
 		} mPipelineState;
 
 		struct GLCapbilityState
@@ -201,6 +214,12 @@ namespace Shit
 			GLenum primitiveTopology;
 		} mAssemblyState;
 
+		struct ClipState
+		{
+			GLenum origin;
+			GLenum depth;
+		} mClipState;
+
 	public:
 		GLStateManager() = default;
 
@@ -227,9 +246,24 @@ namespace Shit
 
 		//vao
 		void BindVertexArray(GLuint vao);
-		void PushVertexArray(GLuint vao);
-		void PopVertexArray();
 		void NotifyReleasedVertexArray(GLuint vao);
+
+		//pipeline
+		void BindPipeline(GLuint pipeline);
+		void NotifyReleasedPipeline(GLuint pipeline);
+		void BindVertexBuffer(GLuint first, GLsizei count,
+							  const std::vector<GLuint> &buffers,
+							  const std::vector<GLintptr> &offsets,
+							  const std::vector<GLsizei> &strides);
+		void BindIndexBuffer(GLuint buffer, GLenum indexType, uint64_t offset);
+		constexpr GLenum GetIndexType()
+		{
+			return mPipelineState.indexBuffer.type;
+		}
+		constexpr uint64_t GetIndexOffset()
+		{
+			return mPipelineState.indexBuffer.offset;
+		}
 
 		//texture
 		void BindTextureUnit(GLuint unit, GLenum target, GLuint texture);
@@ -247,10 +281,6 @@ namespace Shit
 		void PushSampler(GLuint unit, GLuint sampler);
 		void PopSampler();
 		void NotifyReleasedSampler(GLuint sampler);
-
-		//pipeline
-		void BindPipeline(GLuint pipeline);
-		void NotifyReleasedPipeline(GLuint pipeline);
 
 		//capbility state
 		void EnableCapability(GLenum cap);
@@ -317,5 +347,8 @@ namespace Shit
 		{
 			return mAssemblyState.primitiveTopology;
 		}
+
+		//clip
+		void ClipControl(GLenum origin,GLenum depth);
 	};
 } // namespace Shit

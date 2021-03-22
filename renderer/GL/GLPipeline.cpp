@@ -10,11 +10,24 @@
 #include "GLPipeline.h"
 namespace Shit
 {
-	void GLGraphicsPipeline::CreateVertexArray()
+	void GLGraphicsPipeline::CreateVertexArray(const VertexInputStateCreateInfo &vertexInputStateCreateInfo)
 	{
 		glGenVertexArrays(1, &mVAO);
 		if (mVAO == 0)
 			THROW("failed to create vertex array object");
+		mpStateManager->BindVertexArray(mVAO);
+		for (auto &&attrib : vertexInputStateCreateInfo.vertexAttributeDescriptions)
+		{
+			glVertexAttribFormat(
+				attrib.location,
+				attrib.components,
+				Map(attrib.dataType),
+				attrib.normalized,
+				attrib.offset);
+			glVertexAttribBinding(attrib.location, attrib.binding);
+			glEnableVertexAttribArray(attrib.location);
+			glVertexBindingDivisor(attrib.location, vertexInputStateCreateInfo.vertexBindingDescriptions[attrib.binding].divisor);
+		}
 	}
 	GLuint GLGraphicsPipeline::CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo)
 	{
@@ -69,7 +82,7 @@ namespace Shit
 		mpStateManager->BindPipeline(mHandle);
 
 		glUseProgramStages(mHandle, MapShaderStageFlags(stageFlags), mProgram);
-		CreateVertexArray();
+		CreateVertexArray(createInfo.vertexInputState);
 	}
 	GLuint GLPipeline::CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable)
 	{

@@ -4,13 +4,19 @@
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 
-const char *vertShaderName = "01.vert.spv";
-const char *fragShaderName = "01.frag.spv";
+const char *vertShaderName = "03.vert.spv";
+const char *fragShaderName = "03.frag.spv";
 
 std::string vertShaderPath;
 std::string fragShaderPath;
 
-std::vector<uint16_t> indices{0, 1, 3, 0, 2, 3};
+std::vector<Vertex> vertices{
+	{{-0.5, -0.5, 0}, {1, 0, 0}, {0, 1}},
+	{{-0.5, 0.5, 0}, {0, 0, 1}, {0, 0}},
+	{{0.5, -0.5, 0}, {0, 1, 0}, {1, 1}},
+	{{0.5, 0.5, 0}, {1, 1, 0}, {1, 0}},
+};
+std::vector<uint16_t> indices{0, 1, 2, 3};
 
 class Hello
 {
@@ -47,6 +53,7 @@ class Hello
 	Buffer *drawCountBuffer;
 	Buffer *drawIndexedIndirectCmdBuffer;
 	Buffer *indexBuffer;
+	Buffer *vertexBuffer;
 
 public:
 	void initRenderSystem()
@@ -97,6 +104,7 @@ public:
 		createDrawCommandBuffers();
 		createSyncObjects();
 		createIndexBuffer();
+		createVertexBuffer();
 
 		recreateSwapchain();
 
@@ -318,9 +326,14 @@ public:
 				"main",
 			},
 		};
-		VertexInputStateCreateInfo vertexInputState{};
+		auto vertexBindingDesc = Vertex::getVertexBindingDescription();
+		auto vertexAttributeDesc = Vertex::getVertexAttributeDescription(0, 0);
+		VertexInputStateCreateInfo vertexInputState{
+			{std::move(vertexBindingDesc)},
+			std::move(vertexAttributeDesc),
+		};
 		PipelineInputAssemblyStateCreateInfo inputAssemblyState{
-			PrimitiveTopology::TRIANGLE_LIST,
+			PrimitiveTopology::TRIANGLE_STRIP,
 		};
 		PipelineViewportStateCreateInfo viewportStateCreateInfo{
 			{{0, 0, static_cast<float>(swapchain->GetCreateInfoPtr()->imageExtent.width), static_cast<float>(swapchain->GetCreateInfoPtr()->imageExtent.height), 0, 1}},
@@ -408,8 +421,16 @@ public:
 			commandBuffers[i]->Begin(cmdBufferBeginInfo);
 			commandBuffers[i]->BeginRenderPass(renderPassBeginInfo);
 			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
+			uint64_t offsets[] = {0};
+			Buffer *buffers[] = {vertexBuffer};
+			commandBuffers[i]->BindVertexBuffer(
+				BindVertexBufferInfo{
+					0,
+					1,
+					buffers,
+					offsets});
 
-			int drawMethod = 3;
+			int drawMethod = 4;
 			switch (drawMethod)
 			{
 			case 0:
@@ -448,8 +469,40 @@ public:
 					indexBuffer,
 					0,
 					IndexType::UINT16});
-				DrawIndexedIndirectCommand drawIndexedIndirectCmd{static_cast<uint32_t>(indices.size()), 1, 0, 0, 0};
+				DrawIndexedIndirectCommand drawIndexedIndirectCmd{4, 1, 0, 0, 0};
 				commandBuffers[i]->DrawIndexed(drawIndexedIndirectCmd);
+			}
+			break;
+			case 4:
+			{
+				//draw index
+				commandBuffers[i]->BindIndexBuffer(BindIndexBufferInfo{
+					indexBuffer,
+					0,
+					IndexType::UINT16});
+				commandBuffers[i]->DrawIndexedIndirect(
+					DrawIndirectInfo{
+						drawIndexedIndirectCmdBuffer,
+						0,
+						1,
+						sizeof(DrawIndexedIndirectCommand)});
+			}
+			break;
+			case 5:
+			{
+				//draw index
+				commandBuffers[i]->BindIndexBuffer(BindIndexBufferInfo{
+					indexBuffer,
+					0,
+					IndexType::UINT16});
+				commandBuffers[i]->DrawIndexedIndirectCount(
+					DrawIndirectCountInfo{
+						drawIndexedIndirectCmdBuffer,
+						0,
+						drawCountBuffer,
+						0,
+						1,
+						sizeof(DrawIndexedIndirectCommand)});
 			}
 			break;
 			}
@@ -477,7 +530,7 @@ public:
 		uint32_t drawCount = 1;
 		drawCountBuffer = device->Create(bufferCreateInfo, &drawCount);
 
-		std::vector<DrawIndexedIndirectCommand> drawIndexedIndirectCmds{{static_cast<uint32_t>(indices.size()), 1, 0, 0, 0}};
+		std::vector<DrawIndexedIndirectCommand> drawIndexedIndirectCmds{{4, 1, 0, 0, 0}};
 
 		//create draw indexed indirect command buffer
 		BufferCreateInfo drawIndexedIndirectCmdBufferCreateInfo{
@@ -486,6 +539,16 @@ public:
 			BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 		drawIndexedIndirectCmdBuffer = device->Create(drawIndexedIndirectCmdBufferCreateInfo, drawIndexedIndirectCmds.data());
+	}
+	void createVertexBuffer()
+	{
+		BufferCreateInfo createInfo{
+			{},
+			sizeof(vertices[0]) * vertices.size(),
+			BufferUsageFlagBits::VERTEX_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+
+		vertexBuffer = device->Create(createInfo, vertices.data());
 	}
 	void createIndexBuffer()
 	{

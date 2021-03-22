@@ -267,7 +267,7 @@ namespace Shit
 	{
 		std::vector<VkBuffer> buffers;
 		for (size_t i = 0; i < info.bindingCount; ++i)
-			buffers.emplace_back(static_cast<VKBuffer *>(&info.pBuffers[i])->GetHandle());
+			buffers.emplace_back(static_cast<VKBuffer *>(info.pBuffers[i])->GetHandle());
 		vkCmdBindVertexBuffers(
 			mHandle,
 			info.firstBinding,
@@ -314,7 +314,7 @@ namespace Shit
 			info.stride);
 #else
 		//exenstion
-		THROW("draw indirect count is not supported");
+		THROW("vulkan 1.2 is needed to  support drawIndirectCount");
 #endif
 	}
 	void VKCommandBuffer::DrawIndexed(const DrawIndexedIndirectCommand &info)
@@ -348,7 +348,7 @@ namespace Shit
 			info.maxDrawCount,
 			info.stride);
 #else
-		THROW("draw indexed indirect count is not supported");
+		THROW("vulkan 1.2 is needed to  support drawIndexedIndirectCount");
 #endif
 	}
 

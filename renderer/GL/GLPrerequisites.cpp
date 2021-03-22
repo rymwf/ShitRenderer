@@ -435,9 +435,17 @@ namespace Shit
 		GL_FRONT,
 		GL_BACK,
 		GL_FRONT_AND_BACK};
+
+	//set clipcontrol origin
 	constexpr GLenum glFrontFaceArray[]{
+#ifdef CLIP_ORIGIN_UPPER_LEFT
+		GL_CW,
 		GL_CCW,
-		GL_CW};
+#else
+		GL_CCW,
+		GL_CW,
+#endif
+	};
 	constexpr GLenum glStencilOpArray[]{
 		GL_KEEP,
 		GL_ZERO,

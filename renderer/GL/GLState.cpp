@@ -79,10 +79,10 @@ namespace Shit
 
 	void GLStateManager::BindReadFramebuffer(GLuint framebuffer)
 	{
-		if (mReadBufferState.buffer!= framebuffer)
+		if (mReadBufferState.buffer != framebuffer)
 		{
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
-			mReadBufferState.buffer= framebuffer;
+			mReadBufferState.buffer = framebuffer;
 		}
 	}
 	void GLStateManager::PushReadFramebuffer(GLuint framebuffer)
@@ -162,16 +162,16 @@ namespace Shit
 	}
 	void GLStateManager::BindVertexArray(GLuint vao)
 	{
-		if (mVAOState.curVAO != vao)
+		if (mPipelineState.vao != vao)
 		{
 			glBindVertexArray(vao);
-			mVAOState.curVAO = vao;
+			mPipelineState.vao = vao;
 		}
 	}
 	void GLStateManager::NotifyReleasedVertexArray(GLuint vao)
 	{
-		if (mVAOState.curVAO == vao)
-			mVAOState.curVAO = 0;
+		if (mPipelineState.vao == vao)
+			mPipelineState.vao = 0;
 	}
 	void GLStateManager::BindTextureUnit(GLuint unit, GLenum target, GLuint texture)
 	{
@@ -261,16 +261,51 @@ namespace Shit
 	}
 	void GLStateManager::BindPipeline(GLuint pipeline)
 	{
-		if (mPipelineState.curPipeline != pipeline)
+		if (mPipelineState.pipeline != pipeline)
 		{
 			glBindProgramPipeline(pipeline);
-			mPipelineState.curPipeline = pipeline;
+			mPipelineState.pipeline = pipeline;
 		}
 	}
 	void GLStateManager::NotifyReleasedPipeline(GLuint pipeline)
 	{
-		if (mPipelineState.curPipeline == pipeline)
-			mPipelineState.curPipeline = 0;
+		if (mPipelineState.pipeline== pipeline)
+		{
+			memset(&mPipelineState, 0, sizeof(GLPipelineState));
+		}
+	}
+	void GLStateManager::BindVertexBuffer(GLuint first, GLsizei count,
+										  const std::vector<GLuint> &buffers,
+										  const std::vector<GLintptr> &offsets,
+										  const std::vector<GLsizei> &strides)
+	{
+		if (
+			mPipelineState.vertexBuffer.firstBinding != first ||
+			mPipelineState.vertexBuffer.bindingCount != count ||
+			mPipelineState.vertexBuffer.buffers != buffers ||
+			mPipelineState.vertexBuffer.offsets != offsets)
+		{
+
+			glBindVertexBuffers(first,
+								count,
+								buffers.data(),
+								offsets.data(),
+								strides.data());
+			mPipelineState.vertexBuffer.firstBinding = first;
+			mPipelineState.vertexBuffer.bindingCount = count;
+			mPipelineState.vertexBuffer.buffers = buffers;
+			mPipelineState.vertexBuffer.offsets = offsets;
+		}
+	}
+	void GLStateManager::BindIndexBuffer(GLuint buffer, GLenum indexType, uint64_t offset)
+	{
+		if (mPipelineState.indexBuffer.buffer != buffer)
+		{
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+			mPipelineState.indexBuffer.buffer = buffer;
+		}
+		mPipelineState.indexBuffer.type = indexType;
+		mPipelineState.indexBuffer.offset = offset;
 	}
 	void GLStateManager::EnableCapability(GLenum cap)
 	{
@@ -571,5 +606,14 @@ namespace Shit
 	void GLStateManager::PrimitiveTopology(GLenum topology)
 	{
 		mAssemblyState.primitiveTopology = topology;
+	}
+	void GLStateManager::ClipControl(GLenum origin, GLenum depth)
+	{
+		if (mClipState.origin != origin || mClipState.depth != depth)
+		{
+			glClipControl(origin, depth);
+			mClipState.origin = origin;
+			mClipState.depth = depth;
+		}
 	}
 }

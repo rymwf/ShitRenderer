@@ -20,6 +20,12 @@ namespace Shit
 		std::function<void(const Event &)> func = std::bind(&GLSwapchain::ProcessWindowEvent, this, std::placeholders::_1);
 		mProcessWindowEventCallable = std::make_shared<std::function<void(const Event &)>>(func);
 
+#ifdef CLIP_ORIGIN_UPPER_LEFT
+		mpStateManager->ClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
+#else
+		mpStateManager->ClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+#endif
+
 		if (createInfo.format == ShitFormat::RGBA8_SRGB)
 			mpStateManager->EnableCapability(GL_FRAMEBUFFER_SRGB);
 		else

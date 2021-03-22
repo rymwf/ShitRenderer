@@ -51,7 +51,7 @@ namespace Shit
 	{
 		GLuint mVAO{};
 
-		void CreateVertexArray();
+		void CreateVertexArray(const VertexInputStateCreateInfo &vertexInputStateCreateInfo);
 
 		GLuint CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo);
 
@@ -63,6 +63,7 @@ namespace Shit
 		}
 		~GLGraphicsPipeline() override
 		{
+			mpStateManager->NotifyReleasedVertexArray(mVAO);
 			glDeleteVertexArrays(1, &mVAO);
 		}
 	};

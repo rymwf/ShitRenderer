@@ -654,8 +654,8 @@ namespace Shit
 	{
 		uint32_t firstBinding;
 		uint32_t bindingCount;
-		Buffer *pBuffers;
-		uint64_t *pOffsets;
+		Buffer **pBuffers;	//buffer pointer array
+		uint64_t *pOffsets;	//offset array
 	};
 	struct BindIndexBufferInfo
 	{
