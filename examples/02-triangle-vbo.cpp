@@ -4,6 +4,8 @@
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 const char *vertShaderName = "03.vert.spv";
 const char *fragShaderName = "03.frag.spv";
 
@@ -38,8 +40,11 @@ class Hello
 	std::vector<CommandBuffer *> commandBuffers;
 	Queue *graphicsQueue;
 	Queue *presentQueue;
-	Semaphore *imageAvailableSemaphore;
-	Semaphore *renderFinishedSemaphore;
+
+	Semaphore *imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
+	Semaphore *renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+	Fence *inFlightFences[MAX_FRAMES_IN_FLIGHT];
+	//std::vector<Fence *> inFlightImages;
 
 	Shader *vertShader;
 	Shader *fragShader;
@@ -55,12 +60,14 @@ class Hello
 	Buffer *indexBuffer;
 	Buffer *vertexBuffer;
 
+
 public:
 	void initRenderSystem()
 	{
 		RenderSystemCreateInfo renderSystemCreateInfo{
-			rendererVersion,
-			RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT};
+			.version = rendererVersion,
+			.flags = RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT,
+			};
 
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
@@ -102,11 +109,12 @@ public:
 		createShaders();
 		createDescriptors();
 		createDrawCommandBuffers();
-		createSyncObjects();
 		createIndexBuffer();
 		createVertexBuffer();
 
 		recreateSwapchain();
+
+		createSyncObjects();
 
 		transferQueueFamilyIndex = device->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {graphicsQueueFamilyIndex->index, presentQueueFamilyIndex.index});
 		if (!transferQueueFamilyIndex.has_value())
@@ -175,11 +183,13 @@ public:
 	}
 	void drawFrame()
 	{
-		//static uint32_t currentFrame{};
+		static uint32_t currentFrame{};
+		inFlightFences[currentFrame]->WaitFor(UINT64_MAX);
+
 		uint32_t imageIndex{};
 		GetNextImageInfo nextImageInfo{
 			UINT64_MAX,
-			imageAvailableSemaphore};
+			imageAvailableSemaphores[currentFrame]};
 		auto ret = swapchain->GetNextImage(nextImageInfo, imageIndex);
 		if (ret == Result::SHIT_ERROR_OUT_OF_DATE)
 		{
@@ -192,14 +202,16 @@ public:
 			THROW("failed to get next image");
 		}
 
+		inFlightFences[currentFrame]->Reset();
+
 		std::vector<SubmitInfo> submitInfos{
-			{{imageAvailableSemaphore},
+			{{imageAvailableSemaphores[currentFrame]},
 			 {commandBuffers[imageIndex]},
-			 {renderFinishedSemaphore}}};
-		graphicsQueue->Submit(submitInfos, nullptr);
+			 {renderFinishedSemaphores[currentFrame]}}};
+		graphicsQueue->Submit(submitInfos, inFlightFences[currentFrame]);
 
 		PresentInfo presentInfo{
-			{renderFinishedSemaphore},
+			{renderFinishedSemaphores[currentFrame]},
 			{swapchain},
 			{imageIndex}};
 		auto res = presentQueue->Present(presentInfo);
@@ -212,7 +224,7 @@ public:
 		{
 			THROW("failed to present swapchain image");
 		}
-		presentQueue->WaitIdle();
+		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 	void createShaders()
@@ -242,13 +254,15 @@ public:
 		LOG_VAR(static_cast<int>(swapchainFormat.format));
 		LOG_VAR(static_cast<int>(swapchainFormat.colorSpace));
 
+		auto presentMode = choosePresentMode({PresentMode::IMMEDIATE, PresentMode::FIFO}, device, window);
+
 		swapchainCreateInfo = SwapchainCreateInfo{
 			2,
 			swapchainFormat.format,
 			swapchainFormat.colorSpace,
 			{800, 600},
 			1,
-			PresentMode::FIFO};
+			presentMode};
 		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 		while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)
 		{
@@ -513,8 +527,13 @@ public:
 
 	void createSyncObjects()
 	{
-		imageAvailableSemaphore = device->Create(SemaphoreCreateInfo{});
-		renderFinishedSemaphore = device->Create(SemaphoreCreateInfo{});
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+		{
+			imageAvailableSemaphores[i] = device->Create(SemaphoreCreateInfo{});
+			renderFinishedSemaphores[i] = device->Create(SemaphoreCreateInfo{});
+			inFlightFences[i] = device->Create(FenceCreateInfo{FenceCreateFlagBits::SIGNALED_BIT});
+		}
+		//inFlightImages.resize(swapchainImages.size());
 	}
 	void createDrawCommandBuffers()
 	{

@@ -30,11 +30,11 @@ namespace Shit
 			}
 			for (auto &&signalSemaphore : submitInfo.signalSempahores)
 			{
-				static_cast<GLSemaphore *>(signalSemaphore)->Reset();
+				static_cast<GLSemaphore *>(signalSemaphore)->Insert();
 			}
 		}
 		if (pFence)
-			static_cast<GLFence *>(pFence)->Reset();
+			static_cast<GLFence *>(pFence)->Insert();
 	}
 
 	Result GLQueue::Present(const PresentInfo &presentInfo)

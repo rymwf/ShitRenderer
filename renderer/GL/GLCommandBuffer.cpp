@@ -179,6 +179,16 @@ namespace Shit
 						mpStateManager->DisableCapability(GL_SAMPLE_SHADING);
 					}
 
+					if (pGraphicsPipelineCreateInfo->multisampleState.alphaToCoverageEnable)
+						mpStateManager->EnableCapability(GL_SAMPLE_ALPHA_TO_COVERAGE);
+					else
+						mpStateManager->DisableCapability(GL_SAMPLE_ALPHA_TO_COVERAGE);
+
+					if (pGraphicsPipelineCreateInfo->multisampleState.alphaToOneEnable)
+						mpStateManager->EnableCapability(GL_SAMPLE_ALPHA_TO_ONE);
+					else
+						mpStateManager->DisableCapability(GL_SAMPLE_ALPHA_TO_ONE);
+
 					//depth test
 					if (pGraphicsPipelineCreateInfo->depthStencilState.depthTestEnable)
 					{

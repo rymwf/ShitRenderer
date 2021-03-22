@@ -74,6 +74,7 @@ namespace Shit
 		}
 
 		virtual void GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats) = 0;
+		virtual void GetPresentModes(const ShitWindow *pWindow, std::vector<PresentMode> &presentModes) = 0;
 
 		/**
 		 * @brief when creating a swapchain for a new window, user should create a new device  

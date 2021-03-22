@@ -43,6 +43,8 @@ namespace Shit
 
 		void GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &format) override;
 
+		void GetPresentModes(const ShitWindow *pWindow, std::vector<PresentMode> &presentModes) override;
+
 		Swapchain *Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow) override;
 
 		Shader *Create(const ShaderCreateInfo &createInfo) override;

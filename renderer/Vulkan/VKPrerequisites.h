@@ -111,6 +111,7 @@ namespace Shit
 	VkColorSpaceKHR Map(ColorSpace colorSpace);
 	ColorSpace Map(VkColorSpaceKHR colorSpace);
 	VkPresentModeKHR Map(PresentMode mode);
+	PresentMode Map(VkPresentModeKHR mode);
 	VkCommandBufferLevel Map(CommandBufferLevel level);
 	VkQueueFlags Map(QueueFlagBits flag);
 	VkImageAspectFlags GetImageAspectFromFormat(ShitFormat format);

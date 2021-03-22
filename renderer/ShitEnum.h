@@ -535,7 +535,12 @@ namespace Shit
 	enum class PresentMode
 	{
 		IMMEDIATE,
-		FIFO, //vertical synchronous
+		MAILBOX,
+		FIFO,
+		FIFO_RELAXED,
+		SHARED_DEMAND_REFRESH,
+		SHARED_CONTINUOUS_REFRESH,
+		Num
 	};
 
 	enum class DescriptorType

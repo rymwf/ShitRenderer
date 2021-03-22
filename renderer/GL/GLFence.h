@@ -27,13 +27,13 @@ namespace Shit
 		}
 		virtual ~GLFence() override
 		{
-			DeleteFence();
+			Delete();
 		}
 		constexpr GLsync GetHandle() const
 		{
 			return mHandle;
 		}
-		constexpr void DeleteFence()
+		constexpr void Delete()
 		{
 			if (mHandle)
 				glDeleteSync(mHandle);
@@ -52,7 +52,11 @@ namespace Shit
 		}
 		void Reset() override
 		{
-			glDeleteSync(mHandle);
+			Delete();
+		}
+		void Insert()
+		{
+			Delete();
 			mHandle = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		}
 		Result WaitFor(uint64_t timeout) override

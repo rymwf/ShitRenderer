@@ -125,6 +125,16 @@ namespace Shit
 			return WindowPixelFormat{Map(e.format), Map(e.colorSpace)};
 		});
 	}
+	void VKDevice::GetPresentModes(const ShitWindow *pWindow, std::vector<PresentMode> &presentModes)
+	{
+		auto surface = static_cast<const VKSurface *>(pWindow->GetSurfacePtr())->GetHandle();
+		std::vector<VkPresentModeKHR> modes;
+		VK::querySurfacePresentModes(GetPhysicalDevice(), surface, modes);
+		presentModes.resize(modes.size());
+		std::transform(std::execution::par, modes.begin(), modes.end(), presentModes.begin(), [](auto &&e) {
+			return Map(e);
+		});
+	}
 	Swapchain *VKDevice::Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
 		mSwapchains.emplace_back(std::make_unique<VKSwapchain>(this, pWindow, createInfo));

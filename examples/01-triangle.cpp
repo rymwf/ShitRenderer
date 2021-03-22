@@ -234,13 +234,15 @@ public:
 		LOG_VAR(static_cast<int>(swapchainFormat.format));
 		LOG_VAR(static_cast<int>(swapchainFormat.colorSpace));
 
+		auto presentMode = choosePresentMode({PresentMode::IMMEDIATE, PresentMode::FIFO}, device, window);
+
 		swapchainCreateInfo = SwapchainCreateInfo{
 			2,
 			swapchainFormat.format,
 			swapchainFormat.colorSpace,
 			{800, 600},
 			1,
-			PresentMode::FIFO};
+			presentMode};
 		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 		while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)
 		{

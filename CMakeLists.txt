@@ -4,7 +4,7 @@ project(ShitRenderer)
 find_package(GLEW CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -141,7 +141,7 @@ if(EXAMPLES)
 function(newexample examplename)
 message(${examplename})
 
-add_executable(${examplename} examples/${examplename}.cpp)
+add_executable(${examplename} examples/${examplename}.cpp examples/common.cpp)
 
 #set_target_properties(${examplename} PROPERTIES FOLDER examples)
 

@@ -34,6 +34,7 @@ namespace Shit
 #ifndef NDEBUG
 		GL::listGLInfo();
 #endif
+		mpDevice->SetPresentMode(mCreateInfo.presentMode);
 
 		CreateImages(GetSwapchainImageCount());
 		CreateFramebuffer();

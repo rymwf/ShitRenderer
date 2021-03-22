@@ -31,8 +31,6 @@ namespace Shit
 
 		virtual void CreateRenderContext() = 0;
 
-		virtual void SetPresentMode(PresentMode mode) const = 0;
-
 	public:
 		GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo)
 			: Device(createInfo), mRenderSystemCreateInfo(renderSystemCreateInfo) {}
@@ -42,6 +40,8 @@ namespace Shit
 			return &mStateManager;
 		}
 		virtual void MakeCurrent() const = 0;
+
+		virtual void SetPresentMode(PresentMode mode) const = 0;
 
 		virtual void SwapBuffer() const = 0;
 
@@ -79,6 +79,11 @@ namespace Shit
 
 		void SetPresentMode(PresentMode mode) const override;
 
+		/**
+		 * @brief create a false rendercontext and init wgl extensions
+		 * 
+		 */
+		void InitWglExtentions();
 	public:
 		GLDeviceWin32(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo);
 		~GLDeviceWin32() override
@@ -100,6 +105,8 @@ namespace Shit
 		}
 
 		void GetWindowPixelFormats(const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats) override;
+
+		void GetPresentModes(const ShitWindow *pWindow, std::vector<PresentMode> &presentModes) override;
 	};
 #endif
 

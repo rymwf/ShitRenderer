@@ -634,7 +634,11 @@ namespace Shit
 
 	constexpr VkPresentModeKHR vkPresentModeArray[]{
 		VK_PRESENT_MODE_IMMEDIATE_KHR,
+		VK_PRESENT_MODE_MAILBOX_KHR,
 		VK_PRESENT_MODE_FIFO_KHR,
+		VK_PRESENT_MODE_FIFO_RELAXED_KHR,
+		VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR,
+		VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR,
 	};
 	constexpr VkBufferUsageFlagBits vkBufferUsageFlagBitArray[]{
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1281,6 +1285,15 @@ namespace Shit
 	VkPresentModeKHR Map(PresentMode mode)
 	{
 		return vkPresentModeArray[static_cast<size_t>(mode)];
+	}
+	PresentMode Map(VkPresentModeKHR mode)
+	{
+		for (int i = 0, len = static_cast<int>(PresentMode::Num); i < len; ++i)
+		{
+			if (Map(static_cast<PresentMode>(i)) == mode)
+				return static_cast<PresentMode>(i);
+		}
+		THROW("failed to find suitable present mode");
 	}
 	VkCommandBufferLevel Map(CommandBufferLevel level)
 	{
