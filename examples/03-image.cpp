@@ -1,20 +1,24 @@
 #include "common.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 uint32_t WIDTH = 800, HEIGHT = 600;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const char *vertShaderName = "02.vert.spv";
-const char *fragShaderName = "02.frag.spv";
+const char *vertShaderName = "03.vert.spv";
+const char *fragShaderName = "03.frag.spv";
+const char *testImagePath = IMAGE_PATH "Lenna_test.jpg";
 
 std::string vertShaderPath;
 std::string fragShaderPath;
 
 std::vector<Vertex> vertices{
-	{{-0.5, -0.5, 0}, {1, 0, 0}, {0, 1}},
-	{{-0.5, 0.5, 0}, {0, 0, 1}, {0, 0}},
-	{{0.5, -0.5, 0}, {0, 1, 0}, {1, 1}},
-	{{0.5, 0.5, 0}, {1, 1, 0}, {1, 0}},
+	{{-0.5, -0.5, 0}, {1, 0, 0}, {0, 0}},
+	{{-0.5, 0.5, 0}, {0, 0, 1}, {0, 1}},
+	{{0.5, -0.5, 0}, {0, 1, 0}, {1, 0}},
+	{{0.5, 0.5, 0}, {1, 1, 0}, {1, 1}},
 };
 std::vector<uint16_t> indices{0, 1, 2, 3};
 
@@ -47,7 +51,10 @@ class Hello
 	Shader *vertShader;
 	Shader *fragShader;
 
-	DescriptorSetLayout *descriptorSetLayout;
+	DescriptorPool *descriptorPool;
+	std::vector<DescriptorSetLayout *> descriptorSetLayouts;
+	std::vector<DescriptorSet *> descriptorSets;
+
 	PipelineLayout *pipelineLayout;
 	RenderPass *renderPass;
 	Pipeline *pipeline;
@@ -58,6 +65,9 @@ class Hello
 	Buffer *indexBuffer;
 	Buffer *vertexBuffer;
 
+	Image *testImage;
+	ImageView *testImageView;
+	Sampler *sampler;
 
 public:
 	void initRenderSystem()
@@ -65,7 +75,7 @@ public:
 		RenderSystemCreateInfo renderSystemCreateInfo{
 			.version = rendererVersion,
 			.flags = RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT,
-			};
+		};
 
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
@@ -104,15 +114,23 @@ public:
 		};
 		graphicsQueue = device->Create(queueCreateInfo);
 
+		createSwapchains();
+
 		createShaders();
-		createDescriptors();
+		createDescriptorSets();
+		createRenderPasses();
+		createPipeline();
+		createFramebuffers();
+
 		createDrawCommandBuffers();
 		createIndexBuffer();
 		createVertexBuffer();
-
-		recreateSwapchain();
-
+		createImages();
+		createSamplers();
 		createSyncObjects();
+		updateDescriptorSets();
+
+		createCommandBuffers();
 
 		transferQueueFamilyIndex = device->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {graphicsQueueFamilyIndex->index, presentQueueFamilyIndex.index});
 		if (!transferQueueFamilyIndex.has_value())
@@ -293,9 +311,50 @@ public:
 		};
 		presentQueue = device->Create(queueCreateInfo);
 	}
-	void createDescriptors()
+	void createDescriptorSets()
 	{
-		descriptorSetLayout = device->Create(DescriptorSetLayoutCreateInfo{});
+		std::vector<DescriptorSetLayoutBinding> bindings{
+			DescriptorSetLayoutBinding{
+				.binding = 0,
+				.descriptorType = DescriptorType::COMBINED_IMAGE_SAMPLER,
+				.descriptorCount = 1,
+				.stageFlags = ShaderStageFlagBits::FRAGMENT_BIT,
+			},
+		};
+		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{bindings}));
+
+		std::vector<DescriptorPoolSize> poolSizes(bindings.size());
+		std::transform(bindings.begin(), bindings.end(), poolSizes.begin(), [](auto &&e) {
+			return DescriptorPoolSize{e.descriptorType, e.descriptorCount};
+		});
+		DescriptorPoolCreateInfo descriptorPoolCreateInfo{
+			.maxSets = 1,
+			.poolSizes = poolSizes};
+		descriptorPool = device->Create(descriptorPoolCreateInfo);
+
+		DescriptorSetAllocateInfo allocInfo{descriptorSetLayouts};
+		descriptorPool->Allocate(allocInfo, descriptorSets);
+	}
+	void updateDescriptorSets()
+	{
+		std::vector<DescriptorImageInfo> imagesInfo{
+			DescriptorImageInfo{
+				.pSampler = sampler,
+				.pImageView = testImageView,
+				.imageLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL}};
+		std::vector<WriteDescriptorSet> writes{
+			WriteDescriptorSet{
+				nullptr,	//pDstset
+				0,		//dst binding
+				0,	//dstArrayElement
+				DescriptorType::COMBINED_IMAGE_SAMPLER,
+				imagesInfo,
+			}};
+		for (auto &&e : descriptorSets)
+		{
+			writes[0].pDstSet = e;
+			device->UpdateDescriptorSets(writes, {});
+		}
 	}
 	void createRenderPasses()
 	{
@@ -325,7 +384,7 @@ public:
 	}
 	void createPipeline()
 	{
-		pipelineLayout = device->Create(PipelineLayoutCreateInfo{});
+		pipelineLayout = device->Create(PipelineLayoutCreateInfo{descriptorSetLayouts});
 		std::vector<PipelineShaderStageCreateInfo> shaderStageCreateInfos{
 			PipelineShaderStageCreateInfo{
 				ShaderStageFlagBits::VERTEX_BIT,
@@ -441,6 +500,15 @@ public:
 					1,
 					buffers,
 					offsets});
+
+			BindDescriptorSetsInfo info{
+				PipelineBindPoint::GRAPHICS,
+				pipelineLayout,
+				0,
+				static_cast<uint32_t>(descriptorSets.size()),
+				descriptorSets.data()
+			};
+			commandBuffers[i]->BindDescriptorSets(info);
 
 			int drawMethod = 4;
 			switch (drawMethod)
@@ -575,6 +643,50 @@ public:
 			BufferUsageFlagBits::INDEX_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 		indexBuffer = device->Create(indexBufferCreateInfo, indices.data());
+	}
+	void createImages()
+	{
+		int width, height, components;
+		auto pixels = stbi_load(testImagePath, &width, &height, &components, 4); //force load an alpha channel,even not exist
+		if (!pixels)
+			throw std::runtime_error("failed to load texture image!");
+		//mipmapLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height))) + 1);
+
+		ImageCreateInfo imageCreateInfo{
+			.imageType = ImageType::TYPE_2D,
+			.format = ShitFormat::RGBA8_SRGB,
+			.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
+			.mipLevels = 1,
+			.arrayLayers = 1,
+			.samples = SampleCountFlagBits::BIT_1,
+			.tiling = ImageTiling::OPTIMAL,
+			.usageFlags = ImageUsageFlagBits::TRANSFER_DST_BIT | ImageUsageFlagBits::SAMPLED_BIT,
+			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+
+		testImage = device->Create(imageCreateInfo, pixels);
+
+		stbi_image_free(pixels);
+
+		ImageViewCreateInfo imageViewCreateInfo{
+			.pImage = testImage,
+			.viewType = ImageViewType::TYPE_2D,
+			.format = ShitFormat::RGBA8_SRGB,
+			.subresourceRange = {0, 1, 0, 1},
+		};
+		testImageView = device->Create(imageViewCreateInfo);
+
+	}
+	void createSamplers()
+	{
+		SamplerCreateInfo samplerCreateInfo{
+			.magFilter = Filter::NEAREST,
+			.minFilter = Filter::NEAREST,
+			.mipmapMode = SamplerMipmapMode::NEAREST,
+			.wrapModeU = SamplerWrapMode::REPEAT,
+			.wrapModeV = SamplerWrapMode::REPEAT,
+			.wrapModeW = SamplerWrapMode::REPEAT,
+		};
+		sampler = device->Create(samplerCreateInfo);
 	}
 };
 

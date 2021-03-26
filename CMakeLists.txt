@@ -179,6 +179,7 @@ endfunction()
 newexample(00-init)
 newexample(01-triangle)
 newexample(02-triangle-vbo)
+newexample(03-image)
 endif()
 
 

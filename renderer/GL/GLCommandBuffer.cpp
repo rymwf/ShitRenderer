@@ -12,6 +12,8 @@
 #include "GLRenderPass.h"
 #include "GLPipeline.h"
 #include "GLBuffer.h"
+#include "GLDescriptor.h"
+#include "GLImage.h"
 namespace Shit
 {
 	GLCommandBuffer::GLCommandBuffer(GLStateManager *pStateManager, const CommandBufferCreateInfo &createInfo)
@@ -271,8 +273,8 @@ namespace Shit
 		{
 			//TODO: optimize???
 			auto cmd = reinterpret_cast<const BindVertexBufferInfo *>(pCur);
-			auto pBuffers = reinterpret_cast<Buffer *>(cmd->pBuffers);
-			auto pOffsets = reinterpret_cast<const uint64_t *>(&cmd->pBuffers + cmd->bindingCount);
+			auto ppBuffers = reinterpret_cast<Buffer *const *>(cmd->ppBuffers);
+			auto pOffsets = reinterpret_cast<const uint64_t *>(&cmd->ppBuffers + cmd->bindingCount);
 			//auto graphicsPipeline = ;
 			auto &&vertexInputState = dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->vertexInputState;
 
@@ -281,7 +283,7 @@ namespace Shit
 			std::vector<GLsizei> strides(cmd->bindingCount);
 			for (uint32_t i = 0; i < cmd->bindingCount; ++i)
 			{
-				vertexBuffers[i] = static_cast<GLBuffer *>(&pBuffers[i])->GetHandle();
+				vertexBuffers[i] = reinterpret_cast<const GLBuffer *>(&ppBuffers[i])->GetHandle();
 				offsets[i] = pOffsets[i];
 				strides[i] = vertexInputState.vertexBindingDescriptions[i].stride;
 			}
@@ -309,6 +311,126 @@ namespace Shit
 			return sizeof(BindVertexBufferInfo::bindingCount) +
 				   sizeof(BindVertexBufferInfo::firstBinding) +
 				   (sizeof(uint64_t) + sizeof(Buffer *)) * cmd->bindingCount;
+		}
+		case GLCommandCode::BindDescriptorSets:
+		{
+			auto cmd = reinterpret_cast<const BindDescriptorSetsInfo *>(pCur);
+			auto pDescriptorSets = reinterpret_cast<DescriptorSet *const *>(&cmd->ppDescriptorSets);
+			for (uint32_t i = 0; i < (std::min)(cmd->descriptorSetCount, 1u); ++i)
+			{
+				auto &&bindingAttributes = *(static_cast<const GLDescriptorSet *>(pDescriptorSets[i])->GetBindingAttributePtr());
+				for (int j = 0, n = static_cast<int>(DescriptorType::Num); j < n; ++j)
+				{
+					auto descriptorType = static_cast<DescriptorType>(j);
+					std::visit(
+						overloaded{
+							[&](const std::vector<ImageView *> &imageViews) {
+								for (GLuint k = 0, len = static_cast<GLuint>(imageViews.size()); k < len; ++k)
+								{
+									if (descriptorType == DescriptorType::COMBINED_IMAGE_SAMPLER)
+									{
+										mpStateManager->BindTextureUnit(k,
+																		Map(imageViews[k]->GetCreateInfoPtr()->viewType, imageViews[k]->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->samples),
+																		static_cast<const GLImageView *>(imageViews[k])->GetHandle());
+									}
+									else if (descriptorType == DescriptorType::STORAGE_IMAGE)
+									{
+										mpStateManager->BindImageTexture(k,
+																		 static_cast<const GLImageView *>(imageViews[k])->GetHandle(),
+																		 0,
+																		 GL_FALSE,
+																		 0,
+																		 GL_READ_WRITE,
+																		 MapInternalFormat(imageViews[k]->GetCreateInfoPtr()->format));
+									}
+								}
+							},
+							[&](const std::vector<DescriptorBufferInfo> &bufferInfos) {
+								for (GLuint k = 0, len = static_cast<GLuint>(bufferInfos.size()); k < len; ++k)
+								{
+									GLenum target{};
+									if (descriptorType == DescriptorType::UNIFORM_BUFFER)
+										target = GL_UNIFORM_BUFFER;
+									else if (descriptorType == DescriptorType::STORAGE_BUFFER)
+										target = GL_SHADER_STORAGE_BUFFER;
+									else
+										THROW("invalid descriptor type");
+									mpStateManager->BindBufferRange(target,
+																	k,
+																	static_cast<GLBuffer *>(bufferInfos[k].pBuffer)->GetHandle(),
+																	bufferInfos[k].offset,
+																	bufferInfos[k].range);
+								}
+							},
+							[]([[maybe_unused]] const std::vector<BufferView *> &bufferViews) {
+							},
+							[](auto &&) {},
+						},
+						bindingAttributes[j]);
+				}
+				//for (int j = 0, n = static_cast<int>(DescriptorType::Num); j < n; ++j)
+				//{
+				//	auto descriptorType=static_cast<DescriptorType>(j);
+				//	for (GLuint k = 0, len = static_cast<GLuint>(bindingAttributes[j].size()); k < len; ++k)
+				//	{
+				//		std::visit(
+				//			overloaded{
+				//				[&](const ImageView *pImageView) {
+				//					if (!pImageView)
+				//						return;
+				//					if (descriptorType == DescriptorType::COMBINED_IMAGE_SAMPLER)
+				//					{
+				//						mpStateManager->BindTextureUnit(k,
+				//														Map(pImageView->GetCreateInfoPtr()->viewType, pImageView->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->samples),
+				//														static_cast<const GLImageView *>(pImageView)->GetHandle()
+				//														);
+				//					}
+				//					else if (descriptorType == DescriptorType::STORAGE_IMAGE)
+				//					{
+				//						mpStateManager->BindImageTexture(k,
+				//														 static_cast<const GLImageView *>(pImageView)->GetHandle(),
+				//														 0,
+				//														 GL_FALSE,
+				//														 0,
+				//														 GL_READ_WRITE,
+				//														 MapInternalFormat(pImageView->GetCreateInfoPtr()->format));
+				//					}
+				//				},
+				//				[&](const DescriptorBufferInfo &bufferInfo) {
+				//					if (!bufferInfo.pBuffer)
+				//						return;
+				//					GLenum target{};
+				//					if (descriptorType == DescriptorType::UNIFORM_BUFFER)
+				//						target = GL_UNIFORM_BUFFER;
+				//					else if (descriptorType == DescriptorType::STORAGE_BUFFER)
+				//						target = GL_SHADER_STORAGE_BUFFER;
+				//					else
+				//						THROW("invalid descriptor type");
+				//					mpStateManager->BindBufferRange(target,
+				//													k,
+				//													static_cast<GLBuffer *>(bufferInfo.pBuffer)->GetHandle(),
+				//													bufferInfo.offset,
+				//													bufferInfo.range);
+				//				},
+				//				[](const BufferView *pBufferView) {
+				//					if (!pBufferView)
+				//						return;
+				//				},
+				//			},
+				//			bindingAttributes[j][k]);
+				//	}
+				//}
+			}
+			//TODO: dynamic offsets
+			//auto pDynamicOffsetCount = reinterpret_cast<uint32_t *>(&pDescriptorSets + cmd->descriptorSetCount);
+			//auto pDynamicOffsets = reinterpret_cast<const uint32_t *>(&pDynamicOffsetCount + 1);
+
+			//return sizeof(*cmd) + cmd->descriptorSetCount * sizeof(DescriptorSet *) + cmd->dynamicOffsetCount * sizeof(uint32_t *) - sizeof(DescriptorSet **) - sizeof(uint32_t *);
+			return sizeof(PipelineBindPoint) * 2 +
+				   sizeof(PipelineLayout *) +
+				   sizeof(uint32_t) * 3 +
+				   sizeof(DescriptorSet *) * cmd->descriptorSetCount +
+				   sizeof(uint32_t) * cmd->dynamicOffsetCount;
 		}
 		case GLCommandCode::BlitImage:
 		{
@@ -475,20 +597,23 @@ namespace Shit
 		}
 	}
 	template <class T>
-	T *GLCommandBuffer::AllocateCommand(GLCommandCode commandCode, size_t extraSize)
+	T *GLCommandBuffer::AllocateCommand(GLCommandCode commandCode, size_t realsize)
 	{
 		auto offset = mBuffer.size();
-		mBuffer.resize(offset + sizeof(GLCommandCode) + sizeof(T) + extraSize);
+		if (realsize == 0)
+			mBuffer.resize(offset + sizeof(GLCommandCode) + sizeof(T));
+		else
+			mBuffer.resize(offset + sizeof(GLCommandCode) + realsize);
 		mBuffer[offset] = static_cast<uint8_t>(commandCode);
 		return reinterpret_cast<T *>(&mBuffer[offset + sizeof(GLCommandCode)]);
 	}
 	template <>
-	void *GLCommandBuffer::AllocateCommand<void>(GLCommandCode commandCode, size_t extraSize)
+	void *GLCommandBuffer::AllocateCommand<void>(GLCommandCode commandCode, size_t realsize)
 	{
 		auto offset = mBuffer.size();
-		mBuffer.resize(offset + sizeof(GLCommandCode) + extraSize);
+		mBuffer.resize(offset + sizeof(GLCommandCode) + realsize);
 		mBuffer[offset] = static_cast<uint8_t>(commandCode);
-		return &mBuffer[offset];
+		return realsize == 0 ? &mBuffer[offset] : &mBuffer[offset + sizeof(GLCommandCode)];
 	}
 	void GLCommandBuffer::ExecuteSecondaryCommandBuffer(const ExecuteSecondaryCommandBufferInfo &secondaryCommandBufferInfo)
 	{
@@ -540,18 +665,35 @@ namespace Shit
 	}
 	void GLCommandBuffer::BindVertexBuffer(const BindVertexBufferInfo &info)
 	{
-		auto p = AllocateCommand<BindVertexBufferInfo>(GLCommandCode::BindVertexBuffer, (sizeof(Buffer *) + sizeof(uint64_t)) * info.bindingCount - sizeof(Buffer **) - sizeof(uint64_t *));
+		auto p = AllocateCommand<BindVertexBufferInfo>(GLCommandCode::BindVertexBuffer, (sizeof(Buffer *) + sizeof(uint64_t)) * (std::min)(info.bindingCount, 1u) + sizeof(uint32_t) * 2);
 
 		size_t size = sizeof(BindVertexBufferInfo::bindingCount) + sizeof(BindVertexBufferInfo::firstBinding);
 		memcpy(p, &info, size);
-		size = info.bindingCount * sizeof(BindVertexBufferInfo::pBuffers);
-		memcpy(&p->pBuffers, info.pBuffers, size);
+		size = info.bindingCount * sizeof(BindVertexBufferInfo::ppBuffers);
+		memcpy(&p->ppBuffers, info.ppBuffers, size);
 		size = info.bindingCount * sizeof(BindVertexBufferInfo::pOffsets);
-		memcpy(&p->pBuffers + info.bindingCount, info.pOffsets, size);
+		memcpy(&p->ppBuffers + info.bindingCount, info.pOffsets, size);
 	}
 	void GLCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
 	{
 		memcpy(AllocateCommand<BindIndexBufferInfo>(GLCommandCode::BindIndexBuffer), &info, sizeof(BindIndexBufferInfo));
+	}
+	void GLCommandBuffer::BindDescriptorSets(const BindDescriptorSetsInfo &info)
+	{
+		auto p = AllocateCommand<BindDescriptorSetsInfo>(GLCommandCode::BindDescriptorSets,
+														 sizeof(PipelineBindPoint) * 2 +
+															 sizeof(PipelineLayout *) +
+															 sizeof(uint32_t) * 3 +
+															 sizeof(DescriptorSet *) * info.descriptorSetCount +
+															 sizeof(uint32_t) * info.dynamicOffsetCount);
+		size_t size = sizeof(PipelineBindPoint)*2 + sizeof(PipelineLayout *) + sizeof(uint32_t) * 2;
+		memcpy(p, &info, size);
+		size = sizeof(DescriptorSet *) * info.descriptorSetCount;
+		memcpy(&p->ppDescriptorSets, info.ppDescriptorSets, size);
+		memcpy(&p->ppDescriptorSets + info.descriptorSetCount, &info.dynamicOffsetCount, sizeof(uint32_t));
+		size = sizeof(uint32_t) * info.dynamicOffsetCount;
+		auto p2 = reinterpret_cast<uint32_t *>(&p->ppDescriptorSets + info.descriptorSetCount) + 1;
+		memcpy(p2, &info.pDynamicOffsets, sizeof(uint32_t) * info.dynamicOffsetCount);
 	}
 	void GLCommandBuffer::Draw(const DrawIndirectCommand &info)
 	{

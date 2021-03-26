@@ -92,6 +92,7 @@
 		"clocale": "cpp",
 		"stop_token": "cpp",
 		"execution": "cpp",
-		"queue": "cpp"
+		"queue": "cpp",
+		"forward_list": "cpp"
 	}
 }

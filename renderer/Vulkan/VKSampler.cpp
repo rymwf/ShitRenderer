@@ -30,17 +30,16 @@ namespace Shit
 			Map(createInfo.compareOp),
 			createInfo.minLod,
 			createInfo.maxLod,
-			//VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
-			VK_BORDER_COLOR_FLOAT_CUSTOM_EXT,
+			Map(createInfo.borderColor),
 			VK_FALSE};
 
-		VkSamplerCustomBorderColorCreateInfoEXT borderColor{
-			VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT,
-			nullptr,
-		};
-		memcpy(&borderColor.customBorderColor, &createInfo.borderColor, 32);
+		//VkSamplerCustomBorderColorCreateInfoEXT borderColor{
+		//	VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT,
+		//	nullptr,
+		//};
+		//memcpy(&borderColor.customBorderColor, &createInfo.borderColor, 32);
 
-		info.pNext = &borderColor;
+		//info.pNext = &borderColor;
 		if (vkCreateSampler(mDevice, &info, nullptr, &mHandle) != VK_SUCCESS)
 			THROW("failed to create sampler");
 	}

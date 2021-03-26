@@ -32,6 +32,8 @@ namespace Shit
 
 		std::shared_ptr<std::function<void(const Event &)>> mProcessWindowEventCallable;
 
+		std::vector<ImageView *> mpImageViews;
+
 	protected:
 		void CreateImages(uint32_t count);
 
@@ -55,7 +57,7 @@ namespace Shit
 
 		~GLSwapchain() override;
 
-		Result GetNextImage(const GetNextImageInfo &info, uint32_t& index) override;
+		Result GetNextImage(const GetNextImageInfo &info, uint32_t &index) override;
 
 		void SwapBuffer() const;
 

@@ -44,6 +44,7 @@ namespace Shit
 
 		virtual void BindVertexBuffer(const BindVertexBufferInfo &info) = 0;
 		virtual void BindIndexBuffer(const BindIndexBufferInfo &info) = 0;
+		virtual void BindDescriptorSets(const BindDescriptorSetsInfo &info) = 0;
 
 		virtual void Draw(const DrawIndirectCommand &info) = 0;
 		virtual void DrawIndirect(const DrawIndirectInfo &info) = 0;

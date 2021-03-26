@@ -17,20 +17,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <variant>
+
 //#include <boost/program_options.hpp>
 
 using namespace Shit;
 
-#define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders"
-
-template <class... Ts>
-struct overloaded : Ts...
-{
-	using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
+#define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders/"
+#define IMAGE_PATH SHIT_SOURCE_DIR "/examples/assets/images/"
 
 /*
 ///#ifdef NDEBUG

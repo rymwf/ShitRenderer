@@ -14,6 +14,7 @@
 #include "VKRenderPass.h"
 #include "VKPipeline.h"
 #include "VKBuffer.h"
+#include "VKDescriptor.h"
 namespace Shit
 {
 	VKCommandBuffer::VKCommandBuffer(VkDevice device, VkCommandPool commandPool, const CommandBufferCreateInfo &createInfo)
@@ -267,7 +268,7 @@ namespace Shit
 	{
 		std::vector<VkBuffer> buffers;
 		for (size_t i = 0; i < info.bindingCount; ++i)
-			buffers.emplace_back(static_cast<VKBuffer *>(info.pBuffers[i])->GetHandle());
+			buffers.emplace_back(static_cast<const VKBuffer *>(info.ppBuffers[i])->GetHandle());
 		vkCmdBindVertexBuffers(
 			mHandle,
 			info.firstBinding,
@@ -282,6 +283,28 @@ namespace Shit
 			static_cast<VKBuffer *>(info.pBuffer)->GetHandle(),
 			info.offset,
 			Map(info.indexType));
+	}
+	void VKCommandBuffer::BindDescriptorSets(const BindDescriptorSetsInfo &info)
+	{
+		std::vector<VkDescriptorSet> descriptorSets(info.descriptorSetCount);
+		for (uint32_t i = 0; i < info.descriptorSetCount; ++i)
+		{
+			descriptorSets[i] = static_cast<const VKDescriptorSet *>(info.ppDescriptorSets[i])->GetHandle();
+		}
+		std::vector<uint32_t> dynamicOffsets(info.dynamicOffsetCount);
+		for (uint32_t i = 0; i < info.dynamicOffsetCount; ++i)
+		{
+			dynamicOffsets[i] = info.pDynamicOffsets[i];
+		}
+
+		vkCmdBindDescriptorSets(mHandle,
+								Map(info.pipelineBindPoint),
+								static_cast<VKPipelineLayout *>(info.pPipelineLayout)->GetHandle(),
+								info.firstset,
+								info.descriptorSetCount,
+								descriptorSets.data(),
+								info.dynamicOffsetCount,
+								dynamicOffsets.data());
 	}
 	void VKCommandBuffer::Draw(const DrawIndirectCommand &info)
 	{

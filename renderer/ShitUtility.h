@@ -50,4 +50,28 @@ namespace Shit
 		}
 	}
 
+	template <typename T, typename... U>
+	concept IsAnyOf = (std::same_as<T, U> || ...);
+
+	// Declaration of the concept "Hashable", which is satisfied by any type 'T'
+	// such that for values 'a' of type 'T', the expression std::hash<T>{}(a)
+	// compiles and its result is convertible to std::size_t
+	template <typename T>
+	concept Hashable = requires(T a)
+	{
+		{
+			std::hash<T>{}(a)
+		}
+		->std::convertible_to<std::size_t>;
+	};
+
+	template <class... Ts>
+	struct overloaded : Ts...
+	{
+		using Ts::operator()...;
+	};
+	// explicit deduction guide (not needed as of C++20)
+	template <class... Ts>
+	overloaded(Ts...) -> overloaded<Ts...>;
+
 } // namespace Shit

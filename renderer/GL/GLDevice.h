@@ -67,6 +67,10 @@ namespace Shit
 		Framebuffer *Create(const FramebufferCreateInfo &createInfo) override;
 		Semaphore *Create(const SemaphoreCreateInfo &createInfo) override;
 		Fence *Create(const FenceCreateInfo &createInfo) override;
+		Sampler *Create(const SamplerCreateInfo &createInfo) override;
+		DescriptorPool *Create(const DescriptorPoolCreateInfo &createInfo) override;
+
+		void UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, const std::vector<CopyDescriptorSet> &descriptorCopies) override;
 	};
 
 #ifdef _WIN32

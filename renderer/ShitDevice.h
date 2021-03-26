@@ -39,13 +39,14 @@ namespace Shit
 		std::list<std::unique_ptr<Image>> mImages;
 		std::list<std::unique_ptr<ImageView>> mImageViews;
 		std::list<std::unique_ptr<DescriptorSetLayout>> mDescriptorSetLayouts;
-		std::list<std::unique_ptr<DescriptorSet>> mDescriptorSets;
 		std::list<std::unique_ptr<PipelineLayout>> mPipelineLayouts;
 		std::list<std::unique_ptr<RenderPass>> mRenderPasses;
 		std::list<std::unique_ptr<Framebuffer>> mFramebuffers;
 		std::list<std::unique_ptr<Semaphore>> mSemaphores;
 		std::list<std::unique_ptr<Fence>> mFences;
 		std::list<std::unique_ptr<Swapchain>> mSwapchains;
+		std::list<std::unique_ptr<Sampler>> mSamplers;
+		std::list<std::unique_ptr<DescriptorPool>> mDescriptorPools;
 
 		CommandPool *mpOneTimeCommandPool;
 		Queue *mpOneTimeCommandQueue;
@@ -107,6 +108,9 @@ namespace Shit
 		virtual Framebuffer *Create(const FramebufferCreateInfo &createInfo) = 0;
 		virtual Semaphore *Create(const SemaphoreCreateInfo &createInfo) = 0;
 		virtual Fence *Create(const FenceCreateInfo &createInfo) = 0;
+		virtual Sampler *Create(const SamplerCreateInfo &createInfo) = 0;
+		virtual DescriptorPool *Create(const DescriptorPoolCreateInfo &createInfo) = 0;
+		virtual void UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, const std::vector<CopyDescriptorSet> &descriptorCopies) = 0;
 
 		void Destroy(const Swapchain *pSwapchain);
 		void Destroy(const Shader *pShader);
@@ -122,5 +126,6 @@ namespace Shit
 		void Destroy(const Semaphore *pSemaphore);
 		void Destroy(const Fence *pFence);
 		void Destroy(const Framebuffer *pFramebuffer);
+		void Destroy(const DescriptorPool* pDescriptorPool);
 	};
 }

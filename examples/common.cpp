@@ -47,7 +47,7 @@ std::string buildShaderPath(const char *shaderName, RendererVersion renderVersio
 	default:
 		break;
 	}
-	return SHADER_PATH "/" + subdir + "/" + shaderName;
+	return SHADER_PATH + subdir + "/" + shaderName;
 }
 WindowPixelFormat chooseSwapchainFormat(const std::vector<WindowPixelFormat> &candidates, Device *pDevice, ShitWindow *pWindow)
 {

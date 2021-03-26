@@ -14,13 +14,62 @@
 #include <vector>
 #include <unordered_map>
 
-#define MAX_TEXTURE_IMAGE_UNITS 80 //!< The number of texture units is implementation dependent, but must be at least 80, the value can be get from GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
 #define BUFFER_TARGET_NUM 15
-#define MAX_VIEWPORTS 16
+
 #define MAX_DRAW_BUFFERS 8
+
+#define MAX_VIEWPORTS 16
+#define MAX_VERTEX_ATTRIB_BINDINGS 16
+
+//min value of vertex shader limist
 #define MAX_VERTEX_ATTRIBS 16
+#define MAX_VERTEX_UNIFORM_VECTORS 256
+#define MAX_VERTEX_UNIFORM_BLOCKS 14
 #define MAX_VERTEX_TEXTURE_IMAGE_UNITS 16
-#define MAX_UNIFORM_BUFFER_BINDING 36
+
+//min value of tesselation shader limist
+
+//min value of geometry shader limist
+#define MAX_GEOMETRY_UNIFORM_BLOCKS 14
+#define MAX_GEOMETRY_TEXTURE_IMAGE_UNITS 16
+#define MAX_GEOMETRY_SHADER_INVOCATIONS 32
+#define MAX_VERTEX_STREAMS 4
+
+//min value of fragment shader limist
+#define MAX_FRAGMENT_UNIFORM_BLOCKS 14
+#define MAX_TEXTURE_IMAGE_UNITS 16
+#define MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS 1
+#define MAX_FRAGMENT_ATOMIC_COUNTERS 8
+#define MAX_FRAGMENT_SHADER_STORAGE_BLOCKS 8
+
+//min value of compute shader limist
+#define MAX_COMPUTE_UNIFORM_BLOCKS 14
+#define MAX_COMPUTE_TEXTURE_IMAGE_UNITS 16
+#define MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS 8
+#define MAX_COMPUTE_ATOMIC_COUNTERS 8
+#define MAX_COMPUTE_IMAGE_UNIFORMS 8
+#define MAX_COMPUTE_SHADER_STORAGE_BLOCKS 8
+
+//min value of aggregate shader limits
+#define MAX_UNIFORM_BUFFER_BINDING 84
+#define MAX_COMBINED_UNIFORM_BLOCKS 70
+#define MAX_COMBINED_TEXTURE_IMAGE_UNITS 80
+#define MAX_ATOMIC_COUNTER_BUFFER_BINDINGS 1
+#define MAX_COMBINED_ATOMIC_COUNTER_BUFFERS 1
+#define MAX_COMBINED_ATOMIC_COUNTERS 8
+#define MAX_SHADER_STORAGE_BUFFER_BINDINGS 8
+#define MAX_COMBINED_SHADER_STORAGE_BLOCKS 8
+#define MAX_IMAGE_UNITS 8
+#define MAX_COMBINED_SHADER_OUTPUT_RESOURCES 8
+#define MAX_FRAGMENT_IMAGE_UNIFORMS 8
+#define MAX_COMBINED_IMAGE_UNIFORMS 8
+
+//
+#define MAX_TRANSFORM_FEEDBACK_BUFFERS 4
+
+// self defined var
+#define MAX_UNIFORM_BLOCKS 14
+#define MAX_IMAGE_UNIFORMS 8
 
 namespace Shit
 {
@@ -48,7 +97,7 @@ namespace Shit
 			};
 			GLuint activeUnit;
 			//target and texture
-			std::array<std::pair<GLenum, GLuint>, MAX_TEXTURE_IMAGE_UNITS> boundTextures;
+			std::array<std::pair<GLenum, GLuint>, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundTextures;
 			std::stack<StackEntry> textureStack;
 		} mTextureState;
 
@@ -59,7 +108,7 @@ namespace Shit
 				GLuint unit;
 				GLuint sampler;
 			};
-			std::array<GLuint, MAX_TEXTURE_IMAGE_UNITS> boundSamplers{};
+			std::array<GLuint, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundSamplers{};
 			std::stack<StackEntry> samplerStack;
 		} mSamplerState;
 		struct GLImageUnitState
@@ -74,7 +123,7 @@ namespace Shit
 				GLenum access;
 				GLenum format;
 			};
-			std::array<StackEntry, MAX_TEXTURE_IMAGE_UNITS> boundTextures;
+			std::array<StackEntry, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundTextures;
 			std::stack<StackEntry> imageStack;
 		} mImageState;
 		struct GLRenderbufferState
@@ -101,13 +150,13 @@ namespace Shit
 				GLsizei bindingCount;
 				std::vector<GLuint> buffers;
 				std::vector<GLintptr> offsets;
-			}vertexBuffer;
+			} vertexBuffer;
 			struct IndexBufferState
 			{
 				GLuint buffer;
 				GLenum type;
 				uint64_t offset;
-			}indexBuffer;
+			} indexBuffer;
 			GLuint pipeline;
 			GLuint vao;
 		} mPipelineState;
@@ -220,6 +269,20 @@ namespace Shit
 			GLenum depth;
 		} mClipState;
 
+		struct IndexedTargetBindingState
+		{
+			struct Entry
+			{
+				GLuint buffer;
+				GLintptr offset;
+				GLsizeiptr size;
+			};
+			std::array<Entry, MAX_UNIFORM_BLOCKS> uniformBufferStates;
+			std::array<Entry, MAX_COMBINED_ATOMIC_COUNTERS> atomicCounterBufferStates;
+			std::array<Entry, MAX_TRANSFORM_FEEDBACK_BUFFERS> transformFeedbackBufferStates;
+			std::array<Entry, MAX_COMBINED_SHADER_STORAGE_BLOCKS> shaderStorageStates;
+		} mIndexedTargetBindingState;
+
 	public:
 		GLStateManager() = default;
 
@@ -267,8 +330,8 @@ namespace Shit
 
 		//texture
 		void BindTextureUnit(GLuint unit, GLenum target, GLuint texture);
-		void PushTexture(GLuint unit, GLenum target, GLuint texture);
-		void PopTexture();
+		void PushTextureUnit(GLuint unit, GLenum target, GLuint texture);
+		void PopTextureUnit();
 		void NotifyReleasedTexture(GLuint texture);
 
 		//image
@@ -349,6 +412,8 @@ namespace Shit
 		}
 
 		//clip
-		void ClipControl(GLenum origin,GLenum depth);
+		void ClipControl(GLenum origin, GLenum depth);
+
+		void BindBufferRange(GLenum target, GLuint binding, GLuint buffer, GLintptr offset, GLintptr size);
 	};
 } // namespace Shit

@@ -63,9 +63,8 @@ namespace Shit
 	{
 		RemoveSmartPtrFromContainer(mPipelines, pPipeline);
 	}
-	void Device::Destroy(const DescriptorSet *pDescriptorSet)
+	void Device::Destroy(const DescriptorPool *pDescriptorPool)
 	{
-		RemoveSmartPtrFromContainer(mDescriptorSets, pDescriptorSet);
+		RemoveSmartPtrFromContainer(mDescriptorPools, pDescriptorPool);
 	}
-
 } // namespace Shit

@@ -8,8 +8,22 @@
  * 
  */
 #include "GLImage.h"
+#include "GLSampler.h"
 namespace Shit
 {
+	GLImage::~GLImage()
+	{
+		if (mIsRenderbuffer)
+		{
+			mpStateManager->NotifyReleasedRenderbuffer(mHandle);
+			glDeleteRenderbuffers(1, &mHandle);
+		}
+		else
+		{
+			mpStateManager->NotifyReleasedTexture(mHandle);
+			glDeleteTextures(1, &mHandle);
+		}
+	}
 	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo)
 		: Image(createInfo), mpStateManager(pStateManager)
 	{
@@ -46,7 +60,7 @@ namespace Shit
 		{
 			glGenTextures(1, &mHandle);
 			GLenum target = Map(createInfo.imageType, createInfo.samples);
-			mpStateManager->PushTexture(0, target, mHandle);
+			mpStateManager->PushTextureUnit(0, target, mHandle);
 			//if (static_cast<bool>(createInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT))
 			if constexpr (0)
 			{
@@ -132,13 +146,13 @@ namespace Shit
 					}
 				}
 			}
-			mpStateManager->PopTexture();
+			mpStateManager->PopTextureUnit();
 		}
 	}
 	void GLImage::UpdateImageSubData(const ImageSubData &imageSubData)
 	{
 		GLenum target = Map(mCreateInfo.imageType, mCreateInfo.samples);
-		mpStateManager->PushTexture(0, target, mHandle);
+		mpStateManager->PushTextureUnit(0, target, mHandle);
 		switch (mCreateInfo.imageType)
 		{
 		case ImageType::TYPE_1D:
@@ -169,7 +183,7 @@ namespace Shit
 				imageSubData.data);
 			break;
 		}
-		mpStateManager->PopTexture();
+		mpStateManager->PopTextureUnit();
 	}
 
 	//===================================================================
@@ -177,7 +191,7 @@ namespace Shit
 	GLImageView::GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo)
 		: ImageView(createInfo), mpStateManger(pStateManger)
 	{
-		auto pImage=static_cast<GLImage *>(createInfo.pImage);
+		auto pImage = static_cast<GLImage *>(createInfo.pImage);
 		if (pImage->IsRenderbuffer())
 		{
 			mHandle = pImage->GetHandle();
@@ -212,12 +226,12 @@ namespace Shit
 		{
 			THROW("texture view not supported");
 		}
-		mpStateManger->PushTexture(0, target, mHandle);
+		mpStateManger->PushTextureUnit(0, target, mHandle);
 		if (externalFormat == GL_DEPTH_STENCIL || externalFormat == GL_DEPTH_COMPONENT)
 		{
 			glTexParameteri(target, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_DEPTH_COMPONENT);
 		}
-		else if(externalFormat==GL_STENCIL_INDEX)
+		else if (externalFormat == GL_STENCIL_INDEX)
 		{
 			glTexParameteri(target, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
 		}
@@ -237,7 +251,57 @@ namespace Shit
 		if (createInfo.components.a != ComponentSwizzle::IDENTITY)
 			swizzles[3] = Map(createInfo.components.a);
 		glTexParameteriv(target, GL_TEXTURE_SWIZZLE_RGBA, swizzles);
-		mpStateManger->PopTexture();
+		mpStateManger->PopTextureUnit();
+	}
+	void GLImageView::SetSampler(const Sampler *pSampler)
+	{
+		GLenum target = Map(mCreateInfo.viewType, mCreateInfo.pImage->GetCreateInfoPtr()->samples);
+		mpStateManger->PushTextureUnit(0, target, mHandle);
+
+		auto pSamplerCreateInfo = pSampler->GetCreateInfoPtr();
+
+		glTexParameteri(target, GL_TEXTURE_MAG_FILTER, Map(pSamplerCreateInfo->magFilter));
+		if (pSamplerCreateInfo->mipmapMode == SamplerMipmapMode::LINEAR)
+		{
+			if (pSamplerCreateInfo->minFilter == Filter::LINEAR)
+				glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			else
+				glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+		}
+		else
+		{
+			if (pSamplerCreateInfo->minFilter == Filter::LINEAR)
+				glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+			else
+				glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		}
+		glTexParameterf(target, GL_TEXTURE_LOD_BIAS, pSamplerCreateInfo->mipLodBias);
+		glTexParameterf(target, GL_TEXTURE_MIN_LOD, pSamplerCreateInfo->minLod);
+		glTexParameterf(target, GL_TEXTURE_MAX_LOD, pSamplerCreateInfo->maxLod);
+		glTexParameteri(target, GL_TEXTURE_WRAP_S, Map(pSamplerCreateInfo->wrapModeU));
+		glTexParameteri(target, GL_TEXTURE_WRAP_T, Map(pSamplerCreateInfo->wrapModeV));
+		glTexParameteri(target, GL_TEXTURE_WRAP_R, Map(pSamplerCreateInfo->wrapModeW));
+		if (pSamplerCreateInfo->compareEnable)
+		{
+			glTexParameteri(target, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+			glTexParameteri(target, GL_TEXTURE_COMPARE_FUNC, Map(pSamplerCreateInfo->compareOp));
+		}
+
+		auto borderColor = Map(pSamplerCreateInfo->borderColor);
+		std::visit([target](auto &&arg) {
+			using T = std::decay_t<decltype(arg)>;
+			if constexpr (std::is_same_v<T, std::array<float, 4>>)
+				glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, arg.data());
+			else if constexpr (std::is_same_v<T, std::array<int32_t, 4>>)
+				glTexParameterIiv(target, GL_TEXTURE_BORDER_COLOR, arg.data());
+		},
+				   borderColor);
+		mpStateManger->PopTextureUnit();
 	}
 
+	GLImageView::~GLImageView()
+	{
+		if (!static_cast<GLImage *>(mCreateInfo.pImage)->IsRenderbuffer())
+			glDeleteTextures(1, &mHandle);
+	}
 } // namespace Shit

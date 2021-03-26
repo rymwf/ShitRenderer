@@ -391,7 +391,8 @@ namespace Shit
 		CompareOp compareOp;
 		float minLod;
 		float maxLod;
-		ClearColorValue borderColor;
+		BorderColor borderColor;
+		//ClearColorValue borderColor;
 	};
 
 	struct BufferCopy
@@ -513,29 +514,58 @@ namespace Shit
 	{
 		Sampler *pSampler;
 		ImageView *pImageView;
+		ImageLayout imageLayout;
 	};
 	struct DescriptorBufferInfo
 	{
 		Buffer *pBuffer;
-		uint32_t offset;
-		uint32_t range;
+		uint64_t offset;
+		uint64_t range;
 	};
-
 	struct WriteDescriptorSet
 	{
 		DescriptorSet *pDstSet;
 		uint32_t dstBinding;
-		uint32_t dstArrayElement;
-		DescriptorType descriptorType;
-		std::vector<DescriptorImageInfo> imagesInfo;
-		ImageViewType viewType;
-		bool multisample;
-		std::vector<DescriptorBufferInfo> buffersInfo;
-		std::vector<BufferView *> texelBufferView; //TODO: buffer texture
+		uint32_t dstArrayElement;	//start array index 
+		DescriptorType descriptorType;	//must be same as type of dstset at dstbinding
+		//std::vector<
+		//	std::variant<
+		//		DescriptorImageInfo,
+		//		DescriptorBufferInfo,
+		//		BufferView *>>
+		//	values;
+		std::variant<
+			std::vector<DescriptorImageInfo>,
+			std::vector<DescriptorBufferInfo>,
+			std::vector<BufferView *>>
+			values;
+		//std::vector<DescriptorImageInfo> imagesInfo;
+		//std::vector<DescriptorBufferInfo> buffersInfo;
+		//std::vector<BufferView *> texelBufferViews; //TODO: buffer texture
 	};
 	struct CopyDescriptorSet
 	{
-		//TODO:CopyDescriptorSet
+		DescriptorSet *pSrcSet;
+		uint32_t srcBinding;
+		uint32_t srcArrayElement;
+		DescriptorSet *pDstSet;
+		uint32_t dstBinding;
+		uint32_t dstArrayElement;
+		uint32_t descriptorCount;
+	};
+	struct DescriptorSetAllocateInfo
+	{
+		std::vector<DescriptorSetLayout *> setLayouts;
+	};
+	struct DescriptorPoolSize
+	{
+		DescriptorType type;
+		uint32_t count;
+	};
+	struct DescriptorPoolCreateInfo
+	{
+		uint32_t maxSets;
+		std::vector<DescriptorPoolSize> poolSizes;
 	};
 
 	//vulkan only
@@ -654,8 +684,8 @@ namespace Shit
 	{
 		uint32_t firstBinding;
 		uint32_t bindingCount;
-		Buffer **pBuffers;	//buffer pointer array
-		uint64_t *pOffsets;	//offset array
+		Buffer **ppBuffers;	//buffer pointer array
+		uint64_t *pOffsets; //offset array
 	};
 	struct BindIndexBufferInfo
 	{
@@ -672,5 +702,18 @@ namespace Shit
 	{
 		uint32_t count;
 		CommandBuffer *pCommandBuffers;
+	};
+	struct BindDescriptorSetsInfo
+	{
+		PipelineBindPoint pipelineBindPoint;
+		PipelineLayout *pPipelineLayout;
+		uint32_t firstset;
+		uint32_t descriptorSetCount;
+		DescriptorSet **ppDescriptorSets;
+		uint32_t dynamicOffsetCount;	//dynamic uniform or storage buffer
+		uint32_t *pDynamicOffsets;
+	};
+	struct BufferViewCreateInfo
+	{
 	};
 } // namespace Shit

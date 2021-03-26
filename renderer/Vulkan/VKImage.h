@@ -29,7 +29,10 @@ namespace Shit
 		~VKImage() override
 		{
 			if (!mIsSwapchainImage)
+			{
 				vkDestroyImage(mDevice, mHandle, nullptr);
+				vkFreeMemory(mDevice, mMemory, nullptr);
+			}
 		}
 		constexpr VkImage GetHandle() const
 		{
@@ -47,7 +50,7 @@ namespace Shit
 		VKImageView(VkDevice device, const ImageViewCreateInfo &createInfo);
 		~VKImageView() override
 		{
-			vkDestroyImageView(mDevice,mHandle,nullptr);
+			vkDestroyImageView(mDevice, mHandle, nullptr);
 		}
 		constexpr VkImageView GetHandle() const
 		{

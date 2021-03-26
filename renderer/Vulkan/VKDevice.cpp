@@ -235,7 +235,7 @@ namespace Shit
 				{},
 				size,
 				BufferUsageFlagBits::TRANSFER_SRC_BIT,
-				MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::DEVICE_LOCAL_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
+				MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
 			};
 
 			VKBuffer stagingbuffer{mDevice, GetPhysicalDevice(), stagingBufferCreateInfo};
@@ -265,12 +265,13 @@ namespace Shit
 					 0,
 					 createInfo.arrayLayers}};
 				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 0,
-									 0, nullptr,
-									 0, nullptr,
-									 1, &barrier);
+									 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, //src stage mask
+									 VK_PIPELINE_STAGE_TRANSFER_BIT,	//dst stage mask
+									 0,									//dependency flags
+									 0, nullptr,						//memory barriers
+									 0, nullptr,						//buffer memory barriers
+									 1, &barrier);						//image memory barriers
+				//2. copy image
 				BufferImageCopy bufferImageCopy{
 					0,
 					0,
@@ -282,6 +283,19 @@ namespace Shit
 												   image,
 												   1,
 												   &bufferImageCopy});
+				//3. transfer layout from trander destiation to shader reading
+				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
+									 VK_PIPELINE_STAGE_TRANSFER_BIT,
+									 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+									 0,
+									 0, nullptr,
+									 0, nullptr,
+									 1, &barrier);
 			});
 		}
 		return mImages.back().get();
@@ -320,5 +334,124 @@ namespace Shit
 	{
 		mFences.emplace_back(std::make_unique<VKFence>(mDevice, createInfo));
 		return mFences.back().get();
+	}
+	Sampler *VKDevice::Create(const SamplerCreateInfo &createInfo)
+	{
+		mSamplers.emplace_back(std::make_unique<VKSampler>(mDevice, createInfo));
+		return mSamplers.back().get();
+	}
+	DescriptorPool *VKDevice::Create(const DescriptorPoolCreateInfo &createInfo)
+	{
+		mDescriptorPools.emplace_back(std::make_unique<VKDescriptorPool>(mDevice, createInfo));
+		return mDescriptorPools.back().get();
+	}
+	void VKDevice::UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, const std::vector<CopyDescriptorSet> &descriptorCopies)
+	{
+		std::vector<VkWriteDescriptorSet> writes(descriptorWrites.size());
+
+		std::vector<VkDescriptorImageInfo> imagesInfo;
+		std::vector<VkDescriptorBufferInfo> buffersInfo;
+		std::vector<VkBufferView> texelBufferViews;
+
+		std::transform(std::execution::par, descriptorWrites.begin(), descriptorWrites.end(), writes.begin(), [&](auto &&e) {
+			imagesInfo.clear();
+			buffersInfo.clear();
+			texelBufferViews.clear();
+			//auto len = e.values.size();
+			//if (len > 0)
+			//{
+			//	if (std::holds_alternative<DescriptorImageInfo>(e.values[0]))
+			//	{
+			//		imagesInfo.resize(len - e.dstArrayElement);
+			//		for (size_t i = e.dstArrayElement, j = 0; i < len; ++i, ++j)
+			//		{
+			//			auto&& image = std::get<DescriptorImageInfo>(e.values[i]);
+			//			imagesInfo[j] = VkDescriptorImageInfo{
+			//				image.pSampler ? static_cast<VKSampler *>(image.pSampler)->GetHandle() : VK_NULL_HANDLE,
+			//				static_cast<VKImageView *>(image.pImageView)->GetHandle(),
+			//				Map(image.imageLayout)};
+			//		}
+			//	}
+			//	else if (std::holds_alternative<DescriptorBufferInfo>(e.values[0]))
+			//	{
+			//		buffersInfo.resize(len - e.dstArrayElement);
+			//		for (size_t i = e.dstArrayElement, j = 0; i < len; ++i, ++j)
+			//		{
+			//			auto&& buffer = std::get<DescriptorBufferInfo>(e.values[i]);
+			//			buffersInfo[j] = VkDescriptorBufferInfo{
+			//				static_cast<VKBuffer *>(buffer.pBuffer)->GetHandle(),
+			//				buffer.offset,
+			//				buffer.range};
+			//		}
+			//	}
+			//	//TODO: bufferview
+			//	//else if (std::holds_alternative(BufferView *)(e.values[0]))
+			//	//{
+			//	//	texelBufferViews.resize(len - e.dstArrayElement);
+			//	//}
+			//}
+
+			std::visit(
+				overloaded{
+					[&imagesInfo](const std::vector<DescriptorImageInfo> &val) {
+						imagesInfo.resize(val.size());
+						std::transform(std::execution::par, val.begin(), val.end(), imagesInfo.begin(), [](auto &&image) {
+							return VkDescriptorImageInfo{
+								image.pSampler ? static_cast<VKSampler *>(image.pSampler)->GetHandle() : VK_NULL_HANDLE,
+								static_cast<VKImageView *>(image.pImageView)->GetHandle(),
+								Map(image.imageLayout)};
+						});
+					},
+					[&buffersInfo](const std::vector<DescriptorBufferInfo> &val) {
+						buffersInfo.resize(val.size());
+						std::transform(std::execution::par, val.begin(), val.end(), buffersInfo.begin(), [](auto &&buffer) {
+							return VkDescriptorBufferInfo{
+								static_cast<VKBuffer *>(buffer.pBuffer)->GetHandle(),
+								buffer.offset,
+								buffer.range};
+						});
+					},
+					[&texelBufferViews](const std::vector<BufferView *> &val) {
+						texelBufferViews.resize(val.size());
+						//TODO: buffer views
+					},
+				},
+				e.values);
+
+			auto descriptorCount = imagesInfo.size();
+			if (!descriptorCount)
+				descriptorCount = buffersInfo.size();
+			if (!descriptorCount)
+				descriptorCount = texelBufferViews.size();
+			return VkWriteDescriptorSet{
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.pNext = nullptr,
+				.dstSet = static_cast<VKDescriptorSet *>(e.pDstSet)->GetHandle(),
+				.dstBinding = e.dstBinding,
+				.dstArrayElement = 0, //e.dstArrayElement,
+				.descriptorCount = static_cast<uint32_t>(descriptorCount),
+				.descriptorType = Map(e.descriptorType),
+				.pImageInfo = imagesInfo.data(),
+				.pBufferInfo = buffersInfo.data(),
+				.pTexelBufferView = texelBufferViews.data()};
+		});
+		std::vector<VkCopyDescriptorSet> copies(descriptorCopies.size());
+		std::transform(std::execution::par, descriptorCopies.begin(), descriptorCopies.end(), copies.begin(), [](auto &&e) {
+			return VkCopyDescriptorSet{
+				.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
+				.pNext = nullptr,
+				.srcSet = static_cast<VKDescriptorSet *>(e.pSrcSet)->GetHandle(),
+				.srcBinding = e.srcBinding,
+				.srcArrayElement = e.srcArrayElement,
+				.dstSet = static_cast<VKDescriptorSet *>(e.pDstSet)->GetHandle(),
+				.dstBinding = e.dstBinding,
+				.dstArrayElement = e.dstArrayElement,
+				.descriptorCount = e.descriptorCount};
+		});
+		vkUpdateDescriptorSets(mDevice,
+							   static_cast<uint32_t>(writes.size()),
+							   writes.data(),
+							   static_cast<uint32_t>(copies.size()),
+							   copies.data());
 	}
 } // namespace Shit

@@ -20,19 +20,7 @@ namespace Shit
 
 	public:
 		GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo);
-		~GLImage() override
-		{
-			if (static_cast<bool>(mCreateInfo.usageFlags & ImageUsageFlagBits::TRANSIENT_ATTACHMENT_BIT))
-			{
-				mpStateManager->NotifyReleasedRenderbuffer(mHandle);
-				glDeleteRenderbuffers(1, &mHandle);
-			}
-			else
-			{
-				mpStateManager->NotifyReleasedTexture(mHandle);
-				glDeleteTextures(1, &mHandle);
-			}
-		}
+		~GLImage() override;
 		constexpr GLuint GetHandle() const
 		{
 			return mHandle;
@@ -56,10 +44,11 @@ namespace Shit
 		GLStateManager *mpStateManger;
 	public:
 		GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo);
-		~GLImageView() override {}
+		~GLImageView() override;
 		constexpr GLuint GetHandle() const
 		{
 			return mHandle;
 		}
+		void SetSampler(const Sampler* pSampler);
 	};
 }

@@ -556,6 +556,7 @@ namespace Shit
 		UNIFORM_BUFFER_DYNAMIC,
 		STORAGE_BUFFER_DYNAMIC,
 		INPUT_ATTACHMENT0,
+		Num
 	};
 
 	enum class BufferUsageFlagBits
@@ -960,5 +961,16 @@ namespace Shit
 	{
 		BINARY,
 		TIMELINE,
+	};
+	enum class BorderColor
+	{
+		FLOAT_TRANSPARENT_BLACK,
+		INT_TRANSPARENT_BLACK,
+		FLOAT_OPAQUE_BLACK,
+		INT_OPAQUE_BLACK,
+		FLOAT_OPAQUE_WHITE,
+		INT_OPAQUE_WHITE,
+//		FLOAT_CUSTOM_EXT,
+//		INT_CUSTOM_EXT,
 	};
 }

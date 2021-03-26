@@ -36,8 +36,46 @@ namespace Shit
 			static_cast<uint32_t>(bindings.size()),
 			bindings.data()};
 
-		if (vkCreateDescriptorSetLayout(mDevice, &info, nullptr, &mHandle) != VK_SUCCESS)
-			THROW("failed to create descriptor setlayout");
+		CHECK_VK_RESULT(vkCreateDescriptorSetLayout(mDevice, &info, nullptr, &mHandle));
+	}
+	VKDescriptorSet::VKDescriptorSet(VkDevice device, VkDescriptorPool pool, const DescriptorSetLayout *pSetLayout)
+		: DescriptorSet(pSetLayout), mDevice(device), mPool(pool)
+	{
+		auto a = static_cast<const VKDescriptorSetLayout *>(pSetLayout)->GetHandle();
+		VkDescriptorSetAllocateInfo allocInfo{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+			.descriptorPool = mPool,
+			.descriptorSetCount = 1,
+			.pSetLayouts = &a};
+		CHECK_VK_RESULT(vkAllocateDescriptorSets(mDevice, &allocInfo, &mHandle));
 	}
 
+	VKDescriptorPool::VKDescriptorPool(VkDevice device, const DescriptorPoolCreateInfo &createInfo)
+		: DescriptorPool(createInfo), mDevice(device)
+	{
+		std::vector<VkDescriptorPoolSize> poolSizes(createInfo.poolSizes.size());
+		std::transform(std::execution::par, createInfo.poolSizes.begin(), createInfo.poolSizes.end(), poolSizes.begin(), [](auto &&e) {
+			return VkDescriptorPoolSize{
+				Map(e.type),
+				e.count};
+		});
+
+		VkDescriptorPoolCreateInfo info{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+			.maxSets = createInfo.maxSets,
+			.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+			.pPoolSizes = poolSizes.data()};
+
+		CHECK_VK_RESULT(vkCreateDescriptorPool(mDevice, &info, nullptr, &mHandle));
+	}
+	void VKDescriptorPool::Allocate(const DescriptorSetAllocateInfo &createInfo, std::vector<DescriptorSet *> &descriptorSets)
+	{
+		auto count = createInfo.setLayouts.size();
+		descriptorSets.resize(count);
+		for (size_t i = 0; i < count; ++i)
+		{
+			mDescriptorSets.emplace_back(std::make_unique<VKDescriptorSet>(mDevice, mHandle, createInfo.setLayouts[i]));
+			descriptorSets[i] = mDescriptorSets.back().get();
+		}
+	}
 }

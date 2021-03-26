@@ -10,6 +10,12 @@
 #include "GLState.h"
 namespace Shit
 {
+	static constexpr GLenum glBufferIndexedTargetArray[]{
+		GL_ATOMIC_COUNTER_BUFFER,
+		GL_SHADER_STORAGE_BUFFER,
+		GL_TRANSFORM_FEEDBACK_BUFFER,
+		GL_UNIFORM_BUFFER};
+
 	static const std::unordered_map<GLenum, int> glCapabilityTable{
 		//{GL_CLIP_DISTANCE,},
 		{GL_BLEND, 0},
@@ -187,15 +193,17 @@ namespace Shit
 			a = {target, texture};
 		}
 	}
-	void GLStateManager::PushTexture(GLuint unit, GLenum target, GLuint texture)
+	void GLStateManager::PushTextureUnit(GLuint unit, GLenum target, GLuint texture)
 	{
 		auto &&a = mTextureState.boundTextures[unit];
 		mTextureState.textureStack.emplace(GLTextureState::StackEntry{unit, a.first, a.second});
 		BindTextureUnit(unit, target, texture);
 	}
-	void GLStateManager::PopTexture()
+	void GLStateManager::PopTextureUnit()
 	{
 		auto &&a = mTextureState.textureStack.top();
+		if (a.target == 0)
+			a.target = mTextureState.boundTextures[a.unit].first;
 		BindTextureUnit(a.unit, a.target, a.texture);
 		mTextureState.textureStack.pop();
 	}
@@ -269,7 +277,7 @@ namespace Shit
 	}
 	void GLStateManager::NotifyReleasedPipeline(GLuint pipeline)
 	{
-		if (mPipelineState.pipeline== pipeline)
+		if (mPipelineState.pipeline == pipeline)
 		{
 			memset(&mPipelineState, 0, sizeof(GLPipelineState));
 		}
@@ -614,6 +622,61 @@ namespace Shit
 			glClipControl(origin, depth);
 			mClipState.origin = origin;
 			mClipState.depth = depth;
+		}
+	}
+	void GLStateManager::BindBufferRange(GLenum target, GLuint binding, GLuint buffer, GLintptr offset, GLintptr size)
+	{
+		if (target == GL_UNIFORM_BUFFER)
+		{
+			if (
+				mIndexedTargetBindingState.uniformBufferStates[binding].buffer != buffer ||
+				mIndexedTargetBindingState.uniformBufferStates[binding].offset != offset ||
+				mIndexedTargetBindingState.uniformBufferStates[binding].size != size)
+			{
+				glBindBufferRange(target, binding, buffer, offset, size);
+				mIndexedTargetBindingState.uniformBufferStates[binding].buffer = buffer;
+				mIndexedTargetBindingState.uniformBufferStates[binding].offset = offset;
+				mIndexedTargetBindingState.uniformBufferStates[binding].size = size;
+			}
+		}
+		else if (target == GL_ATOMIC_COUNTER_BUFFER)
+		{
+			if (
+				mIndexedTargetBindingState.atomicCounterBufferStates[binding].buffer != buffer ||
+				mIndexedTargetBindingState.atomicCounterBufferStates[binding].offset != offset ||
+				mIndexedTargetBindingState.atomicCounterBufferStates[binding].size != size)
+			{
+				glBindBufferRange(target, binding, buffer, offset, size);
+				mIndexedTargetBindingState.atomicCounterBufferStates[binding].buffer = buffer;
+				mIndexedTargetBindingState.atomicCounterBufferStates[binding].offset = offset;
+				mIndexedTargetBindingState.atomicCounterBufferStates[binding].size = size;
+			}
+		}
+		else if (target == GL_TRANSFORM_FEEDBACK_BUFFER)
+		{
+			if (
+				mIndexedTargetBindingState.transformFeedbackBufferStates[binding].buffer != buffer ||
+				mIndexedTargetBindingState.transformFeedbackBufferStates[binding].offset != offset ||
+				mIndexedTargetBindingState.transformFeedbackBufferStates[binding].size != size)
+			{
+				glBindBufferRange(target, binding, buffer, offset, size);
+				mIndexedTargetBindingState.transformFeedbackBufferStates[binding].buffer = buffer;
+				mIndexedTargetBindingState.transformFeedbackBufferStates[binding].offset = offset;
+				mIndexedTargetBindingState.transformFeedbackBufferStates[binding].size = size;
+			}
+		}
+		else if (target == GL_SHADER_STORAGE_BUFFER)
+		{
+			if (
+				mIndexedTargetBindingState.shaderStorageStates[binding].buffer != buffer ||
+				mIndexedTargetBindingState.shaderStorageStates[binding].offset != offset ||
+				mIndexedTargetBindingState.shaderStorageStates[binding].size != size)
+			{
+				glBindBufferRange(target, binding, buffer, offset, size);
+				mIndexedTargetBindingState.shaderStorageStates[binding].buffer = buffer;
+				mIndexedTargetBindingState.shaderStorageStates[binding].offset = offset;
+				mIndexedTargetBindingState.shaderStorageStates[binding].size = size;
+			}
 		}
 	}
 }

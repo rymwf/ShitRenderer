@@ -43,9 +43,6 @@
 #define glIsExtensionSupported(x) glewIsExtensionSupported(x)
 #define wglIsExtensionSupported(x) wglewIsSupported(x)
 
-#define MAX_TEXTURE_IMAGE_UNITS 80 //!< The number of texture units is implementation dependent, but must be at least 80, the value can be get from GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
-#define BUFFER_TARGET_NUM 15
-
 #define CLIP_ORIGIN_UPPER_LEFT
 //#define CLIP_ORIGIN_LOWER_LEFT
 
@@ -123,5 +120,6 @@ namespace Shit
 	GLenum Map(ImageViewType viewType, SampleCountFlagBits sampleCountFlag);
 	GLenum Map(DataType dataType);
 	GLenum Map(IndexType type);
+	std::variant<std::array<float, 4>, std::array<int, 4>> Map(BorderColor color);
 
 } // namespace Shit

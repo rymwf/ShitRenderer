@@ -232,6 +232,16 @@ namespace Shit
 		mFences.emplace_back(std::make_unique<GLFence>(&mStateManager, createInfo));
 		return mFences.back().get();
 	}
+	Sampler *GLDevice::Create(const SamplerCreateInfo &createInfo)
+	{
+		mSamplers.emplace_back(std::make_unique<GLSampler>(&mStateManager, createInfo));
+		return mSamplers.back().get();
+	}
+	DescriptorPool *GLDevice::Create(const DescriptorPoolCreateInfo &createInfo)
+	{
+		mDescriptorPools.emplace_back(std::make_unique<GLDescriptorPool>(&mStateManager, createInfo));
+		return mDescriptorPools.back().get();
+	}
 	Swapchain *GLDevice::Create(const SwapchainCreateInfo &createInfo, ShitWindow *pWindow)
 	{
 		if (pWindow != std::get<ShitWindow *>(mCreateInfo.physicalDevice))
@@ -242,6 +252,43 @@ namespace Shit
 		pWindow->SetSwapchain(pSwapchain);
 		pWindow->AddEventListener(static_cast<GLSwapchain *>(pSwapchain)->GetProcessWindowEventCallable());
 		return pSwapchain;
+	}
+	void GLDevice::UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, [[maybe_unused]] const std::vector<CopyDescriptorSet> &descriptorCopies)
+	{
+		GLDescriptorSet::BindingAttributes bindingAttributes;
+		for (auto &&write : descriptorWrites)
+		{
+			std::visit(
+				overloaded{
+					[&](const std::vector<DescriptorImageInfo> &imagesInfo) {
+						std::vector<ImageView*> imageViews(imagesInfo.size()-write.dstArrayElement);
+						std::transform(std::execution::par, imagesInfo.begin() + write.dstArrayElement, imagesInfo.end(), imageViews.begin(), [](auto &&e) {
+							static_cast<GLImageView *>(e.pImageView)->SetSampler(e.pSampler);
+							return e.pImageView;
+						});
+						static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, imageViews);
+					},
+					//[&](const std::vector<DescriptorBufferInfo> &buffersInfo) {
+					//	std::vector<DescriptorBufferInfo> info(buffersInfo.size() - write.dstArrayElement);
+					//	std::copy(buffersInfo.begin() + write.dstArrayElement, buffersInfo.end(), info.begin());
+					//	static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, info);
+					//},
+					//[](const std::vector<BufferView *> &bufferViews) {
+					//	std::vector<DescriptorBufferInfo> info(buffersInfo.size() - write.dstArrayElement);
+					//	std::copy(buffersInfo.begin() + write.dstArrayElement, buffersInfo.end(), info.begin());
+					//	static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, info);
+					//},
+					[&](auto &&e) {
+						std::decay_t<decltype(e)> info(e.size() - write.dstArrayElement);
+						std::copy(e.begin() + write.dstArrayElement, e.end(), info.begin());
+						static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, info);
+					}},
+				write.values);
+		}
+		//TODO: descriptor copyies
+		//for (auto &&copy : descriptorCopies)
+		//{
+		//}
 	}
 
 #ifdef _WIN32
@@ -351,7 +398,7 @@ namespace Shit
 				WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 				WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
 				WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-				WGL_ACCELERATION_ARB,WGL_FULL_ACCELERATION_ARB,
+				WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
 				WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB, //or WGL_TYPE_COLORINDEX_ARB
 				WGL_COLOR_BITS_ARB, 32,
 				WGL_DEPTH_BITS_ARB, 24,

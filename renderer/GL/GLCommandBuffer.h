@@ -18,6 +18,7 @@ namespace Shit
 		BindIndexBuffer,
 		BindPipeline,
 		BindVertexBuffer,
+		BindDescriptorSets,
 		BlitImage,
 		CopyBuffer,
 		CopyBufferToImage,
@@ -45,7 +46,7 @@ namespace Shit
 		IndexType mCurIndexType{};
 
 		template <class T>
-		T *AllocateCommand(GLCommandCode commandCode, size_t extraSize = 0);
+		T *AllocateCommand(GLCommandCode commandCode, size_t realSize= 0);
 
 		size_t ExecuteCommand(GLCommandCode commandCode, const void *pCur);
 
@@ -74,6 +75,9 @@ namespace Shit
 
 		void BindVertexBuffer(const BindVertexBufferInfo &info) override;
 		void BindIndexBuffer(const BindIndexBufferInfo &info) override;
+		void BindDescriptorSets(const BindDescriptorSetsInfo &info) override;
+
+
 		void Draw(const DrawIndirectCommand &info) override;
 		void DrawIndirect(const DrawIndirectInfo &info) override;
 		void DrawIndirectCount(const DrawIndirectCountInfo &info) override;

@@ -42,6 +42,8 @@ namespace Shit
 	GLSwapchain::~GLSwapchain()
 	{
 		mpDevice->Destroy(mpFramebuffer);
+		for (auto &&e : mpImageViews)
+			mpDevice->Destroy(e);
 	}
 	void GLSwapchain::CreateImages(uint32_t count)
 	{
@@ -65,7 +67,6 @@ namespace Shit
 	}
 	void GLSwapchain::CreateFramebuffer()
 	{
-		std::vector<ImageView *> imageViews;
 		ImageViewCreateInfo imageViewCreateInfo{nullptr,
 												ImageViewType::TYPE_2D,
 												mCreateInfo.format,
@@ -74,10 +75,10 @@ namespace Shit
 		for (auto &&e : mImages)
 		{
 			imageViewCreateInfo.pImage = e.get();
-			imageViews.emplace_back(mpDevice->Create(imageViewCreateInfo));
+			mpImageViews.emplace_back(mpDevice->Create(imageViewCreateInfo));
 		}
 		FramebufferCreateInfo createInfo{nullptr,
-										 imageViews,
+										 mpImageViews,
 										 createInfo.extent,
 										 1};
 		mpFramebuffer = mpDevice->Create(createInfo);

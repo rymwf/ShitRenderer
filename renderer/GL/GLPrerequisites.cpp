@@ -648,5 +648,24 @@ namespace Shit
 			THROW("wrong index type");
 		}
 	}
+	std::variant<std::array<float, 4>, std::array<int32_t, 4>> Map(BorderColor color)
+	{
+		switch (color)
+		{
+		case BorderColor::FLOAT_OPAQUE_BLACK:
+			return std::array<float, 4>{0.f, 0.f, 0.f, 1.f};
+		case BorderColor::FLOAT_OPAQUE_WHITE:
+			return std::array<float, 4>{1.f, 1.f, 1.f, 1.f};
+		case BorderColor::FLOAT_TRANSPARENT_BLACK:
+		default:
+			return std::array<float, 4>{0.f, 0.f, 0.f, 0.f};
+		case BorderColor::INT_OPAQUE_BLACK:
+			return std::array<int32_t, 4>{0, 0, 0, 1};
+		case BorderColor::INT_OPAQUE_WHITE:
+			return std::array<int32_t, 4>{1, 1, 1, 1};
+		case BorderColor::INT_TRANSPARENT_BLACK:
+			return std::array<int32_t, 4>{0, 0, 0, 0};
+		}
+	}
 
 } // namespace Shit

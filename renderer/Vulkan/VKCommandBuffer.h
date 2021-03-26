@@ -50,6 +50,7 @@ namespace Shit
 
 		void BindVertexBuffer(const BindVertexBufferInfo& info)override;
 		void BindIndexBuffer(const BindIndexBufferInfo& info)override;
+		void BindDescriptorSets(const BindDescriptorSetsInfo &info) override;
 
 		void Draw(const DrawIndirectCommand &info) override;
 		void DrawIndirect(const DrawIndirectInfo &info) override;

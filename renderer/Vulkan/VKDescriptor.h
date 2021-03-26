@@ -31,5 +31,33 @@ namespace Shit
 	};
 	class VKDescriptorSet final : public DescriptorSet
 	{
+		VkDescriptorSet mHandle;
+		VkDescriptorPool mPool;
+		VkDevice mDevice;
+
+	public:
+		VKDescriptorSet(VkDevice device, VkDescriptorPool pool, const DescriptorSetLayout *pSetlayout);
+		~VKDescriptorSet() override
+		{
+			//vkFreeDescriptorSets(mDevice, mPool, 1, &mHandle);
+		}
+		constexpr VkDescriptorSet GetHandle() const
+		{
+			return mHandle;
+		}
+	};
+	class VKDescriptorPool final : public DescriptorPool
+	{
+		VkDescriptorPool mHandle;
+		VkDevice mDevice;
+
+	public:
+		VKDescriptorPool(VkDevice device, const DescriptorPoolCreateInfo &createInfo);
+		~VKDescriptorPool() override
+		{
+			mDescriptorSets.clear();
+			vkDestroyDescriptorPool(mDevice, mHandle, nullptr);
+		}
+		void Allocate(const DescriptorSetAllocateInfo &createInfo, std::vector<DescriptorSet *> &descriptorSets) override;
 	};
 } // namespace Shit
