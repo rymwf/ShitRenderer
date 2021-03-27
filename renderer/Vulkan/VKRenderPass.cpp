@@ -27,7 +27,7 @@ namespace Shit
 					Map(e.storeOp),
 					Map(e.stencilLoadOp),
 					Map(e.stencilStoreOp),
-					VK_IMAGE_LAYOUT_UNDEFINED,
+					Map(e.initialLayout),
 					Map(e.finalLayout)});
 		}
 

@@ -408,6 +408,7 @@ public:
 			 AttachmentStoreOp::DONT_CARE,
 			 AttachmentLoadOp::DONT_CARE,
 			 AttachmentStoreOp::DONT_CARE,
+			 ImageLayout::UNDEFINED,	   //inital layout
 			 ImageLayout::PRESENT_SRC}};
 
 		std::vector<AttachmentReference> colorAttachments{

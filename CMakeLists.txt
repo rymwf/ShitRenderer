@@ -143,7 +143,9 @@ message(${examplename})
 
 add_executable(${examplename} examples/${examplename}.cpp examples/common.cpp)
 
-#set_target_properties(${examplename} PROPERTIES FOLDER examples)
+set_target_properties(${examplename} PROPERTIES FOLDER examples
+#DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX}
+)
 
 target_include_directories(${examplename} PRIVATE 
 ${CMAKE_SOURCE_DIR}
@@ -180,6 +182,8 @@ newexample(00-init)
 newexample(01-triangle)
 newexample(02-triangle-vbo)
 newexample(03-image)
+newexample(04-ubo)
+newexample(05-depth)
 endif()
 
 

@@ -25,8 +25,8 @@ namespace Shit
 				attrib.normalized,
 				attrib.offset);
 			glVertexAttribBinding(attrib.location, attrib.binding);
+			glVertexBindingDivisor(attrib.binding, vertexInputStateCreateInfo.vertexBindingDescriptions[attrib.binding].divisor);
 			glEnableVertexAttribArray(attrib.location);
-			glVertexBindingDivisor(attrib.location, vertexInputStateCreateInfo.vertexBindingDescriptions[attrib.binding].divisor);
 		}
 	}
 	GLuint GLGraphicsPipeline::CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo)

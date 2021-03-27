@@ -528,20 +528,11 @@ namespace Shit
 		uint32_t dstBinding;
 		uint32_t dstArrayElement;	//start array index 
 		DescriptorType descriptorType;	//must be same as type of dstset at dstbinding
-		//std::vector<
-		//	std::variant<
-		//		DescriptorImageInfo,
-		//		DescriptorBufferInfo,
-		//		BufferView *>>
-		//	values;
 		std::variant<
 			std::vector<DescriptorImageInfo>,
 			std::vector<DescriptorBufferInfo>,
 			std::vector<BufferView *>>
 			values;
-		//std::vector<DescriptorImageInfo> imagesInfo;
-		//std::vector<DescriptorBufferInfo> buffersInfo;
-		//std::vector<BufferView *> texelBufferViews; //TODO: buffer texture
 	};
 	struct CopyDescriptorSet
 	{
@@ -623,6 +614,7 @@ namespace Shit
 		AttachmentStoreOp storeOp; //opengl default store
 		AttachmentLoadOp stencilLoadOp;
 		AttachmentStoreOp stencilStoreOp;
+		ImageLayout initialLayout;
 		ImageLayout finalLayout;
 	};
 

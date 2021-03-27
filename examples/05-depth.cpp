@@ -7,20 +7,37 @@ uint32_t WIDTH = 800, HEIGHT = 600;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const char *vertShaderName = "03.vert.spv";
-const char *fragShaderName = "03.frag.spv";
+const char *vertShaderName = "05.vert.spv";
+const char *fragShaderName = "05.frag.spv";
 const char *testImagePath = IMAGE_PATH "Lenna_test.jpg";
 
 std::string vertShaderPath;
 std::string fragShaderPath;
 
+std::vector<DrawIndexedIndirectCommand> drawIndexedIndirectCmds{{4, 2, 0, 0, 0}};
+
 std::vector<Vertex> vertices{
-	{{-0.5, -0.5, 0}, {1, 0, 0}, {0, 0}},
-	{{-0.5, 0.5, 0}, {0, 0, 1}, {0, 1}},
-	{{0.5, -0.5, 0}, {0, 1, 0}, {1, 0}},
-	{{0.5, 0.5, 0}, {1, 1, 0}, {1, 1}},
+	{{-1, -1, 0}, {1, 0, 0}, {0, 0}},
+	{{-1, 1, 0}, {0, 0, 1}, {0, 1}},
+	{{1, -1, 0}, {0, 1, 0}, {1, 0}},
+	{{1, 1, 0}, {1, 1, 0}, {1, 1}},
 };
 std::vector<uint16_t> indices{0, 1, 2, 3};
+
+std::vector<InstanceAttribute> instanceAttributes{
+	{glm::rotate(glm::mat4(1), glm::radians(-15.f), glm::vec3(0, 1, 0))},
+	{glm::rotate(glm::mat4(1), glm::radians(15.f), glm::vec3(0, 1, 0))},
+	//{glm::rotate(glm::translate(glm::mat4(1), glm::vec3(-.5f, 0, 0)), glm::radians(-15.f), glm::vec3(0, 1, 0))},
+	//{glm::rotate(glm::translate(glm::mat4(1), glm::vec3(.5f, 0, 0)), glm::radians(15.f), glm::vec3(0, 1, 0))},
+	//	{glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 1)},
+	//	{glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1)},
+};
+
+struct alignas(16) UBO_MVP
+{
+	glm::mat4 M;
+	glm::mat4 PV;
+};
 
 class Hello
 {
@@ -46,7 +63,6 @@ class Hello
 	Semaphore *imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	Semaphore *renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 	Fence *inFlightFences[MAX_FRAMES_IN_FLIGHT];
-	//std::vector<Fence *> inFlightImages;
 
 	Shader *vertShader;
 	Shader *fragShader;
@@ -59,19 +75,30 @@ class Hello
 	RenderPass *renderPass;
 	Pipeline *pipeline;
 
-	Buffer *drawIndirectCmdBuffer;
 	Buffer *drawCountBuffer;
 	Buffer *drawIndexedIndirectCmdBuffer;
 	Buffer *indexBuffer;
 	Buffer *vertexBuffer;
+	Buffer *instanceBuffer;
 
 	Image *testImage;
 	ImageView *testImageView;
 	Sampler *sampler;
 
+	Image *depthImage;
+	ImageView *depthImageView;
+
+	std::vector<Buffer *> uboMVPBuffers;
+
+	uint32_t FPS;
+	float frameTimeInterval_ms;
+	std::chrono::system_clock::time_point curTime;
+	std::chrono::system_clock::time_point startTime;
+
 public:
 	void initRenderSystem()
 	{
+		startTime = std::chrono::system_clock::now();
 		RenderSystemCreateInfo renderSystemCreateInfo{
 			.version = rendererVersion,
 			.flags = RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT,
@@ -115,6 +142,7 @@ public:
 		graphicsQueue = device->Create(queueCreateInfo);
 
 		createSwapchains();
+		createDepthResources();
 
 		createShaders();
 		createDescriptorSets();
@@ -125,9 +153,12 @@ public:
 		createDrawCommandBuffers();
 		createIndexBuffer();
 		createVertexBuffer();
+		createInstanceBuffer();
 		createImages();
 		createSamplers();
 		createSyncObjects();
+		createUBOMVPBuffer();
+
 		updateDescriptorSets();
 
 		createCommandBuffers();
@@ -162,6 +193,10 @@ public:
 	{
 		while (window->PollEvents())
 		{
+			auto temptime = std::chrono::system_clock::now();
+			frameTimeInterval_ms = std::chrono::duration<float, std::chrono::milliseconds::period>(temptime - curTime).count();
+			curTime = temptime;
+			FPS = static_cast<uint32_t>(1000 / frameTimeInterval_ms);
 			drawFrame();
 		}
 		presentQueue->WaitIdle();
@@ -177,6 +212,8 @@ public:
 	}
 	void cleanupSwapchain()
 	{
+		device->Destroy(depthImage);
+		device->Destroy(depthImageView);
 		for (auto &&e : swapchainImageViews)
 			device->Destroy(e);
 		device->Destroy(renderPass);
@@ -192,6 +229,7 @@ public:
 	{
 		cleanupSwapchain();
 		createSwapchains();
+		createDepthResources();
 		createRenderPasses();
 		createFramebuffers();
 		createPipeline();
@@ -217,7 +255,9 @@ public:
 		{
 			THROW("failed to get next image");
 		}
-
+		//========================================
+		updateUBOMVPBuffer(imageIndex);
+		//=================================
 		inFlightFences[currentFrame]->Reset();
 
 		std::vector<SubmitInfo> submitInfos{
@@ -320,15 +360,21 @@ public:
 				.descriptorCount = 1,
 				.stageFlags = ShaderStageFlagBits::FRAGMENT_BIT,
 			},
+			DescriptorSetLayoutBinding{
+				.binding = 1,
+				.descriptorType = DescriptorType::UNIFORM_BUFFER,
+				.descriptorCount = 1,
+				.stageFlags = ShaderStageFlagBits::VERTEX_BIT,
+			},
 		};
-		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{bindings}));
+		descriptorSetLayouts.resize(swapchainImages.size(), device->Create(DescriptorSetLayoutCreateInfo{bindings}));
 
 		std::vector<DescriptorPoolSize> poolSizes(bindings.size());
 		std::transform(bindings.begin(), bindings.end(), poolSizes.begin(), [](auto &&e) {
 			return DescriptorPoolSize{e.descriptorType, e.descriptorCount};
 		});
 		DescriptorPoolCreateInfo descriptorPoolCreateInfo{
-			.maxSets = 1,
+			.maxSets = static_cast<uint32_t>(swapchainImageViews.size()),
 			.poolSizes = poolSizes};
 		descriptorPool = device->Create(descriptorPoolCreateInfo);
 
@@ -341,18 +387,33 @@ public:
 			DescriptorImageInfo{
 				.pSampler = sampler,
 				.pImageView = testImageView,
-				.imageLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL}};
+				.imageLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL},
+		};
+		std::vector<DescriptorBufferInfo> buffersInfo{
+			{nullptr, 0, sizeof(UBO_MVP)},
+		};
 		std::vector<WriteDescriptorSet> writes{
 			WriteDescriptorSet{
-				nullptr,	//pDstset
-				0,		//dst binding
-				0,	//dstArrayElement
+				nullptr, //pDstset
+				0,		 //dst binding
+				0,		 //dstArrayElement
 				DescriptorType::COMBINED_IMAGE_SAMPLER,
 				imagesInfo,
-			}};
-		for (auto &&e : descriptorSets)
+			},
+			WriteDescriptorSet{
+				nullptr, //pDstset
+				1,		 //dst binding
+				0,		 //dstArrayElement
+				DescriptorType::UNIFORM_BUFFER,
+				buffersInfo,
+			},
+		};
+		for (size_t i = 0, n = descriptorSets.size(); i < n; ++i)
 		{
-			writes[0].pDstSet = e;
+			for (auto &&a : writes)
+				a.pDstSet = descriptorSets[i];
+			buffersInfo[0].pBuffer = uboMVPBuffers[i];
+			writes[1].values = buffersInfo;
 			device->UpdateDescriptorSets(writes, {});
 		}
 	}
@@ -361,21 +422,36 @@ public:
 		std::vector<AttachmentDescription> attachmentDescriptions{
 			{swapchain->GetCreateInfoPtr()->format,
 			 SampleCountFlagBits::BIT_1,
+			 AttachmentLoadOp::CLEAR,	   //depth
+			 AttachmentStoreOp::DONT_CARE, //depth
+			 AttachmentLoadOp::DONT_CARE,  //stencil
+			 AttachmentStoreOp::DONT_CARE, //stencil
+			 ImageLayout::UNDEFINED,	   //inital layout
+			 ImageLayout::PRESENT_SRC},	   //final layout
+			{ShitFormat::D24_UNORM_S8_UINT,
+			 SampleCountFlagBits::BIT_1,
 			 AttachmentLoadOp::CLEAR,
 			 AttachmentStoreOp::DONT_CARE,
 			 AttachmentLoadOp::DONT_CARE,
 			 AttachmentStoreOp::DONT_CARE,
-			 ImageLayout::UNDEFINED,	   //inital layout
-			 ImageLayout::PRESENT_SRC}};
-
+			 ImageLayout::UNDEFINED,
+			 ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
+		};
 		std::vector<AttachmentReference> colorAttachments{
 			{0, //the index of attachment description
 			 ImageLayout::COLOR_ATTACHMENT_OPTIMAL},
 		};
+		AttachmentReference depthAttachment{
+			1, //the index of attachment description
+			ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		};
 
 		std::vector<SubpassDescription> subPasses{
 			{PipelineBindPoint::GRAPHICS,
-			 colorAttachments}};
+			 colorAttachments,
+			 {},
+			 depthAttachment},
+		};
 
 		RenderPassCreateInfo renderPassCreateInfo{
 			attachmentDescriptions,
@@ -400,10 +476,15 @@ public:
 		};
 		auto vertexBindingDesc = Vertex::getVertexBindingDescription();
 		auto vertexAttributeDesc = Vertex::getVertexAttributeDescription(0, 0);
+		auto instanceBindingDesc = InstanceAttribute::getVertexBindingDescription();
+		auto instanceAttributeDesc = InstanceAttribute::getVertexAttributeDescription(Vertex::getLocationCount(), 1);
+
 		VertexInputStateCreateInfo vertexInputState{
-			{std::move(vertexBindingDesc)},
+			{std::move(vertexBindingDesc), std::move(instanceBindingDesc)},
 			std::move(vertexAttributeDesc),
 		};
+		vertexInputState.vertexAttributeDescriptions.insert(vertexInputState.vertexAttributeDescriptions.end(),
+															instanceAttributeDesc.begin(), instanceAttributeDesc.end());
 		PipelineInputAssemblyStateCreateInfo inputAssemblyState{
 			PrimitiveTopology::TRIANGLE_STRIP,
 		};
@@ -424,7 +505,11 @@ public:
 		PipelineMultisampleStateCreateInfo multisampleState{
 			SampleCountFlagBits::BIT_1,
 		};
-		PipelineDepthStencilStateCreateInfo depthStencilState{};
+		PipelineDepthStencilStateCreateInfo depthStencilState{
+			.depthTestEnable = true,
+			.depthWriteEnable = true,
+			.depthCompareOp = CompareOp::LESS,
+		};
 
 		PipelineColorBlendAttachmentState colorBlendAttachmentstate{};
 		colorBlendAttachmentstate.colorWriteMask = ColorComponentFlagBits::R_BIT | ColorComponentFlagBits::G_BIT | ColorComponentFlagBits::B_BIT | ColorComponentFlagBits::A_BIT;
@@ -455,14 +540,15 @@ public:
 	{
 		FramebufferCreateInfo framebufferCreateInfo{
 			renderPass,
-			{},
-			swapchain->GetCreateInfoPtr()->imageExtent,
-			1};
+			{},											//attachments
+			swapchain->GetCreateInfoPtr()->imageExtent, //extent2D
+			1											//layers
+		};
 		auto count = swapchainImageViews.size();
 		framebuffers.resize(count);
 		while (count-- > 0)
 		{
-			framebufferCreateInfo.attachments = {swapchainImageViews[count]};
+			framebufferCreateInfo.attachments = {swapchainImageViews[count], depthImageView};
 			framebuffers[count] = device->Create(framebufferCreateInfo);
 		}
 	}
@@ -475,7 +561,10 @@ public:
 
 		CommandBufferBeginInfo cmdBufferBeginInfo{};
 
-		std::vector<ClearValue> clearValues{std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f}};
+		std::vector<ClearValue> clearValues{
+			std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f},
+			ClearDepthStencilValue{1.f, 0},
+		};
 
 		RenderPassBeginInfo renderPassBeginInfo{
 			renderPass,
@@ -493,100 +582,35 @@ public:
 			commandBuffers[i]->Begin(cmdBufferBeginInfo);
 			commandBuffers[i]->BeginRenderPass(renderPassBeginInfo);
 			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
-			uint64_t offsets[] = {0};
-			Buffer *buffers[] = {vertexBuffer};
+			std::vector<Buffer *> buffers{vertexBuffer, instanceBuffer};
+			std::vector<uint64_t> offsets{0, 0};
 			commandBuffers[i]->BindVertexBuffer(
 				BindVertexBufferInfo{
 					0,
-					1,
-					buffers,
-					offsets});
+					static_cast<uint32_t>(buffers.size()),
+					buffers.data(),
+					offsets.data()});
 
 			BindDescriptorSetsInfo info{
 				PipelineBindPoint::GRAPHICS,
 				pipelineLayout,
 				0,
 				static_cast<uint32_t>(descriptorSets.size()),
-				descriptorSets.data()
-			};
+				descriptorSets.data()};
 			commandBuffers[i]->BindDescriptorSets(info);
 
-			int drawMethod = 4;
-			switch (drawMethod)
-			{
-			case 0:
-			default:
-			{
-				DrawIndirectCommand drawIndirectCmd{4, 1, 0, 0};
-				commandBuffers[i]->Draw(drawIndirectCmd);
-			}
-			break;
-			case 1:
-			{
-				DrawIndirectInfo drawCmdInfo{
-					drawIndirectCmdBuffer,
+			//draw index
+			commandBuffers[i]->BindIndexBuffer(BindIndexBufferInfo{
+				indexBuffer,
+				0,
+				IndexType::UINT16});
+			commandBuffers[i]->DrawIndexedIndirect(
+				DrawIndirectInfo{
+					drawIndexedIndirectCmdBuffer,
 					0,
 					1,
-					sizeof(DrawIndirectCommand)};
-				commandBuffers[i]->DrawIndirect(drawCmdInfo);
-			}
-			break;
-			case 2:
-			{
-				DrawIndirectCountInfo drawCmdInfo{
-					drawIndirectCmdBuffer,
-					0,
-					drawCountBuffer,
-					0,
-					1,
-					sizeof(DrawIndirectCommand)};
-				commandBuffers[i]->DrawIndirectCount(drawCmdInfo);
-			}
-			break;
-			case 3:
-			{
-				//draw index
-				commandBuffers[i]->BindIndexBuffer(BindIndexBufferInfo{
-					indexBuffer,
-					0,
-					IndexType::UINT16});
-				DrawIndexedIndirectCommand drawIndexedIndirectCmd{4, 1, 0, 0, 0};
-				commandBuffers[i]->DrawIndexed(drawIndexedIndirectCmd);
-			}
-			break;
-			case 4:
-			{
-				//draw index
-				commandBuffers[i]->BindIndexBuffer(BindIndexBufferInfo{
-					indexBuffer,
-					0,
-					IndexType::UINT16});
-				commandBuffers[i]->DrawIndexedIndirect(
-					DrawIndirectInfo{
-						drawIndexedIndirectCmdBuffer,
-						0,
-						1,
-						sizeof(DrawIndexedIndirectCommand)});
-			}
-			break;
-			case 5:
-			{
-				//draw index
-				commandBuffers[i]->BindIndexBuffer(BindIndexBufferInfo{
-					indexBuffer,
-					0,
-					IndexType::UINT16});
-				commandBuffers[i]->DrawIndexedIndirectCount(
-					DrawIndirectCountInfo{
-						drawIndexedIndirectCmdBuffer,
-						0,
-						drawCountBuffer,
-						0,
-						1,
-						sizeof(DrawIndexedIndirectCommand)});
-			}
-			break;
-			}
+					sizeof(DrawIndexedIndirectCommand)});
+
 			commandBuffers[i]->EndRenderPass();
 			commandBuffers[i]->End();
 		}
@@ -605,18 +629,13 @@ public:
 	void createDrawCommandBuffers()
 	{
 		//create draw indirect command buffer
-		std::vector<DrawIndirectCommand> drawIndirectCmds{{4, 1, 0, 0}};
 		BufferCreateInfo bufferCreateInfo{
 			{},
-			sizeof(DrawIndirectCommand) * drawIndirectCmds.size(),
+			sizeof(uint32_t),
 			BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
-		drawIndirectCmdBuffer = device->Create(bufferCreateInfo, drawIndirectCmds.data());
-		bufferCreateInfo.size = sizeof(uint32_t);
 		uint32_t drawCount = 1;
 		drawCountBuffer = device->Create(bufferCreateInfo, &drawCount);
-
-		std::vector<DrawIndexedIndirectCommand> drawIndexedIndirectCmds{{4, 1, 0, 0, 0}};
 
 		//create draw indexed indirect command buffer
 		BufferCreateInfo drawIndexedIndirectCmdBufferCreateInfo{
@@ -635,6 +654,15 @@ public:
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 
 		vertexBuffer = device->Create(createInfo, vertices.data());
+	}
+	void createInstanceBuffer()
+	{
+		BufferCreateInfo createInfo{
+			{},
+			sizeof(instanceAttributes[0]) * instanceAttributes.size(),
+			BufferUsageFlagBits::VERTEX_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+		instanceBuffer = device->Create(createInfo, instanceAttributes.data());
 	}
 	void createIndexBuffer()
 	{
@@ -675,7 +703,6 @@ public:
 			.subresourceRange = {0, 1, 0, 1},
 		};
 		testImageView = device->Create(imageViewCreateInfo);
-
 	}
 	void createSamplers()
 	{
@@ -688,6 +715,67 @@ public:
 			.wrapModeW = SamplerWrapMode::REPEAT,
 		};
 		sampler = device->Create(samplerCreateInfo);
+	}
+	void createUBOMVPBuffer()
+	{
+		UBO_MVP uboMVP{
+			.M = glm::mat4(1.f),
+			.PV = glm::perspective(
+					  glm::radians(45.f),
+					  float(swapchain->GetCreateInfoPtr()->imageExtent.width) / float(swapchain->GetCreateInfoPtr()->imageExtent.height),
+					  1.f, 10.f) *
+				  glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0), glm::vec3(0, 1, 0)),
+		};
+		BufferCreateInfo bufferCreateInfo{
+			.size = sizeof(UBO_MVP),
+			.usage = BufferUsageFlagBits::UNIFORM_BUFFER_BIT,
+			.memoryPropertyFlags = MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT};
+		uboMVPBuffers.resize(swapchainImages.size());
+		for (auto &&e : uboMVPBuffers)
+			e = device->Create(bufferCreateInfo, &uboMVP);
+	}
+	void updateUBOMVPBuffer([[maybe_unused]] size_t index)
+	{
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(curTime - startTime).count();
+		UBO_MVP uboMVP{
+			//.M = glm::rotate(glm::mat4(1), time * glm::radians(30.f), glm::vec3(0, 1, 0)),
+			.M = glm::translate(glm::mat4(1), glm::vec3(0, 0, std::sin(time))),
+			.PV = glm::perspective(
+					  glm::radians(45.f),
+					  float(swapchain->GetCreateInfoPtr()->imageExtent.width) / float(swapchain->GetCreateInfoPtr()->imageExtent.height),
+					  1.f, 10.f) *
+				  glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0), glm::vec3(0, 1, 0)),
+		};
+		void *pData;
+		uboMVPBuffers[index]->MapBuffer(0, sizeof(UBO_MVP), &pData);
+		memcpy(pData, &uboMVP, sizeof(UBO_MVP));
+		uboMVPBuffers[index]->UnMapBuffer();
+	}
+	void createDepthResources()
+	{
+		ImageCreateInfo depthImageCreateInfo{
+			{}, //create flags
+			ImageType::TYPE_2D,
+			ShitFormat::D24_UNORM_S8_UINT,
+			{swapchain->GetCreateInfoPtr()->imageExtent.width,
+			 swapchain->GetCreateInfoPtr()->imageExtent.height,
+			 1},
+			1, //mipmap levels,
+			1, //array layers
+			SampleCountFlagBits::BIT_1,
+			ImageTiling::OPTIMAL,
+			ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT_BIT,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+		depthImage = device->Create(depthImageCreateInfo, nullptr);
+
+		ImageViewCreateInfo depthImageViewCreateInfo{
+			depthImage,
+			ImageViewType::TYPE_2D,
+			ShitFormat::D24_UNORM_S8_UINT,
+			{},			 //component mapping
+			{0, 1, 0, 1} //subresouce range
+		};
+		depthImageView = device->Create(depthImageViewCreateInfo);
 	}
 };
 

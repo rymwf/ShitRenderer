@@ -75,9 +75,51 @@ struct Vertex
 			 offsetof(Vertex, texCoord)},
 		};
 	}
-	static uint32_t getLocationsNum()
+	static uint32_t getLocationCount()
 	{
 		return 3;
+	}
+};
+
+struct InstanceAttribute
+{
+	glm::mat4 translation;
+	static VertexBindingDescription getVertexBindingDescription()
+	{
+		return {sizeof(InstanceAttribute), 1};
+	}
+	static std::vector<VertexAttributeDescription> getVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
+	{
+		return {
+			{startLocation + 0,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 0},
+			{startLocation + 1,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 16},
+			{startLocation + 2,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 32},
+			{startLocation + 3,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 48},
+		};
+	}
+	static uint32_t getLocationCount()
+	{
+		return 4;
 	}
 };
 

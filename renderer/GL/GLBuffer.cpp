@@ -25,8 +25,8 @@ namespace Shit
 		}
 		else
 		{
-			if (!(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::DEVICE_LOCAL_BIT))
-				flags |= GL_CLIENT_STORAGE_BIT;
+			//if (!(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::DEVICE_LOCAL_BIT))
+			//	flags |= GL_CLIENT_STORAGE_BIT;
 			if (static_cast<bool>(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))
 				flags |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
 			if (static_cast<bool>(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::HOST_COHERENT_BIT))
