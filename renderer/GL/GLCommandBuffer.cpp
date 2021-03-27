@@ -319,107 +319,55 @@ namespace Shit
 			for (uint32_t i = 0; i < (std::min)(cmd->descriptorSetCount, 1u); ++i)
 			{
 				auto &&bindingAttributes = *(static_cast<const GLDescriptorSet *>(pDescriptorSets[i])->GetBindingAttributePtr());
-				for (int j = 0, n = static_cast<int>(DescriptorType::Num); j < n; ++j)
+				for (GLuint k = 0, len = static_cast<GLuint>(bindingAttributes.size()); k < len; ++k)
 				{
-					auto descriptorType = static_cast<DescriptorType>(j);
+					auto descriptorType = bindingAttributes[k].type;
 					std::visit(
 						overloaded{
-							[&](const std::vector<ImageView *> &imageViews) {
-								for (GLuint k = 0, len = static_cast<GLuint>(imageViews.size()); k < len; ++k)
+							[&](const ImageView *pImageView) {
+								if (!pImageView)
+									return;
+								if (descriptorType == DescriptorType::COMBINED_IMAGE_SAMPLER)
 								{
-									if (descriptorType == DescriptorType::COMBINED_IMAGE_SAMPLER)
-									{
-										mpStateManager->BindTextureUnit(k,
-																		Map(imageViews[k]->GetCreateInfoPtr()->viewType, imageViews[k]->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->samples),
-																		static_cast<const GLImageView *>(imageViews[k])->GetHandle());
-									}
-									else if (descriptorType == DescriptorType::STORAGE_IMAGE)
-									{
-										mpStateManager->BindImageTexture(k,
-																		 static_cast<const GLImageView *>(imageViews[k])->GetHandle(),
-																		 0,
-																		 GL_FALSE,
-																		 0,
-																		 GL_READ_WRITE,
-																		 MapInternalFormat(imageViews[k]->GetCreateInfoPtr()->format));
-									}
+									mpStateManager->BindTextureUnit(k,
+																	Map(pImageView->GetCreateInfoPtr()->viewType, pImageView->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->samples),
+																	static_cast<const GLImageView *>(pImageView)->GetHandle());
+								}
+								else if (descriptorType == DescriptorType::STORAGE_IMAGE)
+								{
+									mpStateManager->BindImageTexture(k,
+																	 static_cast<const GLImageView *>(pImageView)->GetHandle(),
+																	 0,
+																	 GL_FALSE,
+																	 0,
+																	 GL_READ_WRITE,
+																	 MapInternalFormat(pImageView->GetCreateInfoPtr()->format));
 								}
 							},
-							[&](const std::vector<DescriptorBufferInfo> &bufferInfos) {
-								for (GLuint k = 0, len = static_cast<GLuint>(bufferInfos.size()); k < len; ++k)
-								{
-									GLenum target{};
-									if (descriptorType == DescriptorType::UNIFORM_BUFFER)
-										target = GL_UNIFORM_BUFFER;
-									else if (descriptorType == DescriptorType::STORAGE_BUFFER)
-										target = GL_SHADER_STORAGE_BUFFER;
-									else
-										THROW("invalid descriptor type");
-									mpStateManager->BindBufferRange(target,
-																	k,
-																	static_cast<GLBuffer *>(bufferInfos[k].pBuffer)->GetHandle(),
-																	bufferInfos[k].offset,
-																	bufferInfos[k].range);
-								}
+							[&](const DescriptorBufferInfo &bufferInfo) {
+								if (!bufferInfo.pBuffer)
+									return;
+								GLenum target{};
+								if (descriptorType == DescriptorType::UNIFORM_BUFFER)
+									target = GL_UNIFORM_BUFFER;
+								else if (descriptorType == DescriptorType::STORAGE_BUFFER)
+									target = GL_SHADER_STORAGE_BUFFER;
+								else
+									THROW("invalid descriptor type");
+								mpStateManager->BindBufferRange(target,
+																k,
+																static_cast<GLBuffer *>(bufferInfo.pBuffer)->GetHandle(),
+																bufferInfo.offset,
+																bufferInfo.range);
 							},
-							[]([[maybe_unused]] const std::vector<BufferView *> &bufferViews) {
+							[](const BufferView *pBufferView) {
+								if (!pBufferView)
+									return;
 							},
 							[](auto &&) {},
 						},
-						bindingAttributes[j]);
+						bindingAttributes[k].val);
 				}
-				//for (int j = 0, n = static_cast<int>(DescriptorType::Num); j < n; ++j)
-				//{
-				//	auto descriptorType=static_cast<DescriptorType>(j);
-				//	for (GLuint k = 0, len = static_cast<GLuint>(bindingAttributes[j].size()); k < len; ++k)
-				//	{
-				//		std::visit(
-				//			overloaded{
-				//				[&](const ImageView *pImageView) {
-				//					if (!pImageView)
-				//						return;
-				//					if (descriptorType == DescriptorType::COMBINED_IMAGE_SAMPLER)
-				//					{
-				//						mpStateManager->BindTextureUnit(k,
-				//														Map(pImageView->GetCreateInfoPtr()->viewType, pImageView->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->samples),
-				//														static_cast<const GLImageView *>(pImageView)->GetHandle()
-				//														);
-				//					}
-				//					else if (descriptorType == DescriptorType::STORAGE_IMAGE)
-				//					{
-				//						mpStateManager->BindImageTexture(k,
-				//														 static_cast<const GLImageView *>(pImageView)->GetHandle(),
-				//														 0,
-				//														 GL_FALSE,
-				//														 0,
-				//														 GL_READ_WRITE,
-				//														 MapInternalFormat(pImageView->GetCreateInfoPtr()->format));
-				//					}
-				//				},
-				//				[&](const DescriptorBufferInfo &bufferInfo) {
-				//					if (!bufferInfo.pBuffer)
-				//						return;
-				//					GLenum target{};
-				//					if (descriptorType == DescriptorType::UNIFORM_BUFFER)
-				//						target = GL_UNIFORM_BUFFER;
-				//					else if (descriptorType == DescriptorType::STORAGE_BUFFER)
-				//						target = GL_SHADER_STORAGE_BUFFER;
-				//					else
-				//						THROW("invalid descriptor type");
-				//					mpStateManager->BindBufferRange(target,
-				//													k,
-				//													static_cast<GLBuffer *>(bufferInfo.pBuffer)->GetHandle(),
-				//													bufferInfo.offset,
-				//													bufferInfo.range);
-				//				},
-				//				[](const BufferView *pBufferView) {
-				//					if (!pBufferView)
-				//						return;
-				//				},
-				//			},
-				//			bindingAttributes[j][k]);
-				//	}
-				//}
 			}
 			//TODO: dynamic offsets
 			//auto pDynamicOffsetCount = reinterpret_cast<uint32_t *>(&pDescriptorSets + cmd->descriptorSetCount);
@@ -513,7 +461,7 @@ namespace Shit
 		case GLCommandCode::DrawIndexed:
 		{
 			auto cmd = reinterpret_cast<const DrawIndexedIndirectCommand *>(pCur);
-			//TODO: 
+			//TODO:
 			//uint32_t firstIndex = static_cast<uint32_t>(cmd->firstIndex + mpStateManager->GetIndexOffset() * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
 			//opengl 4.2
 			glDrawElementsInstancedBaseVertexBaseInstance(
@@ -686,7 +634,7 @@ namespace Shit
 															 sizeof(uint32_t) * 3 +
 															 sizeof(DescriptorSet *) * info.descriptorSetCount +
 															 sizeof(uint32_t) * info.dynamicOffsetCount);
-		size_t size = sizeof(PipelineBindPoint)*2 + sizeof(PipelineLayout *) + sizeof(uint32_t) * 2;
+		size_t size = sizeof(PipelineBindPoint) * 2 + sizeof(PipelineLayout *) + sizeof(uint32_t) * 2;
 		memcpy(p, &info, size);
 		size = sizeof(DescriptorSet *) * info.descriptorSetCount;
 		memcpy(&p->ppDescriptorSets, info.ppDescriptorSets, size);

@@ -353,44 +353,10 @@ namespace Shit
 		std::vector<VkDescriptorBufferInfo> buffersInfo;
 		std::vector<VkBufferView> texelBufferViews;
 
-		std::transform(std::execution::par, descriptorWrites.begin(), descriptorWrites.end(), writes.begin(), [&](auto &&e) {
+		std::transform(descriptorWrites.begin(), descriptorWrites.end(), writes.begin(), [&](auto &&e) {
 			imagesInfo.clear();
 			buffersInfo.clear();
 			texelBufferViews.clear();
-			//auto len = e.values.size();
-			//if (len > 0)
-			//{
-			//	if (std::holds_alternative<DescriptorImageInfo>(e.values[0]))
-			//	{
-			//		imagesInfo.resize(len - e.dstArrayElement);
-			//		for (size_t i = e.dstArrayElement, j = 0; i < len; ++i, ++j)
-			//		{
-			//			auto&& image = std::get<DescriptorImageInfo>(e.values[i]);
-			//			imagesInfo[j] = VkDescriptorImageInfo{
-			//				image.pSampler ? static_cast<VKSampler *>(image.pSampler)->GetHandle() : VK_NULL_HANDLE,
-			//				static_cast<VKImageView *>(image.pImageView)->GetHandle(),
-			//				Map(image.imageLayout)};
-			//		}
-			//	}
-			//	else if (std::holds_alternative<DescriptorBufferInfo>(e.values[0]))
-			//	{
-			//		buffersInfo.resize(len - e.dstArrayElement);
-			//		for (size_t i = e.dstArrayElement, j = 0; i < len; ++i, ++j)
-			//		{
-			//			auto&& buffer = std::get<DescriptorBufferInfo>(e.values[i]);
-			//			buffersInfo[j] = VkDescriptorBufferInfo{
-			//				static_cast<VKBuffer *>(buffer.pBuffer)->GetHandle(),
-			//				buffer.offset,
-			//				buffer.range};
-			//		}
-			//	}
-			//	//TODO: bufferview
-			//	//else if (std::holds_alternative(BufferView *)(e.values[0]))
-			//	//{
-			//	//	texelBufferViews.resize(len - e.dstArrayElement);
-			//	//}
-			//}
-
 			std::visit(
 				overloaded{
 					[&imagesInfo](const std::vector<DescriptorImageInfo> &val) {

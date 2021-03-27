@@ -40,12 +40,19 @@ namespace Shit
 	}
 	void GLBuffer::MapBuffer(uint64_t offset, uint64_t size, void **ppData)
 	{
-		mpStateManager->BindBuffer(GL_ARRAY_BUFFER, mHandle);
+		//mpStateManager->PushBuffer(GL_ARRAY_BUFFER, mHandle);
 		GLbitfield access = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
 		if (static_cast<bool>(mCreateInfo.memoryPropertyFlags & MemoryPropertyFlagBits::HOST_COHERENT_BIT))
 			access |= GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 		else
 			access |= GL_MAP_FLUSH_EXPLICIT_BIT;
-		*ppData = glMapBufferRange(GL_ARRAY_BUFFER, offset, size, access);
+		//*ppData = glMapBufferRange(GL_ARRAY_BUFFER, offset, size, access);
+		*ppData = glMapNamedBufferRange(mHandle, offset, size, access);
+	}
+	void GLBuffer::UnMapBuffer()
+	{
+		glUnmapNamedBuffer(mHandle);
+		//glUnmapBuffer(GL_ARRAY_BUFFER);
+		//mpStateManager->PopBuffer();
 	}
 }

@@ -154,7 +154,7 @@ namespace Shit
 	}
 	void GLStateManager::PopBuffer()
 	{
-		auto a = mBufferState.bufferStack.top();
+		auto &&a = mBufferState.bufferStack.top();
 		BindBuffer(a.target, a.buffer);
 		mBufferState.bufferStack.pop();
 	}

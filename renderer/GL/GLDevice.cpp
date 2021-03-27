@@ -255,13 +255,12 @@ namespace Shit
 	}
 	void GLDevice::UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, [[maybe_unused]] const std::vector<CopyDescriptorSet> &descriptorCopies)
 	{
-		GLDescriptorSet::BindingAttributes bindingAttributes;
 		for (auto &&write : descriptorWrites)
 		{
 			std::visit(
 				overloaded{
 					[&](const std::vector<DescriptorImageInfo> &imagesInfo) {
-						std::vector<ImageView*> imageViews(imagesInfo.size()-write.dstArrayElement);
+						std::vector<ImageView *> imageViews(imagesInfo.size() - write.dstArrayElement);
 						std::transform(std::execution::par, imagesInfo.begin() + write.dstArrayElement, imagesInfo.end(), imageViews.begin(), [](auto &&e) {
 							static_cast<GLImageView *>(e.pImageView)->SetSampler(e.pSampler);
 							return e.pImageView;

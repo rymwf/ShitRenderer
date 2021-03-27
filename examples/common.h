@@ -129,7 +129,7 @@ PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device
 //	}
 //}
 
-inline void parseArgument(int ac,char** av)
+inline void parseArgument(int ac, char **av)
 {
 	for (int i = 0; i < ac; ++i)
 	{
@@ -147,3 +147,91 @@ inline void parseArgument(int ac,char** av)
 		}
 	}
 }
+
+struct PerspectiveProjectionDescription
+{
+	double near;
+	double far;
+	double fovy;
+	double aspect;
+};
+struct OrthogonalProjectionDescription
+{
+	double near;
+	double far;
+	double left;
+	double right;
+	double bottom;
+	double top;
+};
+using ProjectionDescription = std::variant<PerspectiveProjectionDescription, OrthogonalProjectionDescription>;
+
+struct FrustumCreateInfo
+{
+	ProjectionDescription projectionDescription;
+};
+
+class Frustum
+{
+	ProjectionDescription mProjectionDescription;
+	glm::mat4 mProjection;
+
+public:
+	Frustum(const FrustumCreateInfo &createInfo) : mProjectionDescription(createInfo.projectionDescription)
+	{
+		std::visit(
+			[&](auto &&arg) {
+				using T = std::decay_t<decltype(arg)>;
+				if constexpr (std::is_same_v<T, PerspectiveProjectionDescription>)
+				{
+					mProjection = glm::perspective(arg.fovy, arg.aspect, arg.near, arg.far);
+				}
+				else if constexpr (std::is_same_v<T, OrthogonalProjectionDescription>)
+				{
+					mProjection = glm::ortho(arg.left, arg.right, arg.bottom, arg.top, arg.near, arg.far);
+				}
+			},
+			mProjectionDescription);
+	}
+	void Update(const PerspectiveProjectionDescription &perspective)
+	{
+		mProjectionDescription = perspective;
+		mProjection = glm::perspective(perspective.fovy, perspective.aspect, perspective.near, perspective.far);
+	}
+	void Update(const OrthogonalProjectionDescription &ortho)
+	{
+		mProjectionDescription = ortho;
+		mProjection = glm::ortho(ortho.left, ortho.right, ortho.bottom, ortho.top, ortho.near, ortho.far);
+	}
+	constexpr const glm::mat4 *GetProjectionPtr() const
+	{
+		return &mProjection;
+	}
+};
+
+struct CameraCreateInfo
+{
+	glm::vec3 eye;
+	glm::vec3 center;
+	glm::vec3 up;
+};
+
+class Camera
+{
+	CameraCreateInfo mCreateInfo;
+	glm::mat4 mView;
+
+public:
+	Camera(const CameraCreateInfo &createInfo) : mCreateInfo(createInfo)
+	{
+	}
+	void Update(const CameraCreateInfo &createInfo)
+	{
+		mCreateInfo = createInfo;
+		mView = glm::lookAt(createInfo.eye, createInfo.center, createInfo.up);
+	}
+	constexpr const glm::mat4 *GetViewPtr() const
+	{
+		return &mView;
+	}
+};
