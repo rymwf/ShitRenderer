@@ -184,6 +184,7 @@ newexample(02-triangle-vbo)
 newexample(03-image)
 newexample(04-ubo)
 newexample(05-depth)
+newexample(06-mipmap)
 endif()
 
 

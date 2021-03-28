@@ -25,6 +25,7 @@ namespace Shit
 		{
 			return &mCreateInfo;
 		}
+		virtual void UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData) = 0;
 	};
 
 	class ImageView

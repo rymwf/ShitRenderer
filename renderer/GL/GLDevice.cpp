@@ -181,20 +181,8 @@ namespace Shit
 
 	Image *GLDevice::Create(const ImageCreateInfo &createInfo, void *pData)
 	{
-		mImages.emplace_back(std::make_unique<GLImage>(&mStateManager, createInfo));
-		auto pImage = mImages.back().get();
-		if (pData)
-		{
-			ImageSubData subdata{
-				createInfo.format,
-				DataType::UNSIGNED_BYTE,
-				0,
-				{{},
-				 createInfo.extent},
-				pData};
-			static_cast<GLImage *>(pImage)->UpdateImageSubData(subdata);
-		}
-		return pImage;
+		mImages.emplace_back(std::make_unique<GLImage>(&mStateManager, createInfo, pData));
+		return mImages.back().get();
 	}
 	DescriptorSetLayout *GLDevice::Create(const DescriptorSetLayoutCreateInfo &createInfo)
 	{

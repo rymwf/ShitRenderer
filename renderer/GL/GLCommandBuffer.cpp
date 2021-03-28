@@ -667,5 +667,8 @@ namespace Shit
 	{
 		memcpy(AllocateCommand<DrawIndirectCountInfo>(GLCommandCode::DrawIndexedIndirectCount), &info, sizeof(DrawIndirectCountInfo));
 	}
-
+	void GLCommandBuffer::PipeplineBarrier([[maybe_unused]] const PipelineBarrierInfo &info)
+	{
+		//TODO: opengl pipeline barrier
+	}
 } // namespace Shit

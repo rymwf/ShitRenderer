@@ -585,6 +585,18 @@ namespace Shit
 	{
 		return glFormatArray[static_cast<size_t>(format)][1];
 	}
+	GLenum MapDataTypeFromFormat(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D24_UNORM_S8_UINT:
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+			return GL_FLOAT;
+		default:
+			return GL_UNSIGNED_BYTE;
+		}
+	}
 	GLenum Map(BufferMutableStorageUsage usage)
 	{
 		return glMutableStorageUsageArray[static_cast<size_t>(usage)];

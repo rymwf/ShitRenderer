@@ -107,6 +107,7 @@ namespace Shit
 	GLenum Map(ComponentSwizzle swizzle);
 	GLenum MapInternalFormat(ShitFormat format);
 	GLenum MapExternalFormat(ShitFormat format);
+	GLenum MapDataTypeFromFormat(ShitFormat format);
 	GLenum Map(ShaderStageFlagBits flag);
 	GLbitfield MapShaderStageFlags(ShaderStageFlagBits flags);
 	GLenum Map(BufferUsageFlagBits flag);

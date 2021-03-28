@@ -375,4 +375,59 @@ namespace Shit
 #endif
 	}
 
+	void VKCommandBuffer::PipeplineBarrier(const PipelineBarrierInfo &info)
+	{
+		std::vector<VkMemoryBarrier> memoryBarriers(info.memoryBarriers.size());
+		std::vector<VkBufferMemoryBarrier> bufferMemoryBarriers(info.bufferMemoryBarriers.size());
+		std::vector<VkImageMemoryBarrier> imageMemoryBarriers(info.imageMemoryBarriers.size());
+		std::transform(std::execution::par, info.memoryBarriers.begin(), info.memoryBarriers.end(), memoryBarriers.begin(), [](auto &&e) {
+			return VkMemoryBarrier{
+				VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+				nullptr,
+				Map(e.srcAccessMask),
+				Map(e.dstAccessMask)};
+		});
+		std::transform(std::execution::par, info.bufferMemoryBarriers.begin(), info.bufferMemoryBarriers.end(), bufferMemoryBarriers.begin(), [](auto &&e) {
+			return VkBufferMemoryBarrier{
+				VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+				nullptr,
+				Map(e.srcAccessMask),
+				Map(e.dstAccessMask),
+				VK_QUEUE_FAMILY_IGNORED,//e.srcQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED,//e.dstQueueFamilyIndex,
+				static_cast<VKBuffer *>(e.pBuffer)->GetHandle(),
+				e.offset,
+				e.size};
+		});
+		std::transform(std::execution::par, info.imageMemoryBarriers.begin(), info.imageMemoryBarriers.end(), imageMemoryBarriers.begin(), [](auto &&e) {
+			return VkImageMemoryBarrier{
+				VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				nullptr,
+				Map(e.srcAccessMask),
+				Map(e.dstAccessMask),
+				Map(e.oldImageLayout),
+				Map(e.newImageLayout),
+				VK_QUEUE_FAMILY_IGNORED,//e.srcQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED,//e.dstQueueFamilyIndex,
+				static_cast<VKImage *>(e.pImage)->GetHandle(),
+				VkImageSubresourceRange{
+					GetImageAspectFromFormat(static_cast<VKImage *>(e.pImage)->GetCreateInfoPtr()->format),
+					e.subresourceRange.baseMipLevel,
+					e.subresourceRange.levelCount,
+					e.subresourceRange.baseArrayLayer,
+					e.subresourceRange.layerCount,
+				}};
+		});
+		vkCmdPipelineBarrier(
+			mHandle,
+			Map(info.srcStageMask),
+			Map(info.dstStageMask),
+			Map(info.dependencyFlags),
+			static_cast<uint32_t>(memoryBarriers.size()),
+			memoryBarriers.data(),
+			static_cast<uint32_t>(bufferMemoryBarriers.size()),
+			bufferMemoryBarriers.data(),
+			static_cast<uint32_t>(imageMemoryBarriers.size()),
+			imageMemoryBarriers.data());
+	}
 } // namespace Shi

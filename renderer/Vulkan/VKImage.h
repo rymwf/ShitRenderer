@@ -14,31 +14,26 @@ namespace Shit
 {
 	class VKImage final : public Image
 	{
-		VkDevice mDevice;
 		VkImage mHandle;
 		VkDeviceMemory mMemory;
-		VkPhysicalDevice mPhysicalDevice;
+		Device *mpDevice;
+
+		void GenerateMipmaps(Filter filter);
 
 	public:
-		VKImage(VkDevice device, VkPhysicalDevice physicalDevice, const ImageCreateInfo &createInfo);
-		VKImage(VkDevice device, VkImage image, bool isSwapchainimage) : mDevice(device), mHandle(image)
+		VKImage(Device *pDevice, const ImageCreateInfo &createInfo, const void *pData);
+		VKImage(Device *pDevice, VkImage image, bool isSwapchainimage) : mpDevice(pDevice), mHandle(image)
 		{
 			mIsSwapchainImage = isSwapchainimage;
 		}
 
-		~VKImage() override
-		{
-			if (!mIsSwapchainImage)
-			{
-				vkDestroyImage(mDevice, mHandle, nullptr);
-				vkFreeMemory(mDevice, mMemory, nullptr);
-			}
-		}
+		~VKImage() override;
+
 		constexpr VkImage GetHandle() const
 		{
 			return mHandle;
 		}
-		void UpdateSubData();
+		void UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData) override;
 	};
 
 	class VKImageView final : public ImageView

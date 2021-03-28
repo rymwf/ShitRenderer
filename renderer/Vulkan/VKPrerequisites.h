@@ -72,6 +72,9 @@ namespace Shit
 		VkDeviceMemory allocateMemory(VkDevice logicalDevice, VkDeviceSize memsize, uint32_t memoryTypeIndex);
 	}
 
+	VkAccessFlags Map(AccessFlagBits flags);
+	VkDependencyFlags Map(DependencyFlagBits flags);
+	VkPipelineStageFlags Map(PipelineStageFlagBits flags);
 	VkBorderColor Map(BorderColor color);
 	VkSemaphoreType Map(SemaphoreType type);
 	VkFenceCreateFlags Map(FenceCreateFlagBits flags);

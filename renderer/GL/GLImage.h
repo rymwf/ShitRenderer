@@ -19,7 +19,7 @@ namespace Shit
 		bool mIsRenderbuffer{};
 
 	public:
-		GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo);
+		GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo, const void *pData);
 		~GLImage() override;
 		constexpr GLuint GetHandle() const
 		{
@@ -31,7 +31,7 @@ namespace Shit
 		 * 
 		 * @param imageSubData 
 		 */
-		void UpdateImageSubData(const ImageSubData &imageSubData);
+		void UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData) override;
 		constexpr bool IsRenderbuffer() const
 		{
 			return mIsRenderbuffer;

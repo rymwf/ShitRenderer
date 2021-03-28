@@ -96,7 +96,7 @@ namespace Shit
 		vkGetSwapchainImagesKHR(mpDevice->GetHandle(), mHandle, &swapchainImageCount, swapchainImages.data());
 		for (auto e : swapchainImages)
 		{
-			mImages.emplace_back(std::make_unique<VKImage>(mpDevice->GetHandle(), e, true));
+			mImages.emplace_back(std::make_unique<VKImage>(mpDevice, e, true));
 		}
 	}
 	Result VKSwapchain::GetNextImage(const GetNextImageInfo &info, uint32_t& index)

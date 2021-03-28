@@ -24,7 +24,7 @@ namespace Shit
 			glDeleteTextures(1, &mHandle);
 		}
 	}
-	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo)
+	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo,const void* pData)
 		: Image(createInfo), mpStateManager(pStateManager)
 	{
 		if (!static_cast<bool>(createInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT) &&
@@ -146,10 +146,17 @@ namespace Shit
 					}
 				}
 			}
-			mpStateManager->PopTextureUnit();
+			if (pData)
+			{
+				UpdateSubData(0, {{}, mCreateInfo.extent}, pData);
+				//TODO: generate mipmap using different filter
+				if (mCreateInfo.generateMipmap)
+					glGenerateMipmap(target);
+				mpStateManager->PopTextureUnit();
+			}
 		}
 	}
-	void GLImage::UpdateImageSubData(const ImageSubData &imageSubData)
+	void GLImage::UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData)
 	{
 		GLenum target = Map(mCreateInfo.imageType, mCreateInfo.samples);
 		mpStateManager->PushTextureUnit(0, target, mHandle);
@@ -158,29 +165,29 @@ namespace Shit
 		case ImageType::TYPE_1D:
 			glTexSubImage2D(
 				target,
-				imageSubData.mipLevel,
-				imageSubData.rect.offset.x,
-				imageSubData.rect.offset.y,
-				imageSubData.rect.extent.width,
-				imageSubData.rect.extent.height,
-				MapExternalFormat(imageSubData.format),
-				Map(imageSubData.dataType),
-				imageSubData.data);
+				mipLevel,
+				rect.offset.x,
+				rect.offset.y,
+				rect.extent.width,
+				rect.extent.height,
+				MapExternalFormat(mCreateInfo.format),
+				MapDataTypeFromFormat(mCreateInfo.format),
+				pData);
 			break;
 		case ImageType::TYPE_2D:
 		case ImageType::TYPE_3D:
 			glTexSubImage3D(
 				target,
-				imageSubData.mipLevel,
-				imageSubData.rect.offset.x,
-				imageSubData.rect.offset.y,
-				imageSubData.rect.offset.z,
-				imageSubData.rect.extent.width,
-				imageSubData.rect.extent.height,
-				imageSubData.rect.extent.depth,
-				MapExternalFormat(imageSubData.format),
-				Map(imageSubData.dataType),
-				imageSubData.data);
+				mipLevel,
+				rect.offset.x,
+				rect.offset.y,
+				rect.offset.z,
+				rect.extent.width,
+				rect.extent.height,
+				rect.extent.depth,
+				MapExternalFormat(mCreateInfo.format),
+				MapDataTypeFromFormat(mCreateInfo.format),
+				pData);
 			break;
 		}
 		mpStateManager->PopTextureUnit();

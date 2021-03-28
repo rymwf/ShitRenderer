@@ -58,5 +58,7 @@ namespace Shit
 		void DrawIndexed(const DrawIndexedIndirectCommand &info) override;
 		void DrawIndexedIndirect(const DrawIndirectInfo &info) override;
 		void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) override;
+
+		void PipeplineBarrier(const PipelineBarrierInfo &info) override;
 	};
 }

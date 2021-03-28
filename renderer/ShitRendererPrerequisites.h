@@ -356,15 +356,8 @@ namespace Shit
 		ImageTiling tiling; //no use for opengl
 		ImageUsageFlagBits usageFlags;
 		MemoryPropertyFlagBits memoryPropertyFlags;
-	};
-
-	struct ImageSubData
-	{
-		ShitFormat format; //data format
-		DataType dataType;
-		uint32_t mipLevel;
-		Rect3D rect;
-		void *data;
+		bool generateMipmap; //if generate mipmap
+		Filter mipmapFilter;
 	};
 
 	using ClearColorValue = std::variant<std::array<float, 4>, std::array<int32_t, 4>, std::array<uint32_t, 4>>;
@@ -707,5 +700,41 @@ namespace Shit
 	};
 	struct BufferViewCreateInfo
 	{
+	};
+
+	struct MemoryBarrier
+	{
+		AccessFlagBits srcAccessMask;	
+		AccessFlagBits dstAccessMask;	
+	};
+	struct BufferMemoryBarrier
+	{
+		AccessFlagBits srcAccessMask;
+		AccessFlagBits dstAccessMask;
+//		uint32_t srcQueueFamilyIndex;
+//		uint32_t dstQueueFamilyIndex;
+		Buffer *pBuffer;
+		uint64_t offset;
+		uint64_t size;
+	};
+	struct ImageMemoryBarrier
+	{
+		AccessFlagBits srcAccessMask;
+		AccessFlagBits dstAccessMask;
+		ImageLayout oldImageLayout;
+		ImageLayout newImageLayout;
+	//	uint32_t srcQueueFamilyIndex;
+	//	uint32_t dstQueueFamilyIndex;
+		Image *pImage;
+		ImageSubresourceRange subresourceRange;
+	};
+	struct PipelineBarrierInfo
+	{
+		PipelineStageFlagBits srcStageMask;
+		PipelineStageFlagBits dstStageMask;
+		DependencyFlagBits dependencyFlags;
+		std::vector<MemoryBarrier> memoryBarriers;
+		std::vector<BufferMemoryBarrier> bufferMemoryBarriers;
+		std::vector<ImageMemoryBarrier> imageMemoryBarriers;
 	};
 } // namespace Shit

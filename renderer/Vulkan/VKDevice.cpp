@@ -92,7 +92,7 @@ namespace Shit
 			//{CommandPoolCreateFlagBits::TRANSIENT_BIT,
 			{CommandPoolCreateFlagBits::RESET_COMMAND_BUFFER_BIT,
 			 transferQueueFamilyIndex.value()});
-		mpOneTimeCommandQueue = Create({transferQueueFamilyIndex->index, 0});
+		mpOneTimeCommandQueue = Create({transferQueueFamilyIndex->index, transferQueueFamilyIndex->count - 1});
 	}
 
 	std::optional<QueueFamilyIndex> VKDevice::GetPresentQueueFamilyIndex(ShitWindow *pWindow)
@@ -226,78 +226,7 @@ namespace Shit
 	}
 	Image *VKDevice::Create(const ImageCreateInfo &createInfo, void *pData)
 	{
-		mImages.emplace_back(std::make_unique<VKImage>(mDevice, GetPhysicalDevice(), createInfo));
-		if (pData)
-		{
-			uint64_t size = createInfo.extent.width * createInfo.extent.height * createInfo.extent.depth * GetFormatSize(createInfo.format);
-
-			BufferCreateInfo stagingBufferCreateInfo{
-				{},
-				size,
-				BufferUsageFlagBits::TRANSFER_SRC_BIT,
-				MemoryPropertyFlagBits::HOST_VISIBLE_BIT | MemoryPropertyFlagBits::HOST_COHERENT_BIT,
-			};
-
-			VKBuffer stagingbuffer{mDevice, GetPhysicalDevice(), stagingBufferCreateInfo};
-			void *data;
-			stagingbuffer.MapBuffer(0, size, &data);
-			memcpy(data, pData, static_cast<size_t>(size));
-			stagingbuffer.UnMapBuffer();
-
-			ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
-				Image *image = mImages.back().get();
-				VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(createInfo.format);
-
-				//1. transfer layout from undefined to transder destination
-				VkImageMemoryBarrier barrier{
-					VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					nullptr,
-					0,
-					VK_ACCESS_TRANSFER_WRITE_BIT,
-					VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					VK_QUEUE_FAMILY_IGNORED,
-					VK_QUEUE_FAMILY_IGNORED,
-					static_cast<VKImage *>(image)->GetHandle(),
-					{aspectFlags,
-					 0,
-					 createInfo.mipLevels,
-					 0,
-					 createInfo.arrayLayers}};
-				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, //src stage mask
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,	//dst stage mask
-									 0,									//dependency flags
-									 0, nullptr,						//memory barriers
-									 0, nullptr,						//buffer memory barriers
-									 1, &barrier);						//image memory barriers
-				//2. copy image
-				BufferImageCopy bufferImageCopy{
-					0,
-					0,
-					0,
-					{0, 0, createInfo.arrayLayers},
-					{},
-					createInfo.extent};
-				pCommandBuffer->CopyBufferToImage({&stagingbuffer,
-												   image,
-												   1,
-												   &bufferImageCopy});
-				//3. transfer layout from trander destiation to shader reading
-				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-									 0,
-									 0, nullptr,
-									 0, nullptr,
-									 1, &barrier);
-			});
-		}
+		mImages.emplace_back(std::make_unique<VKImage>(this, createInfo, pData));
 		return mImages.back().get();
 	}
 	ImageView *VKDevice::Create(const ImageViewCreateInfo &createInfo)

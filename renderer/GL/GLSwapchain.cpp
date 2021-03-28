@@ -62,7 +62,7 @@ namespace Shit
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 		while (count-- > 0)
 		{
-			mImages.emplace_back(std::make_unique<GLImage>(mpStateManager, imageCreateInfo));
+			mImages.emplace_back(std::make_unique<GLImage>(mpStateManager, imageCreateInfo, nullptr));
 		}
 	}
 	void GLSwapchain::CreateFramebuffer()
