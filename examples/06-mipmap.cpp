@@ -654,6 +654,7 @@ public:
 		//uint32_t mipmapLevels = 5;
 
 		ImageCreateInfo imageCreateInfo{
+			//.flags=ImageCreateFlagBits::MUTABLE_FORMAT_BIT,
 			.imageType = ImageType::TYPE_2D,
 			.format = ShitFormat::RGBA8_SRGB,
 			.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
@@ -671,6 +672,7 @@ public:
 		ImageViewCreateInfo imageViewCreateInfo{
 			.pImage = testImage,
 			.viewType = ImageViewType::TYPE_2D,
+			//.format = ShitFormat::RGBA8_UNORM,
 			.format = ShitFormat::RGBA8_SRGB,
 			.subresourceRange = {0, mipmapLevels - 1, 0, 1},
 		};

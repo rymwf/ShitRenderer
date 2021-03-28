@@ -100,7 +100,7 @@ namespace Shit
 				mHandle,
 				{aspectFlags,
 				 mipLevel,
-				 1,
+				 mCreateInfo.mipLevels,
 				 static_cast<uint32_t>(rect.offset.z),
 				 rect.extent.depth}};
 			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
