@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKPrerequisites.h"
+#include "VKPrerequisites.hpp"
 namespace Shit
 {
 	namespace VK

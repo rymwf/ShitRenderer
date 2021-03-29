@@ -7,10 +7,10 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKBuffer.h"
-#include "VKQueue.h"
-#include "VKCommandPool.h"
-#include "VKDevice.h"
+#include "VKBuffer.hpp"
+#include "VKQueue.hpp"
+#include "VKCommandPool.hpp"
+#include "VKDevice.hpp"
 
 namespace Shit
 {

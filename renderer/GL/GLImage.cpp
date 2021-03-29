@@ -7,8 +7,8 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLImage.h"
-#include "GLSampler.h"
+#include "GLImage.hpp"
+#include "GLSampler.hpp"
 namespace Shit
 {
 	GLImage::~GLImage()

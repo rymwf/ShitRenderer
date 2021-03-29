@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLCommandPool.h"
+#include "GLCommandPool.hpp"
 namespace Shit
 {
 

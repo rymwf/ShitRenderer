@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "ShitDevice.h"
+#include "ShitDevice.hpp"
 
 namespace Shit
 {

@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLSampler.h"
+#include "GLSampler.hpp"
 namespace Shit
 {
 	GLSampler::GLSampler(GLStateManager *pStateManager, const SamplerCreateInfo &createInfo)

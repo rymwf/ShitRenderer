@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKRenderPass.h"
+#include "VKRenderPass.hpp"
 
 namespace Shit
 {

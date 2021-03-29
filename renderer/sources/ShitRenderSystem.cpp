@@ -7,11 +7,11 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "ShitRenderSystem.h"
-#include "ShitModule.h"
+#include "ShitRenderSystem.hpp"
+#include "ShitModule.hpp"
 
 #ifdef _WIN32
-#include "ShitWindowWin32.h"
+#include "ShitWindowWin32.hpp"
 #endif
 
 namespace Shit

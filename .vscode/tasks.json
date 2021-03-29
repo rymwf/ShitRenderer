@@ -18,6 +18,21 @@
 		},
 		{
 			"type": "cppbuild",
+			"label": "C/C++: build all",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--target",
+				"all",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "cppbuild",
 			"label": "C/C++: build GLRenderer",
 			"command": "cmake",
 			"args": [

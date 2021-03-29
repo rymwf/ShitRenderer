@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLBuffer.h"
+#include "GLBuffer.hpp"
 namespace Shit
 {
 

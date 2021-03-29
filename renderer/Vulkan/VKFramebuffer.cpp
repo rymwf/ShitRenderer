@@ -7,9 +7,9 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKFramebuffer.h"
-#include "VKRenderPass.h"
-#include "VKImage.h"
+#include "VKFramebuffer.hpp"
+#include "VKRenderPass.hpp"
+#include "VKImage.hpp"
 namespace Shit
 {
 

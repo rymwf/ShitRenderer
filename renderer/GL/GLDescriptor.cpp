@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLDescriptor.h"
+#include "GLDescriptor.hpp"
 namespace Shit
 {
 	GLDescriptorSet::GLDescriptorSet(GLStateManager *pStateManager, const DescriptorSetLayout *pDescriptorSetLayout)

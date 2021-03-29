@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "ShitWindowWin32.h"
+#include "ShitWindowWin32.hpp"
 
 #include <windowsx.h>
 

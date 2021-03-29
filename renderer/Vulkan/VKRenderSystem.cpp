@@ -7,10 +7,10 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKRenderSystem.h"
+#include "VKRenderSystem.hpp"
 
 #ifdef _WIN32
-#include <renderer/ShitWindowWin32.h>
+#include <renderer/ShitWindowWin32.hpp>
 #endif
 
 namespace Shit

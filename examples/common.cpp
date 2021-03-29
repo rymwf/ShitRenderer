@@ -8,7 +8,7 @@
  * 
  */
 
-#include "common.h"
+#include "common.hpp"
 
 Shit::RendererVersion rendererVersion{Shit::RendererVersion::GL};
 

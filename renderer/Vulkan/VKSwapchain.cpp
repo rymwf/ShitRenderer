@@ -7,13 +7,13 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include <renderer/ShitWindow.h>
-#include "VKSwapchain.h"
-#include "VKSemaphore.h"
-#include "VKFence.h"
-#include "VKDevice.h"
-#include "VKSurface.h"
-#include "VKImage.h"
+#include <renderer/ShitWindow.hpp>
+#include "VKSwapchain.hpp"
+#include "VKSemaphore.hpp"
+#include "VKFence.hpp"
+#include "VKDevice.hpp"
+#include "VKSurface.hpp"
+#include "VKImage.hpp"
 
 namespace Shit
 {

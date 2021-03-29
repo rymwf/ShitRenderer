@@ -7,10 +7,10 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKImage.h"
-#include "VKBuffer.h"
-#include "VKDevice.h"
-#include "VKCommandBuffer.h"
+#include "VKImage.hpp"
+#include "VKBuffer.hpp"
+#include "VKDevice.hpp"
+#include "VKCommandBuffer.hpp"
 namespace Shit
 {
 	VKImage::~VKImage()

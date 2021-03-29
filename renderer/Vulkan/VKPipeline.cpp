@@ -7,10 +7,10 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKPipeline.h"
-#include "VKDescriptor.h"
-#include "VKShader.h"
-#include "VKRenderPass.h"
+#include "VKPipeline.hpp"
+#include "VKDescriptor.hpp"
+#include "VKShader.hpp"
+#include "VKRenderPass.hpp"
 namespace Shit
 {
 

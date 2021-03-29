@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLState.h"
+#include "GLState.hpp"
 namespace Shit
 {
 	static constexpr GLenum glBufferIndexedTargetArray[]{

@@ -59,12 +59,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SHIT_OUTPUT_DIR})
 
 set(CMAKE_DEBUG_POSTFIX d)
 
-configure_file(renderer/config.h.in ${CMAKE_BINARY_DIR}/config.h)
+configure_file(renderer/config.hpp.in ${CMAKE_BINARY_DIR}/config.hpp)
 
 #===========================
 #add shit renderer lib
 file(GLOB rendererfile 
-renderer/*.h 
+renderer/*.hpp
 renderer/sources/*.cpp 
 )
 add_library(ShitRenderer ${rendererfile} )
@@ -79,7 +79,7 @@ ${CMAKE_SOURCE_DIR}/renderer
 #add GL lib
 if(GLRENDERER)
 file(GLOB glfile 
-renderer/GL/*.h 
+renderer/GL/*.hpp
 renderer/GL/*.cpp 
 #renderer/GL/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
 )
@@ -113,7 +113,7 @@ if(MSVC)
 endif()
 
 file(GLOB vkfile 
-renderer/Vulkan/*.h 
+renderer/Vulkan/*.hpp
 renderer/Vulkan/*.cpp 
 #renderer/Vulkan/Platform/${CMAKE_HOST_SYSTEM_NAME}/*
 )
@@ -186,6 +186,7 @@ newexample(04-ubo)
 newexample(05-depth)
 newexample(06-mipmap)
 newexample(07-multisample)
+newexample(08-model)
 endif()
 
 

@@ -7,13 +7,13 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLSwapchain.h"
-#include "GLImage.h"
-#include "GLDevice.h"
-#include "GLFence.h"
-#include "GLSemaphore.h"
-#include "GLRenderPass.h"
-#include "GLFramebuffer.h"
+#include "GLSwapchain.hpp"
+#include "GLImage.hpp"
+#include "GLDevice.hpp"
+#include "GLFence.hpp"
+#include "GLSemaphore.hpp"
+#include "GLRenderPass.hpp"
+#include "GLFramebuffer.hpp"
 namespace Shit
 {
 	GLSwapchain::GLSwapchain(GLDevice *pDevice, GLStateManager *pStateManager, const SwapchainCreateInfo &createInfo)

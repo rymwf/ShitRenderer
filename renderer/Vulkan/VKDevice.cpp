@@ -7,25 +7,25 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKDevice.h"
-#include <renderer/ShitWindow.h>
-#include "VKSwapchain.h"
-#include "VKShader.h"
-#include "VKCommandPool.h"
-#include "VKCommandBuffer.h"
-#include "VKDevice.h"
-#include "VKQueue.h"
-#include "VKBuffer.h"
-#include "VKImage.h"
-#include "VKDescriptor.h"
-#include "VKSampler.h"
-#include "VKPipeline.h"
-#include "VKRenderPass.h"
-#include "VKFramebuffer.h"
-#include "VKSurface.h"
-#include "VKSemaphore.h"
-#include "VKDevice.h"
-#include "VKFence.h"
+#include "VKDevice.hpp"
+#include <renderer/ShitWindow.hpp>
+#include "VKSwapchain.hpp"
+#include "VKShader.hpp"
+#include "VKCommandPool.hpp"
+#include "VKCommandBuffer.hpp"
+#include "VKDevice.hpp"
+#include "VKQueue.hpp"
+#include "VKBuffer.hpp"
+#include "VKImage.hpp"
+#include "VKDescriptor.hpp"
+#include "VKSampler.hpp"
+#include "VKPipeline.hpp"
+#include "VKRenderPass.hpp"
+#include "VKFramebuffer.hpp"
+#include "VKSurface.hpp"
+#include "VKSemaphore.hpp"
+#include "VKDevice.hpp"
+#include "VKFence.hpp"
 
 namespace Shit
 {

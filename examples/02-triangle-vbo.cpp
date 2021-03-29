@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common.hpp"
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 
@@ -315,8 +315,11 @@ public:
 		};
 
 		std::vector<SubpassDescription> subPasses{
-			{PipelineBindPoint::GRAPHICS,
-			 colorAttachments}};
+			SubpassDescription{
+				.pipelineBindPoint = PipelineBindPoint::GRAPHICS,
+				.colorAttachments = colorAttachments,
+			},
+		};
 
 		RenderPassCreateInfo renderPassCreateInfo{
 			attachmentDescriptions,

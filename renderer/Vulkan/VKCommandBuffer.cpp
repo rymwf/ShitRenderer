@@ -7,14 +7,14 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKCommandBuffer.h"
-#include "VKBuffer.h"
-#include "VKImage.h"
-#include "VKFramebuffer.h"
-#include "VKRenderPass.h"
-#include "VKPipeline.h"
-#include "VKBuffer.h"
-#include "VKDescriptor.h"
+#include "VKCommandBuffer.hpp"
+#include "VKBuffer.hpp"
+#include "VKImage.hpp"
+#include "VKFramebuffer.hpp"
+#include "VKRenderPass.hpp"
+#include "VKPipeline.hpp"
+#include "VKBuffer.hpp"
+#include "VKDescriptor.hpp"
 namespace Shit
 {
 	VKCommandBuffer::VKCommandBuffer(VkDevice device, VkCommandPool commandPool, const CommandBufferCreateInfo &createInfo)

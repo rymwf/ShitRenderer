@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common.hpp"
 #include <GL/glew.h>
 #include <variant>
 
@@ -297,8 +297,11 @@ public:
 		};
 
 		std::vector<SubpassDescription> subPasses{
-			{PipelineBindPoint::GRAPHICS,
-			 colorAttachments}};
+			SubpassDescription{
+				.pipelineBindPoint = PipelineBindPoint::GRAPHICS,
+				.colorAttachments = colorAttachments,
+			},
+		};
 
 		RenderPassCreateInfo renderPassCreateInfo{
 			attachmentDescriptions,

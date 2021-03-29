@@ -7,8 +7,8 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKDescriptor.h"
-#include "VKSampler.h"
+#include "VKDescriptor.hpp"
+#include "VKSampler.hpp"
 namespace Shit
 {
 	VKDescriptorSetLayout::VKDescriptorSetLayout(VkDevice device, const DescriptorSetLayoutCreateInfo &createInfo)

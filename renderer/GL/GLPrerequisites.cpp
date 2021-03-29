@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLPrerequisites.h"
+#include "GLPrerequisites.hpp"
 
 namespace Shit
 {

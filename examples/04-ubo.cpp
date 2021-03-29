@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -417,8 +417,11 @@ public:
 		};
 
 		std::vector<SubpassDescription> subPasses{
-			{PipelineBindPoint::GRAPHICS,
-			 colorAttachments}};
+			SubpassDescription{
+				.pipelineBindPoint = PipelineBindPoint::GRAPHICS,
+				.colorAttachments = colorAttachments,
+			},
+		};
 
 		RenderPassCreateInfo renderPassCreateInfo{
 			attachmentDescriptions,

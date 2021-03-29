@@ -7,8 +7,8 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLRenderSystem.h"
-#include "GLDevice.h"
+#include "GLRenderSystem.hpp"
+#include "GLDevice.hpp"
 
 namespace Shit
 {

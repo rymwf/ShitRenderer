@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLPipeline.h"
+#include "GLPipeline.hpp"
 namespace Shit
 {
 	void GLGraphicsPipeline::CreateVertexArray(const VertexInputStateCreateInfo &vertexInputStateCreateInfo)

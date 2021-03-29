@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKSampler.h"
+#include "VKSampler.hpp"
 namespace Shit
 {
 	VKSampler::VKSampler(VkDevice device, const SamplerCreateInfo &createInfo)

@@ -7,13 +7,13 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLCommandBuffer.h"
-#include "GLFramebuffer.h"
-#include "GLRenderPass.h"
-#include "GLPipeline.h"
-#include "GLBuffer.h"
-#include "GLDescriptor.h"
-#include "GLImage.h"
+#include "GLCommandBuffer.hpp"
+#include "GLFramebuffer.hpp"
+#include "GLRenderPass.hpp"
+#include "GLPipeline.hpp"
+#include "GLBuffer.hpp"
+#include "GLDescriptor.hpp"
+#include "GLImage.hpp"
 namespace Shit
 {
 	GLCommandBuffer::GLCommandBuffer(GLStateManager *pStateManager, const CommandBufferCreateInfo &createInfo)

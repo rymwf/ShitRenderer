@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common.hpp"
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 

@@ -7,9 +7,9 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLFramebuffer.h"
-#include "GLImage.h"
-#include "GLRenderPass.h"
+#include "GLFramebuffer.hpp"
+#include "GLImage.hpp"
+#include "GLRenderPass.hpp"
 namespace Shit
 {
 	void GLFramebuffer::CheckCompleteness()
@@ -85,7 +85,7 @@ namespace Shit
 	}
 	void GLFramebuffer::Resolve(Filter filter)
 	{
-		if (mRenderFBO == (~0U))
+		if (mResolveFBO == (~0U))
 			return;
 		mpStateManager->BindReadFramebuffer(mRenderFBO);
 		mpStateManager->BindDrawFramebuffer(mResolveFBO);

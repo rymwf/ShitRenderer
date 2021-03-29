@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  *
  */
-#include "ShitModule.h"
+#include "ShitModule.hpp"
 
 #ifndef UNICODE  
 typedef std::string String;

@@ -7,11 +7,11 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "VKQueue.h"
-#include "VKSemaphore.h"
-#include "VKCommandBuffer.h"
-#include "VKFence.h"
-#include "VKSwapchain.h"
+#include "VKQueue.hpp"
+#include "VKSemaphore.hpp"
+#include "VKCommandBuffer.hpp"
+#include "VKFence.hpp"
+#include "VKSwapchain.hpp"
 
 namespace Shit
 {

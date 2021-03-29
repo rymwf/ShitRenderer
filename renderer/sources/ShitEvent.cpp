@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "ShitEvent.h"
+#include "ShitEvent.hpp"
 #ifdef _WIN32
 #include <Windows.h>
 #endif

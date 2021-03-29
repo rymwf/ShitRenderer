@@ -7,12 +7,12 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLQueue.h"
-#include "GLCommandBuffer.h"
-#include "GLFence.h"
-#include "GLSwapchain.h"
-#include "GLSemaphore.h"
-#include "GLFramebuffer.h"
+#include "GLQueue.hpp"
+#include "GLCommandBuffer.hpp"
+#include "GLFence.hpp"
+#include "GLSwapchain.hpp"
+#include "GLSemaphore.hpp"
+#include "GLFramebuffer.hpp"
 
 namespace Shit
 {

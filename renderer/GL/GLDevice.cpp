@@ -7,24 +7,24 @@
  * @copyright Copyright (c) 2021
  * 
  */
-#include "GLDevice.h"
-#include "GLFence.h"
-#include "GLQueue.h"
-#include "GLFramebuffer.h"
-#include "GLSemaphore.h"
-#include "GLPipeline.h"
-#include "GLRenderPass.h"
-#include "GLCommandPool.h"
-#include "GLSwapchain.h"
-#include "GLShader.h"
-#include "GLCommandBuffer.h"
-#include "GLBuffer.h"
-#include "GLImage.h"
-#include "GLDescriptor.h"
-#include "GLSampler.h"
+#include "GLDevice.hpp"
+#include "GLFence.hpp"
+#include "GLQueue.hpp"
+#include "GLFramebuffer.hpp"
+#include "GLSemaphore.hpp"
+#include "GLPipeline.hpp"
+#include "GLRenderPass.hpp"
+#include "GLCommandPool.hpp"
+#include "GLSwapchain.hpp"
+#include "GLShader.hpp"
+#include "GLCommandBuffer.hpp"
+#include "GLBuffer.hpp"
+#include "GLImage.hpp"
+#include "GLDescriptor.hpp"
+#include "GLSampler.hpp"
 
 #ifdef _WIN32
-#include <renderer/ShitWindowWin32.h>
+#include <renderer/ShitWindowWin32.hpp>
 #endif
 
 namespace Shit
