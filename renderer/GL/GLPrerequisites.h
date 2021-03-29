@@ -49,6 +49,8 @@
 namespace Shit
 {
 	class GLDevice;
+	class GLFramebuffer;
+	class GLRenderPass;
 
 	struct ShitGLVersion
 	{

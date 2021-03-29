@@ -24,6 +24,7 @@ namespace Shit
 	 */
 	class GLSwapchain : public Swapchain
 	{
+		RenderPass *mpRenderPass{};
 		Framebuffer *mpFramebuffer{};
 		GLDevice *mpDevice;
 		GLStateManager *mpStateManager;
@@ -36,6 +37,8 @@ namespace Shit
 
 	protected:
 		void CreateImages(uint32_t count);
+
+		void CreateRenderPass();
 
 		/**
 		 * @brief Create a Framebuffer object used to blit

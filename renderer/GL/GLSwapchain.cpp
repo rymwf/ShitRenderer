@@ -12,6 +12,8 @@
 #include "GLDevice.h"
 #include "GLFence.h"
 #include "GLSemaphore.h"
+#include "GLRenderPass.h"
+#include "GLFramebuffer.h"
 namespace Shit
 {
 	GLSwapchain::GLSwapchain(GLDevice *pDevice, GLStateManager *pStateManager, const SwapchainCreateInfo &createInfo)
@@ -37,13 +39,41 @@ namespace Shit
 		mpDevice->SetPresentMode(mCreateInfo.presentMode);
 
 		CreateImages(GetSwapchainImageCount());
+		CreateRenderPass();
 		CreateFramebuffer();
 	}
 	GLSwapchain::~GLSwapchain()
 	{
+		mpDevice->Destroy(mpRenderPass);
 		mpDevice->Destroy(mpFramebuffer);
 		for (auto &&e : mpImageViews)
 			mpDevice->Destroy(e);
+	}
+	void GLSwapchain::CreateRenderPass()
+	{
+		std::vector<AttachmentDescription> attachmentDescs(
+			mImages.size(),
+			{mCreateInfo.format,
+			 SampleCountFlagBits::BIT_1,
+			 AttachmentLoadOp::CLEAR,
+			 AttachmentStoreOp::DONT_CARE,
+			 AttachmentLoadOp::DONT_CARE,
+			 AttachmentStoreOp::DONT_CARE,
+			 ImageLayout::UNDEFINED, //inital layout
+			 ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+		uint32_t len = static_cast<uint32_t>(attachmentDescs.size());
+		std::vector<AttachmentReference> attachments(len);
+		for (uint32_t i = 0; i < len; ++i)
+			attachments[i] = {i};
+		SubpassDescription subpassDesc{
+			PipelineBindPoint::GRAPHICS,
+			{},
+			std::move(attachments),
+		};
+		RenderPassCreateInfo createInfo{
+			std::move(attachmentDescs),
+			{std::move(subpassDesc)}};
+		mpRenderPass = mpDevice->Create(createInfo);
 	}
 	void GLSwapchain::CreateImages(uint32_t count)
 	{
@@ -77,11 +107,13 @@ namespace Shit
 			imageViewCreateInfo.pImage = e.get();
 			mpImageViews.emplace_back(mpDevice->Create(imageViewCreateInfo));
 		}
-		FramebufferCreateInfo createInfo{nullptr,
+
+		FramebufferCreateInfo createInfo{mpRenderPass, //renderpass
 										 mpImageViews,
 										 createInfo.extent,
 										 1};
 		mpFramebuffer = mpDevice->Create(createInfo);
+		static_cast<GLFramebuffer *>(mpFramebuffer)->SetRenderFBOAttachment(0);
 	}
 
 	/**

@@ -50,7 +50,7 @@ namespace Shit
 			auto pFrambuffer = const_cast<GLFramebuffer *>(static_cast<const GLFramebuffer *>(pSwapchain->GetFramebufferPtr()));
 
 			mpStateManager->BindReadFramebuffer(pFrambuffer->GetHandle());
-			pFrambuffer->BindReadBuffer(presentInfo.imageIndices[i]);
+			pFrambuffer->BindReadBuffer(GL_COLOR_ATTACHMENT0 + presentInfo.imageIndices[i]);
 			mpStateManager->BindDrawFramebuffer(0);
 			glBlitFramebuffer(0, 0, swapchainExtent.width, swapchainExtent.height,
 							  0, 0, swapchainExtent.width, swapchainExtent.height,

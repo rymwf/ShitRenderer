@@ -16,7 +16,7 @@ namespace Shit
 		: RenderPass(createInfo), mDevice(device)
 	{
 		std::vector<VkAttachmentDescription> attachmentDescription;
-		for(auto&& e:createInfo.attachments)
+		for (auto &&e : createInfo.attachments)
 		{
 			attachmentDescription.emplace_back(
 				VkAttachmentDescription{
@@ -31,43 +31,39 @@ namespace Shit
 					Map(e.finalLayout)});
 		}
 
-
-		std::vector<VkSubpassDescription> subPasses;
+		std::vector<VkSubpassDescription> subPasses(createInfo.subpasses.size());
+		std::vector<VkAttachmentReference> inputAttachments;
 		std::vector<VkAttachmentReference> colorAttachments;
-		VkAttachmentReference resolveAttachment;
-		VkAttachmentReference depthStencilAttachment;
-		for(auto&& e:createInfo.subpasses)
-		{
-			for (auto &&a : e.colorAttachments)
-			{
-				colorAttachments.emplace_back(
-					VkAttachmentReference{
-						a.attachment,
-						Map(a.layout)});
-			}
-			if(e.resolveAttachment.has_value())
-			{
-				resolveAttachment.attachment = e.resolveAttachment->attachment;
-				resolveAttachment.layout = Map(e.resolveAttachment->layout);
-			}
-			if(e.depthStencilAttachment.has_value())
-			{
-				depthStencilAttachment.attachment = e.depthStencilAttachment->attachment;
-				depthStencilAttachment.layout = Map(e.depthStencilAttachment->layout);
-			}
-			subPasses.emplace_back(
-				VkSubpassDescription{
-					0,
-					Map(e.pipelineBindPoint),
-					0,
-					nullptr,
-					static_cast<uint32_t>(colorAttachments.size()),
-					colorAttachments.data(),
-					e.resolveAttachment.has_value() ? &resolveAttachment : nullptr, //resolve attachment, used for multisampling color attachment &depthStencilAttachment,
-					e.depthStencilAttachment.has_value() ? &depthStencilAttachment : nullptr,
-					0,
-					nullptr});
-		}
+		std::vector<VkAttachmentReference> resolveAttachments;
+		VkAttachmentReference depthStencilAttachment{};
+
+		std::transform(createInfo.subpasses.begin(), createInfo.subpasses.end(), subPasses.begin(), [&](auto &&e) {
+			inputAttachments.resize(e.inputAttachments.size());
+			colorAttachments.resize(e.colorAttachments.size());
+			resolveAttachments.resize(e.resolveAttachments.size());
+			std::transform(std::execution::par, e.inputAttachments.begin(), e.inputAttachments.end(), inputAttachments.begin(), [](auto &&a) {
+				return VkAttachmentReference{a.attachment, Map(a.layout)};
+			});
+			std::transform(std::execution::par, e.colorAttachments.begin(), e.colorAttachments.end(), colorAttachments.begin(), [](auto &&a) {
+				return VkAttachmentReference{a.attachment, Map(a.layout)};
+			});
+			std::transform(std::execution::par, e.resolveAttachments.begin(), e.resolveAttachments.end(), resolveAttachments.begin(), [](auto &&a) {
+				return VkAttachmentReference{a.attachment, Map(a.layout)};
+			});
+			if (e.depthStencilAttachment.has_value())
+				depthStencilAttachment = {e.depthStencilAttachment->attachment, Map(e.depthStencilAttachment->layout)};
+			return VkSubpassDescription{
+				0,
+				Map(e.pipelineBindPoint),
+				static_cast<uint32_t>(inputAttachments.size()),
+				inputAttachments.data(),
+				static_cast<uint32_t>(colorAttachments.size()),
+				colorAttachments.data(),
+				resolveAttachments.data(), //resolve attachment, used for multisampling color attachment
+				e.depthStencilAttachment.has_value() ? &depthStencilAttachment : nullptr,
+				0, nullptr //reserve attachments
+			};
+		});
 
 		std::vector<VkSubpassDependency> subPassDependencies{
 			{

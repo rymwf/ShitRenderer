@@ -44,6 +44,7 @@ namespace Shit
 		uint32_t mCurSubpass{};
 		Pipeline *mCurPipeline{};
 		IndexType mCurIndexType{};
+		GLFramebuffer* mpCurFramebuffer{};
 
 		template <class T>
 		T *AllocateCommand(GLCommandCode commandCode, size_t realSize= 0);

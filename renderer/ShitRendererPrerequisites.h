@@ -52,6 +52,8 @@
 
 #define THROW(str) throw std::runtime_error(__FILE__ " " + std::to_string(__LINE__) + ": " + str);
 
+#define SHIT_ATTACHMENT_UNUSED (~0U)
+
 namespace Shit
 {
 	class RenderSystem;
@@ -613,15 +615,16 @@ namespace Shit
 
 	struct AttachmentReference
 	{
-		uint32_t attachment;
+		uint32_t attachment;	//canbe SHIT_ATTACHMENT_UNUSED
 		ImageLayout layout;
 	};
 
 	struct SubpassDescription
 	{
 		PipelineBindPoint pipelineBindPoint;
+		std::vector<AttachmentReference> inputAttachments;
 		std::vector<AttachmentReference> colorAttachments;
-		std::optional<AttachmentReference> resolveAttachment;
+		std::vector<AttachmentReference> resolveAttachments;
 		std::optional<AttachmentReference> depthStencilAttachment;
 	};
 	struct RenderPassCreateInfo

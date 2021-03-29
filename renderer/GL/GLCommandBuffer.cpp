@@ -63,10 +63,12 @@ namespace Shit
 		case GLCommandCode::BeginRenderPass:
 		{
 			auto cmd = reinterpret_cast<const RenderPassBeginInfo *>(pCur);
-			auto framebuffer = static_cast<GLFramebuffer *>(cmd->pFramebuffer)->GetHandle();
-			mpStateManager->BindDrawFramebuffer(framebuffer);
+			mpCurFramebuffer = static_cast<GLFramebuffer *>(cmd->pFramebuffer);
+			mpStateManager->BindDrawFramebuffer(mpCurFramebuffer->GetRenderFramebuffer());
 			mCurRenderPass = cmd->pRenderPass;
 			mCurSubpass = 0;
+			//bind attachments
+			mpCurFramebuffer->SetRenderFBOAttachment(mCurSubpass);
 			//TODO: what is renderArea
 			//clear value
 			ClearBuffer();
@@ -509,6 +511,9 @@ namespace Shit
 			return sizeof(*cmd);
 		}
 		case GLCommandCode::EndRenderPass:
+			mpCurFramebuffer->SetResolveFBOAttachment(mCurSubpass);
+			mpCurFramebuffer->Resolve(Filter::LINEAR);
+			mpCurFramebuffer = nullptr;
 			mCurRenderPass = nullptr;
 			mCurSubpass = 0;
 			return 0;
@@ -524,7 +529,10 @@ namespace Shit
 		case GLCommandCode::NextSubpass:
 		{
 			auto cmd = reinterpret_cast<const SubpassContents *>(pCur);
+			mpCurFramebuffer->SetResolveFBOAttachment(mCurSubpass);
+			mpCurFramebuffer->Resolve(Filter::LINEAR);
 			++mCurSubpass;
+			mpCurFramebuffer->SetRenderFBOAttachment(mCurSubpass);
 			ClearBuffer();
 			return sizeof(*cmd);
 		}

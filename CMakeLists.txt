@@ -185,6 +185,7 @@ newexample(03-image)
 newexample(04-ubo)
 newexample(05-depth)
 newexample(06-mipmap)
+newexample(07-multisample)
 endif()
 
 

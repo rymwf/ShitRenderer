@@ -7,9 +7,11 @@ uint32_t WIDTH = 800, HEIGHT = 600;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const char *vertShaderName = "06.vert.spv";
-const char *fragShaderName = "06.frag.spv";
+const char *vertShaderName = "04.vert.spv";
+const char *fragShaderName = "04.frag.spv";
 const char *testImagePath = IMAGE_PATH "Lenna_test.jpg";
+
+const SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 
 std::string vertShaderPath;
 std::string fragShaderPath;
@@ -21,6 +23,12 @@ std::vector<Vertex> vertices{
 	{{0.5, 0.5, 0}, {1, 1, 0}, {1, 1}},
 };
 std::vector<uint16_t> indices{0, 1, 2, 3};
+
+struct alignas(16) UBO_MVP
+{
+	glm::mat4 M;
+	glm::mat4 PV;
+};
 
 class Hello
 {
@@ -68,6 +76,11 @@ class Hello
 	Image *testImage;
 	ImageView *testImageView;
 	Sampler *sampler;
+
+	std::vector<Buffer *> uboMVPBuffers;
+
+	Image *colorImage;
+	ImageView *colorImageView;
 
 public:
 	void initRenderSystem()
@@ -119,6 +132,7 @@ public:
 		createShaders();
 		createDescriptorSets();
 		createRenderPasses();
+		createColorResources();
 		createPipeline();
 		createFramebuffers();
 
@@ -128,6 +142,8 @@ public:
 		createImages();
 		createSamplers();
 		createSyncObjects();
+		createUBOMVPBuffer();
+
 		updateDescriptorSets();
 
 		createCommandBuffers();
@@ -177,6 +193,8 @@ public:
 	}
 	void cleanupSwapchain()
 	{
+		device->Destroy(colorImage);
+		device->Destroy(colorImageView);
 		for (auto &&e : swapchainImageViews)
 			device->Destroy(e);
 		device->Destroy(renderPass);
@@ -193,6 +211,7 @@ public:
 		cleanupSwapchain();
 		createSwapchains();
 		createRenderPasses();
+		createColorResources();
 		createFramebuffers();
 		createPipeline();
 		createCommandBuffers();
@@ -320,6 +339,12 @@ public:
 				.descriptorCount = 1,
 				.stageFlags = ShaderStageFlagBits::FRAGMENT_BIT,
 			},
+			DescriptorSetLayoutBinding{
+				.binding = 1,
+				.descriptorType = DescriptorType::UNIFORM_BUFFER,
+				.descriptorCount = 1,
+				.stageFlags = ShaderStageFlagBits::VERTEX_BIT,
+			},
 		};
 		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{bindings}));
 
@@ -328,7 +353,7 @@ public:
 			return DescriptorPoolSize{e.descriptorType, e.descriptorCount};
 		});
 		DescriptorPoolCreateInfo descriptorPoolCreateInfo{
-			.maxSets = 1,
+			.maxSets = static_cast<uint32_t>(swapchainImageViews.size()),
 			.poolSizes = poolSizes};
 		descriptorPool = device->Create(descriptorPoolCreateInfo);
 
@@ -342,6 +367,9 @@ public:
 				.pSampler = sampler,
 				.pImageView = testImageView,
 				.imageLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL}};
+		std::vector<DescriptorBufferInfo> buffersInfo{
+			{nullptr, 0, sizeof(UBO_MVP)},
+		};
 		std::vector<WriteDescriptorSet> writes{
 			WriteDescriptorSet{
 				nullptr, //pDstset
@@ -349,10 +377,21 @@ public:
 				0,		 //dstArrayElement
 				DescriptorType::COMBINED_IMAGE_SAMPLER,
 				imagesInfo,
-			}};
-		for (auto &&e : descriptorSets)
+			},
+			WriteDescriptorSet{
+				nullptr, //pDstset
+				1,		 //dst binding
+				0,		 //dstArrayElement
+				DescriptorType::UNIFORM_BUFFER,
+				buffersInfo,
+			},
+		};
+		for (size_t i = 0, n = descriptorSets.size(); i < n; ++i)
 		{
-			writes[0].pDstSet = e;
+			for (auto &&a : writes)
+				a.pDstSet = descriptorSets[i];
+			buffersInfo[0].pBuffer = uboMVPBuffers[i];
+			writes[1].values = buffersInfo;
 			device->UpdateDescriptorSets(writes, {});
 		}
 	}
@@ -360,23 +399,38 @@ public:
 	{
 		std::vector<AttachmentDescription> attachmentDescriptions{
 			{swapchain->GetCreateInfoPtr()->format,
+			 SAMPLE_COUNT,
+			 AttachmentLoadOp::CLEAR,
+			 AttachmentStoreOp::DONT_CARE,
+			 AttachmentLoadOp::DONT_CARE,
+			 AttachmentStoreOp::DONT_CARE,
+			 ImageLayout::UNDEFINED, //inital layout
+			 ImageLayout::COLOR_ATTACHMENT_OPTIMAL},
+			{swapchain->GetCreateInfoPtr()->format,
 			 SampleCountFlagBits::BIT_1,
 			 AttachmentLoadOp::CLEAR,
 			 AttachmentStoreOp::DONT_CARE,
 			 AttachmentLoadOp::DONT_CARE,
 			 AttachmentStoreOp::DONT_CARE,
 			 ImageLayout::UNDEFINED, //inital layout
-			 ImageLayout::PRESENT_SRC}};
+			 ImageLayout::PRESENT_SRC},
+		};
 
 		std::vector<AttachmentReference> colorAttachments{
 			{0, //the index of attachment description
 			 ImageLayout::COLOR_ATTACHMENT_OPTIMAL},
 		};
+		std::vector<AttachmentReference> resolveAttachments{
+			{1,
+			 ImageLayout::COLOR_ATTACHMENT_OPTIMAL}};
 
 		std::vector<SubpassDescription> subPasses{
-			{PipelineBindPoint::GRAPHICS,
-			{},
-			 colorAttachments}};
+			{
+				PipelineBindPoint::GRAPHICS,
+				{},
+				colorAttachments,
+				resolveAttachments,
+			}};
 
 		RenderPassCreateInfo renderPassCreateInfo{
 			attachmentDescriptions,
@@ -423,7 +477,12 @@ public:
 		rasterizationState.lineWidth = 1.f;
 
 		PipelineMultisampleStateCreateInfo multisampleState{
-			SampleCountFlagBits::BIT_1,
+			SAMPLE_COUNT,
+			true,	 //sample shading
+			1.f,	 //min sample shading
+			nullptr, //mask
+			false,	 //alpha to coverage
+			false	 //alpha to one
 		};
 		PipelineDepthStencilStateCreateInfo depthStencilState{};
 
@@ -463,7 +522,7 @@ public:
 		framebuffers.resize(count);
 		while (count-- > 0)
 		{
-			framebufferCreateInfo.attachments = {swapchainImageViews[count]};
+			framebufferCreateInfo.attachments = {colorImageView, swapchainImageViews[count]};
 			framebuffers[count] = device->Create(framebufferCreateInfo);
 		}
 	}
@@ -476,7 +535,10 @@ public:
 
 		CommandBufferBeginInfo cmdBufferBeginInfo{};
 
-		std::vector<ClearValue> clearValues{std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f}};
+		std::vector<ClearValue> clearValues{
+			std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f},
+			std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f},
+		};
 
 		RenderPassBeginInfo renderPassBeginInfo{
 			renderPass,
@@ -675,7 +737,7 @@ public:
 			.viewType = ImageViewType::TYPE_2D,
 			//.format = ShitFormat::RGBA8_UNORM,
 			.format = ShitFormat::RGBA8_SRGB,
-			.subresourceRange = {2, mipmapLevels - 2, 0, 1},
+			.subresourceRange = {0, mipmapLevels - 1, 0, 1},
 		};
 		testImageView = device->Create(imageViewCreateInfo);
 		stbi_image_free(pixels);
@@ -693,6 +755,47 @@ public:
 			.maxLod = 100.f,
 		};
 		sampler = device->Create(samplerCreateInfo);
+	}
+	void createUBOMVPBuffer()
+	{
+		UBO_MVP uboMVP{
+			.M = glm::rotate(glm::mat4(1), glm::radians(15.f), glm::vec3(0, 0, 1)),
+			.PV = glm::perspective(
+					  glm::radians(45.f),
+					  float(swapchain->GetCreateInfoPtr()->imageExtent.width) / float(swapchain->GetCreateInfoPtr()->imageExtent.height),
+					  1.f, 10.f) *
+				  glm::lookAt(glm::vec3(0, 0, 2), glm::vec3(0), glm::vec3(0, 1, 0)),
+		};
+		BufferCreateInfo bufferCreateInfo{
+			.size = sizeof(UBO_MVP),
+			.usage = BufferUsageFlagBits::UNIFORM_BUFFER_BIT,
+			.memoryPropertyFlags = MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT};
+		uboMVPBuffers.resize(swapchainImages.size());
+		for (auto &&e : uboMVPBuffers)
+			e = device->Create(bufferCreateInfo, &uboMVP);
+	}
+	void createColorResources()
+	{
+		ImageCreateInfo createInfo{
+			{},
+			ImageType::TYPE_2D,
+			swapchain->GetCreateInfoPtr()->format,
+			{swapchain->GetCreateInfoPtr()->imageExtent.width, swapchain->GetCreateInfoPtr()->imageExtent.height, 1},
+			1,
+			1,
+			SAMPLE_COUNT,
+			ImageTiling::OPTIMAL,
+			ImageUsageFlagBits::COLOR_ATTACHMENT_BIT,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+		};
+		colorImage = device->Create(createInfo, nullptr);
+		ImageViewCreateInfo imageViewCreateInfo{
+			colorImage,
+			ImageViewType::TYPE_2D,
+			swapchain->GetCreateInfoPtr()->format,
+			{},
+			{0, 1, 0, 1}};
+		colorImageView = device->Create(imageViewCreateInfo);
 	}
 };
 
