@@ -1,5 +1,5 @@
 /**
- * @file GLDevice.h
+ * @file GLDevice.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -55,9 +55,9 @@ namespace Shit
 
 		Queue *Create(const QueueCreateInfo &createInfo) override;
 
-		Buffer *Create(const BufferCreateInfo &createInfo, void *pData) override;
+		Buffer *Create(const BufferCreateInfo &createInfo, const void *pData) override;
 
-		Image *Create(const ImageCreateInfo &createInfo, void *pData) override;
+		Image *Create(const ImageCreateInfo &createInfo, const void *pData) override;
 
 		DescriptorSetLayout *Create(const DescriptorSetLayoutCreateInfo &createInfo) override;
 

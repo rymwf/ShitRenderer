@@ -1,5 +1,5 @@
 /**
- * @file GLSampler.h
+ * @file GLSampler.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

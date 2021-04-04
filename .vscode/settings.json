@@ -93,6 +93,8 @@
 		"stop_token": "cpp",
 		"execution": "cpp",
 		"queue": "cpp",
-		"forward_list": "cpp"
+		"forward_list": "cpp",
+		"filesystem": "cpp",
+		"memory_resource": "cpp"
 	}
 }

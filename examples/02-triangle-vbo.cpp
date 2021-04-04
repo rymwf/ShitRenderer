@@ -342,7 +342,7 @@ public:
 				"main",
 			},
 		};
-		auto vertexBindingDesc = Vertex::getVertexBindingDescription();
+		auto vertexBindingDesc = Vertex::getVertexBindingDescription(0);
 		auto vertexAttributeDesc = Vertex::getVertexAttributeDescription(0, 0);
 		VertexInputStateCreateInfo vertexInputState{
 			{std::move(vertexBindingDesc)},

@@ -1,5 +1,5 @@
 /**
- * @file GLImage.h
+ * @file GLImage.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -42,6 +42,7 @@ namespace Shit
 	{
 		GLuint mHandle;
 		GLStateManager *mpStateManger;
+		Sampler *mpSampler;
 	public:
 		GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo);
 		~GLImageView() override;
@@ -49,6 +50,6 @@ namespace Shit
 		{
 			return mHandle;
 		}
-		void SetSampler(const Sampler* pSampler);
+		void SetSampler(Sampler* pSampler);
 	};
 }

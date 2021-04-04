@@ -23,7 +23,7 @@ if (MSVC)
     #how to deal with these warns??
     #add_compile_options(/W4 /WX /wd4201 /wd4996 /wd4100 /wd4189 /wd4819) 
     #add_compile_options(/Wall /wd4514 /wd4625 /wd4626 /wd4668 /wd5045)
-	add_compile_options(/W4 /WX)
+	add_compile_options(/W4)
 
 else()
     # lots of warnings and all warnings as errors -Weffc++
@@ -74,6 +74,9 @@ ${CMAKE_SOURCE_DIR}
 ${CMAKE_BINARY_DIR}
 ${CMAKE_SOURCE_DIR}/renderer
 )
+set_target_properties(ShitRenderer PROPERTIES
+	COMPILE_FLAGS "/WX"
+)
 
 #========================
 #add GL lib
@@ -95,7 +98,7 @@ ${CMAKE_SOURCE_DIR}/renderer/GL
 ${CMAKE_BINARY_DIR}
 )
 set_target_properties(GLRenderer PROPERTIES
-	COMPILE_FLAGS -DSHIT_DLL
+	COMPILE_FLAGS "-DSHIT_DLL /WX"
 )
 add_dependencies(GLRenderer ShitRenderer)
 
@@ -128,7 +131,7 @@ ${CMAKE_BINARY_DIR}
 ${VULKAN_INCLUDE_DIR}
 )
 set_target_properties(VKRenderer PROPERTIES
-	COMPILE_FLAGS -DSHIT_DLL
+	COMPILE_FLAGS "-DSHIT_DLL /WX"
 )
 
 add_dependencies(VKRenderer ShitRenderer)
@@ -137,6 +140,8 @@ endif()
 #===================
 if(EXAMPLES)
 #find_package(Boost REQUIRED COMPONENTS program_options)
+find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
+find_package(RapidJSON CONFIG REQUIRED)
 #add examples
 function(newexample examplename)
 message(${examplename})
@@ -145,12 +150,15 @@ add_executable(${examplename} examples/${examplename}.cpp examples/common.cpp)
 
 set_target_properties(${examplename} PROPERTIES FOLDER examples
 #DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX}
+COMPILE_FLAGS "/wd5054"
 )
 
 target_include_directories(${examplename} PRIVATE 
 ${CMAKE_SOURCE_DIR}
 ${CMAKE_SOURCE_DIR}/examples
 ${CMAKE_BINARY_DIR} 
+${TINYGLTF_INCLUDE_DIRS}
+${RAPIDJSON_INCLUDE_DIRS}/rapidjson
 )
 
 if(MSVC)

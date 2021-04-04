@@ -276,7 +276,7 @@ namespace Shit
 			//TODO: optimize???
 			auto cmd = reinterpret_cast<const BindVertexBufferInfo *>(pCur);
 			auto ppBuffers = reinterpret_cast<Buffer *const *>(&cmd->ppBuffers);
-			auto pOffsets = reinterpret_cast<const uint64_t *>(&cmd->ppBuffers[cmd->bindingCount]);
+			auto pOffsets = reinterpret_cast<const uint64_t *>(&cmd->ppBuffers + cmd->bindingCount);
 			//auto graphicsPipeline = ;
 			auto &&vertexInputState = dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->vertexInputState;
 
@@ -318,7 +318,7 @@ namespace Shit
 		{
 			auto cmd = reinterpret_cast<const BindDescriptorSetsInfo *>(pCur);
 			auto pDescriptorSets = reinterpret_cast<DescriptorSet *const *>(&cmd->ppDescriptorSets);
-			for (uint32_t i = 0; i < (std::min)(cmd->descriptorSetCount, 1u); ++i)
+			for (uint32_t i = 0; i < cmd->descriptorSetCount; ++i)
 			{
 				auto &&bindingAttributes = *(static_cast<const GLDescriptorSet *>(pDescriptorSets[i])->GetBindingAttributePtr());
 				for (GLuint k = 0, len = static_cast<GLuint>(bindingAttributes.size()); k < len; ++k)
@@ -366,7 +366,7 @@ namespace Shit
 								if (!pBufferView)
 									return;
 							},
-							[](auto &&) {},
+							[](std::monostate) {},
 						},
 						bindingAttributes[k].val);
 				}
@@ -487,7 +487,6 @@ namespace Shit
 			glMultiDrawElementsIndirect(
 				mpStateManager->GetPrimitiveTopology(),
 				Map(mCurIndexType),
-				//&offset,
 				nullptr,
 				cmd->drawCount,
 				cmd->stride);
@@ -628,7 +627,7 @@ namespace Shit
 		size = info.bindingCount * sizeof(BindVertexBufferInfo::ppBuffers);
 		memcpy(&p->ppBuffers, info.ppBuffers, size);
 		size = info.bindingCount * sizeof(BindVertexBufferInfo::pOffsets);
-		memcpy(&p->ppBuffers[info.bindingCount], info.pOffsets, size);
+		memcpy(&p->ppBuffers + info.bindingCount, info.pOffsets, size);
 	}
 	void GLCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
 	{
@@ -646,9 +645,9 @@ namespace Shit
 		memcpy(p, &info, size);
 		size = sizeof(DescriptorSet *) * info.descriptorSetCount;
 		memcpy(&p->ppDescriptorSets, info.ppDescriptorSets, size);
-		memcpy(&p->ppDescriptorSets[info.descriptorSetCount], &info.dynamicOffsetCount, sizeof(uint32_t));
+		memcpy(&p->ppDescriptorSets + info.descriptorSetCount, &info.dynamicOffsetCount, sizeof(uint32_t));
 		size = sizeof(uint32_t) * info.dynamicOffsetCount;
-		auto p2 = reinterpret_cast<uint32_t *>(&p->ppDescriptorSets[info.descriptorSetCount]) + 1;
+		auto p2 = reinterpret_cast<uint32_t *>(&p->ppDescriptorSets + info.descriptorSetCount) + 1;
 		memcpy(p2, &info.pDynamicOffsets, sizeof(uint32_t) * info.dynamicOffsetCount);
 	}
 	void GLCommandBuffer::Draw(const DrawIndirectCommand &info)

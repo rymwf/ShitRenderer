@@ -16,6 +16,11 @@ namespace Shit
 		if (mVAO == 0)
 			THROW("failed to create vertex array object");
 		mpStateManager->BindVertexArray(mVAO);
+
+		std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> bindingTable;
+		for (auto &&e : vertexInputStateCreateInfo.vertexBindingDescriptions)
+			bindingTable[e.binding] = {e.stride, e.divisor};
+
 		for (auto &&attrib : vertexInputStateCreateInfo.vertexAttributeDescriptions)
 		{
 			glVertexAttribFormat(
@@ -25,7 +30,7 @@ namespace Shit
 				attrib.normalized,
 				attrib.offset);
 			glVertexAttribBinding(attrib.location, attrib.binding);
-			glVertexBindingDivisor(attrib.binding, vertexInputStateCreateInfo.vertexBindingDescriptions[attrib.binding].divisor);
+			glVertexBindingDivisor(attrib.binding, bindingTable[attrib.binding].second);
 			glEnableVertexAttribArray(attrib.location);
 		}
 	}
@@ -76,6 +81,59 @@ namespace Shit
 			stageFlags |= e.stage;
 		}
 		mProgram = CreateProgram(mShaders, true, false);
+
+		/*
+		//reflection
+		GLint activeResouces;
+		glGetProgramInterfaceiv(mProgram, GL_UNIFORM, GL_ACTIVE_RESOURCES, &activeResouces);
+		LOG("GL_ACTIVE_RESOURCES");
+		LOG_VAR(activeResouces);
+		GLint a;
+		glGetProgramInterfaceiv(mProgram, GL_UNIFORM, GL_MAX_NAME_LENGTH, &a);
+		LOG("GL_MAX_NAME_LENGTH");
+		LOG_VAR(a);
+		glGetProgramInterfaceiv(mProgram, GL_UNIFORM, GL_MAX_NUM_ACTIVE_VARIABLES, &a);
+		LOG("GL_MAX_NUM_ACTIVE_VARIABLES");
+		LOG_VAR(a);
+
+		std::vector<GLenum> props{
+			GL_TYPE,
+			GL_ARRAY_SIZE,
+			GL_OFFSET,
+			GL_BLOCK_INDEX,
+			GL_ARRAY_STRIDE,
+			GL_MATRIX_STRIDE,
+			GL_IS_ROW_MAJOR,
+			GL_ATOMIC_COUNTER_BUFFER_INDEX,
+			GL_REFERENCED_BY_VERTEX_SHADER,
+			GL_REFERENCED_BY_TESS_CONTROL_SHADER,
+			GL_REFERENCED_BY_TESS_EVALUATION_SHADER,
+			GL_REFERENCED_BY_GEOMETRY_SHADER,
+			GL_REFERENCED_BY_FRAGMENT_SHADER,
+			GL_REFERENCED_BY_COMPUTE_SHADER,
+			GL_LOCATION,
+		};
+		std::vector<GLint> params;
+		GLsizei length;
+		GLsizei nameLength{};
+		for (GLint i = 0; i < activeResouces; ++i)
+		{
+			LOG("=========================================");
+			char name[64];
+			glGetProgramResourceName(mProgram, GL_UNIFORM, i, 64, &length, name);
+			LOG_VAR(nameLength);
+			LOG_VAR(name);
+			params.clear();
+			params.resize(props.size());
+			glGetProgramResourceiv(mProgram, GL_UNIFORM, i, static_cast<GLsizei>(props.size()), props.data(), static_cast<GLsizei>(props.size()), &length, params.data());
+			LOG_VAR(length);
+			for (auto param : params)
+			{
+				LOG_VAR(param);
+			}
+		}
+*/
+		//=========
 
 		glGenProgramPipelines(1, &mHandle);
 

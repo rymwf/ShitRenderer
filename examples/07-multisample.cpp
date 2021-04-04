@@ -1,6 +1,5 @@
 #include "common.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 uint32_t WIDTH = 800, HEIGHT = 600;
@@ -346,7 +345,7 @@ public:
 				.stageFlags = ShaderStageFlagBits::VERTEX_BIT,
 			},
 		};
-		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{bindings}));
+		descriptorSetLayouts.resize(swapchainImages.size(), device->Create(DescriptorSetLayoutCreateInfo{bindings}));
 
 		std::vector<DescriptorPoolSize> poolSizes(bindings.size());
 		std::transform(bindings.begin(), bindings.end(), poolSizes.begin(), [](auto &&e) {
@@ -453,7 +452,7 @@ public:
 				"main",
 			},
 		};
-		auto vertexBindingDesc = Vertex::getVertexBindingDescription();
+		auto vertexBindingDesc = Vertex::getVertexBindingDescription(0);
 		auto vertexAttributeDesc = Vertex::getVertexAttributeDescription(0, 0);
 		VertexInputStateCreateInfo vertexInputState{
 			{std::move(vertexBindingDesc)},
@@ -569,8 +568,8 @@ public:
 				PipelineBindPoint::GRAPHICS,
 				pipelineLayout,
 				0,
-				static_cast<uint32_t>(descriptorSets.size()),
-				descriptorSets.data()};
+				1,
+				&descriptorSets[i]};
 			commandBuffers[i]->BindDescriptorSets(info);
 
 			int drawMethod = 4;

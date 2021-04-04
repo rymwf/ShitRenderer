@@ -1,6 +1,5 @@
 #include "common.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 uint32_t WIDTH = 800, HEIGHT = 600;
@@ -25,8 +24,8 @@ std::vector<Vertex> vertices{
 std::vector<uint16_t> indices{0, 1, 2, 3};
 
 std::vector<InstanceAttribute> instanceAttributes{
-	{glm::rotate(glm::mat4(1), glm::radians(-15.f), glm::vec3(0, 1, 0))},
-	{glm::rotate(glm::mat4(1), glm::radians(15.f), glm::vec3(0, 1, 0))},
+	{glm::vec4(1), glm::rotate(glm::mat4(1), glm::radians(-15.f), glm::vec3(0, 1, 0))},
+	{glm::vec4(1), glm::rotate(glm::mat4(1), glm::radians(15.f), glm::vec3(0, 1, 0))},
 	//{glm::rotate(glm::translate(glm::mat4(1), glm::vec3(-.5f, 0, 0)), glm::radians(-15.f), glm::vec3(0, 1, 0))},
 	//{glm::rotate(glm::translate(glm::mat4(1), glm::vec3(.5f, 0, 0)), glm::radians(15.f), glm::vec3(0, 1, 0))},
 	//	{glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 1)},
@@ -475,10 +474,10 @@ public:
 				"main",
 			},
 		};
-		auto vertexBindingDesc = Vertex::getVertexBindingDescription();
+		auto vertexBindingDesc = Vertex::getVertexBindingDescription(0);
 		auto vertexAttributeDesc = Vertex::getVertexAttributeDescription(0, 0);
-		auto instanceBindingDesc = InstanceAttribute::getVertexBindingDescription();
-		auto instanceAttributeDesc = InstanceAttribute::getVertexAttributeDescription(Vertex::getLocationCount(), 1);
+		auto instanceBindingDesc = InstanceAttribute::getVertexBindingDescription(1);
+		auto instanceAttributeDesc = InstanceAttribute::getVertexAttributeDescription(3, 1);
 
 		VertexInputStateCreateInfo vertexInputState{
 			{std::move(vertexBindingDesc), std::move(instanceBindingDesc)},
@@ -596,8 +595,8 @@ public:
 				PipelineBindPoint::GRAPHICS,
 				pipelineLayout,
 				0,
-				static_cast<uint32_t>(descriptorSets.size()),
-				descriptorSets.data()};
+				1,
+				&descriptorSets[i]};
 			commandBuffers[i]->BindDescriptorSets(info);
 
 			//draw index

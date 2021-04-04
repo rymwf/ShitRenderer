@@ -80,13 +80,14 @@ namespace Shit
 
 		uint32_t vertexInputBindingCount = static_cast<uint32_t>(createInfo.vertexInputState.vertexBindingDescriptions.size());
 		std::vector<VkVertexInputBindingDescription> vertexInputBindingDescs(vertexInputBindingCount);
-		for (uint32_t i = 0; i < vertexInputBindingCount; ++i)
-		{
-			vertexInputBindingDescs[i] = {
-				i,
-				createInfo.vertexInputState.vertexBindingDescriptions[i].stride,
-				createInfo.vertexInputState.vertexBindingDescriptions[i].divisor ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX};
-		}
+		std::transform(std::execution::par, createInfo.vertexInputState.vertexBindingDescriptions.begin(),
+					   createInfo.vertexInputState.vertexBindingDescriptions.end(),
+					   vertexInputBindingDescs.begin(), [](auto &&e) {
+						   return VkVertexInputBindingDescription{
+							   e.binding,
+							   e.stride,
+							   e.divisor ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX};
+					   });
 		uint32_t vertexAttribCount = static_cast<uint32_t>(createInfo.vertexInputState.vertexAttributeDescriptions.size());
 		std::vector<VkVertexInputAttributeDescription> vertexAttributes(vertexAttribCount);
 		for (uint32_t i = 0; i < vertexAttribCount; ++i)

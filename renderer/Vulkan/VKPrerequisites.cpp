@@ -1428,6 +1428,7 @@ namespace Shit
 		{
 			switch (components)
 			{
+			case 0:
 			case 1:
 				switch (dataType)
 				{
@@ -1496,6 +1497,7 @@ namespace Shit
 		{
 			switch (components)
 			{
+			case 0:
 			case 1:
 				switch (dataType)
 				{

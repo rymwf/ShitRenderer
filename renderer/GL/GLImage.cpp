@@ -260,8 +260,11 @@ namespace Shit
 		glTexParameteriv(target, GL_TEXTURE_SWIZZLE_RGBA, swizzles);
 		mpStateManger->PopTextureUnit();
 	}
-	void GLImageView::SetSampler(const Sampler *pSampler)
+	void GLImageView::SetSampler(Sampler *pSampler)
 	{
+		if (mpSampler == pSampler)
+			return;
+		mpSampler = pSampler;
 		GLenum target = Map(mCreateInfo.viewType, mCreateInfo.pImage->GetCreateInfoPtr()->samples);
 		mpStateManger->PushTextureUnit(0, target, mHandle);
 

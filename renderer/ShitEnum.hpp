@@ -1,5 +1,5 @@
 /**
- * @file ShitEnum.h
+ * @file ShitEnum.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -556,7 +556,8 @@ namespace Shit
 		UNIFORM_BUFFER_DYNAMIC,
 		STORAGE_BUFFER_DYNAMIC,
 		INPUT_ATTACHMENT0,
-		Num
+		Num,
+		None=0xFFFF,
 	};
 
 	enum class BufferUsageFlagBits

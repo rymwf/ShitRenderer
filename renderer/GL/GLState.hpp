@@ -1,5 +1,5 @@
 /**
- * @file GLState.h
+ * @file GLState.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -42,7 +42,7 @@
 #define MAX_FRAGMENT_ATOMIC_COUNTERS 8
 #define MAX_FRAGMENT_SHADER_STORAGE_BLOCKS 8
 
-//min value of compute shader limist
+//min value of compute shader limist 
 #define MAX_COMPUTE_UNIFORM_BLOCKS 14
 #define MAX_COMPUTE_TEXTURE_IMAGE_UNITS 16
 #define MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS 8
@@ -68,7 +68,7 @@
 #define MAX_TRANSFORM_FEEDBACK_BUFFERS 4
 
 // self defined var
-#define MAX_UNIFORM_BLOCKS 14
+#define MAX_UNIFORM_BLOCKS 32 
 #define MAX_IMAGE_UNIFORMS 8
 
 namespace Shit

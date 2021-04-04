@@ -1,6 +1,4 @@
 #include "common.hpp"
-#include <GL/glew.h>
-#include <variant>
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 

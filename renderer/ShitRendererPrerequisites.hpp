@@ -1,5 +1,5 @@
 /**
- * @file ShitRendererPrerequisites.h
+ * @file ShitRendererPrerequisites.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -45,12 +45,12 @@
 #else
 #include <iostream>
 #define LOG(str) \
-	std::cout << __FILE__ << " " << __LINE__ << ":  " << str << std::endl
+	std::cout << __FILE__ << " " << __LINE__ << ":  " << str << std::endl;
 #define LOG_VAR(str) \
-	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl
+	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl;
 #endif
 
-#define THROW(str) throw std::runtime_error(__FILE__ " " + std::to_string(__LINE__) + ": " + str);
+#define THROW(str) {throw std::runtime_error(__FILE__ " " + std::to_string(__LINE__) + ": " + str);}
 
 #define SHIT_ATTACHMENT_UNUSED (~0U)
 
@@ -184,7 +184,7 @@ namespace Shit
 
 	struct VertexBindingDescription
 	{
-		//uint32_t binding; //index in given buffers, binding must be equal to the given buffer index
+		uint32_t binding; 
 		uint32_t stride;
 		uint32_t divisor; //attributes advance once per divior instances,when 0, advance per vertex
 	};
@@ -678,7 +678,7 @@ namespace Shit
 	struct BindIndexBufferInfo
 	{
 		Buffer *pBuffer;
-		uint64_t offset;
+		uint64_t offset; //must be 0
 		IndexType indexType;
 	};
 	struct BindPipelineInfo

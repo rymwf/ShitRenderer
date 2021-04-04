@@ -1,5 +1,5 @@
 /**
- * @file GLFence.h
+ * @file GLFence.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

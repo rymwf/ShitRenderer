@@ -1,5 +1,5 @@
 /**
- * @file GLCommandBuffer.h
+ * @file GLCommandBuffer.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

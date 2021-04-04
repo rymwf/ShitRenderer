@@ -307,6 +307,7 @@ namespace Shit
 	}
 	void GLStateManager::BindIndexBuffer(GLuint buffer, GLenum indexType, uint64_t offset)
 	{
+		//TODO: indexbuffer offset
 		if (mPipelineState.indexBuffer.buffer != buffer)
 		{
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);

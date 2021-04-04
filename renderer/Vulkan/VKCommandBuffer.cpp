@@ -299,7 +299,7 @@ namespace Shit
 
 		vkCmdBindDescriptorSets(mHandle,
 								Map(info.pipelineBindPoint),
-								static_cast<VKPipelineLayout *>(info.pPipelineLayout)->GetHandle(),
+								static_cast<VKPipelineLayout *>(info.pPipelineLayout)->GetHandle(),	//cannot be null handle
 								info.firstset,
 								info.descriptorSetCount,
 								descriptorSets.data(),

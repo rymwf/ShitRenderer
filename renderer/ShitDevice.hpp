@@ -1,5 +1,5 @@
 /**
- * @file ShitDevice.h
+ * @file ShitDevice.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -99,8 +99,8 @@ namespace Shit
 		 */
 		virtual Queue *Create(const QueueCreateInfo &createInfo) = 0;
 
-		virtual Buffer *Create(const BufferCreateInfo &createInfo, void *pData) = 0;
-		virtual Image *Create(const ImageCreateInfo &createInfo, void *pData) = 0;
+		virtual Buffer *Create(const BufferCreateInfo &createInfo, const void *pData) = 0;
+		virtual Image *Create(const ImageCreateInfo &createInfo, const void *pData) = 0;
 		virtual ImageView *Create(const ImageViewCreateInfo &createInfo) = 0;
 		virtual DescriptorSetLayout *Create(const DescriptorSetLayoutCreateInfo &createInfo) = 0;
 		virtual PipelineLayout *Create(const PipelineLayoutCreateInfo &createInfo) = 0;

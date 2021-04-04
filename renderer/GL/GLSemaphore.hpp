@@ -1,5 +1,5 @@
 /**
- * @file GLSemaphore.h
+ * @file GLSemaphore.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

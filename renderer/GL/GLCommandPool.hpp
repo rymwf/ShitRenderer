@@ -1,5 +1,5 @@
 /**
- * @file GLCommandPool.h
+ * @file GLCommandPool.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

@@ -1,5 +1,5 @@
 /**
- * @file GLPipeline.h
+ * @file GLPipeline.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

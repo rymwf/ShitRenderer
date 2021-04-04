@@ -1,5 +1,5 @@
 /**
- * @file common.h
+ * @file common.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -12,19 +12,47 @@
 #include <renderer/ShitRenderSystem.hpp>
 #include <fstream>
 #include <cstring>
+#include <variant>
+#include <filesystem>
 
 #include "config.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <variant>
-
 //#include <boost/program_options.hpp>
 
 using namespace Shit;
 
+#define ASSET_PATH SHIT_SOURCE_DIR "/examples/assets/"
 #define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders/"
 #define IMAGE_PATH SHIT_SOURCE_DIR "/examples/assets/images/"
+
+#define VERTEX_LOCATION_COUNT 4
+
+#define LOCATION_POSITION 0
+#define LOCATION_NORMAL 1
+#define LOCATION_TANGENT 2
+#define LOCATION_TEXCOORD0 3
+//#define LOCATION_COLOR 4
+//#define LOCATION_TEXCOORD1 6
+//#define LOCATION_TEXCOORD2 7
+//#define LOCATION_BITANGENT 8
+
+#define LOCATION_INSTANCE_COLOR_FACTOR 11
+#define LOCATION_INSTANCE_MATRIX 12
+
+#define TEXTURE_MAX_BINDING_COUNT 12
+
+#define TEXTURE_BINDING_ALBEDO 0
+#define TEXTURE_BINDING_NORMAL 1
+#define TEXTURE_BINDING_METALLIC_ROUGHNESS 2
+#define TEXTURE_BINDING_OCCLUSION 3
+#define TEXTURE_BINDING_EMISSION 4
+#define TEXTURE_BINDING_TRANSPARENCY 5
+
+#define UNIFORM_BINDING_M 12
+#define UNIFORM_BINDING_PV 13
+#define UNIFORM_BINDING_MATERIAL 14
 
 /*
 ///#ifdef NDEBUG
@@ -40,14 +68,18 @@ using namespace Shit;
 
 extern Shit::RendererVersion rendererVersion;
 
+void *loadImage(const char *imagePath, int &width, int &height, int &components, int request_components);
+void freeImage(void *pData);
+
 struct Vertex
 {
 	glm::vec3 pos;
 	glm::vec3 color;
 	glm::vec2 texCoord;
-	static VertexBindingDescription getVertexBindingDescription()
+	static VertexBindingDescription getVertexBindingDescription(uint32_t binding)
 	{
 		return {
+			binding,
 			sizeof(Vertex),
 			0,
 		};
@@ -83,10 +115,11 @@ struct Vertex
 
 struct InstanceAttribute
 {
-	glm::mat4 translation;
-	static VertexBindingDescription getVertexBindingDescription()
+	glm::vec4 colorFactor;
+	glm::mat4 matrix;
+	static VertexBindingDescription getVertexBindingDescription(uint32_t binding)
 	{
-		return {sizeof(InstanceAttribute), 1};
+		return {binding, sizeof(InstanceAttribute), 1};
 	}
 	static std::vector<VertexAttributeDescription> getVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
 	{
@@ -115,11 +148,17 @@ struct InstanceAttribute
 			 DataType::FLOAT,
 			 false,
 			 48},
+			{startLocation + 4,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 64},
 		};
 	}
 	static uint32_t getLocationCount()
 	{
-		return 4;
+		return 5;
 	}
 };
 
@@ -208,72 +247,201 @@ struct OrthogonalProjectionDescription
 };
 using ProjectionDescription = std::variant<PerspectiveProjectionDescription, OrthogonalProjectionDescription>;
 
-struct FrustumCreateInfo
+struct Frustum
 {
 	ProjectionDescription projectionDescription;
-};
+	glm::dmat4 projectionMatrix;
+	bool isUpdated{true};
 
-class Frustum
-{
-	ProjectionDescription mProjectionDescription;
-	glm::mat4 mProjection;
-
-public:
-	Frustum(const FrustumCreateInfo &createInfo) : mProjectionDescription(createInfo.projectionDescription)
+	Frustum() = default;
+	Frustum(const ProjectionDescription &projDesc) : projectionDescription(projDesc)
+	{
+		Update();
+	}
+	void Update()
 	{
 		std::visit(
 			[&](auto &&arg) {
 				using T = std::decay_t<decltype(arg)>;
 				if constexpr (std::is_same_v<T, PerspectiveProjectionDescription>)
 				{
-					mProjection = glm::perspective(arg.fovy, arg.aspect, arg.near, arg.far);
+					projectionMatrix = glm::perspective(arg.fovy, arg.aspect, arg.near, arg.far);
 				}
 				else if constexpr (std::is_same_v<T, OrthogonalProjectionDescription>)
 				{
-					mProjection = glm::ortho(arg.left, arg.right, arg.bottom, arg.top, arg.near, arg.far);
+					projectionMatrix = glm::ortho(arg.left, arg.right, arg.bottom, arg.top, arg.near, arg.far);
 				}
 			},
-			mProjectionDescription);
-	}
-	void Update(const PerspectiveProjectionDescription &perspective)
-	{
-		mProjectionDescription = perspective;
-		mProjection = glm::perspective(perspective.fovy, perspective.aspect, perspective.near, perspective.far);
-	}
-	void Update(const OrthogonalProjectionDescription &ortho)
-	{
-		mProjectionDescription = ortho;
-		mProjection = glm::ortho(ortho.left, ortho.right, ortho.bottom, ortho.top, ortho.near, ortho.far);
-	}
-	constexpr const glm::mat4 *GetProjectionPtr() const
-	{
-		return &mProjection;
+			projectionDescription);
+		isUpdated = true;
 	}
 };
 
-struct CameraCreateInfo
+struct Camera
 {
-	glm::vec3 eye;
-	glm::vec3 center;
-	glm::vec3 up;
+	glm::dvec3 eye;
+	glm::dvec3 center;
+	glm::dvec3 up;
+	glm::dmat4 viewMatrix;
+	bool isUpdated{true};
+
+	Camera() = default;
+	Camera(
+		glm::dvec3 eye_,
+		glm::dvec3 center_,
+		glm::dvec3 up_) : eye(eye_), center(center_), up(up_)
+	{
+		Update();
+	}
+	void Update()
+	{
+		viewMatrix = glm::lookAt(eye, center, up);
+		isUpdated = true;
+	}
 };
 
-class Camera
+//vector
+template <typename T>
+struct VertexAttribute
 {
-	CameraCreateInfo mCreateInfo;
-	glm::mat4 mView;
+	static VertexBindingDescription GetVertexBindingDescription()
+	{
+		return {sizeof(T)};
+	}
+	static std::vector<VertexAttributeDescription> GetVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
+	{
+		return {
+			{
+				startLocation + 0,
+				binding,				   //buffer index
+				sizeof(T) / sizeof(float), //components
+				DataType::FLOAT,		   //data type
+				false,					   //normalized
+				0						   //offset
+			},
+		};
+	}
+};
+template <>
+struct VertexAttribute<glm::mat4>
+{
+	static VertexBindingDescription GetVertexBindingDescription()
+	{
+		return {sizeof(glm::mat4)};
+	}
+	static std::vector<VertexAttributeDescription> GetVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
+	{
+		return {
+			{startLocation + 0,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 0},
+			{startLocation + 1,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 16},
+			{startLocation + 2,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 32},
+			{startLocation + 3,
+			 binding,
+			 4,
+			 DataType::FLOAT,
+			 false,
+			 48},
+		};
+	}
+};
 
+struct alignas(16) Material
+{
+	float alphaCutoff;
+	float metallic;
+	float roughness;
+	std::array<float, 3> emissiveFactor;
+	std::array<float, 4> baseColorFactor;
+};
+namespace tinygltf
+{
+	class Model;
+	struct Accessor;
+	struct Animation;
+	struct Buffer;
+	struct BufferView;
+	struct Material;
+	struct Mesh;
+	class Node;
+	struct Texture;
+	struct Image;
+	struct Skin;
+	struct Sampler;
+	struct Camera;
+	struct Scene;
+	struct Light;
+}
+class Model
+{
 public:
-	Camera(const CameraCreateInfo &createInfo) : mCreateInfo(createInfo)
+	Model(const char *filePath);
+	~Model();
+
+	void DownloadModel(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes = {});
+	void FreeModel(Device *pDevice);
+
+	/**
+	 * @brief 
+	 * 
+	 * @param pDevice 
+	 * @param sceneIndex -1 :default scene. -2: all scenes
+	 */
+	void DrawModel(
+		Device *pDevice,
+		CommandBuffer *pCommandBuffer,
+		DescriptorSet *pDescriptorSet,
+		PipelineLayout* pPipelineLayout,
+		int sceneIndex = -1);
+
+	size_t GetSceneCount() const;
+
+	constexpr const VertexInputStateCreateInfo *GetVertexInputStateCreateInfoPtr() const
 	{
+		return &mVertexInputStateCreateInfo;
 	}
-	void Update(const CameraCreateInfo &createInfo)
+
+private:
+	std::unique_ptr<tinygltf::Model> mpModel;
+
+	CommandBuffer *mpCurCommandBuffer;
+	Device *mpCurDevice;
+	int mCurSceneIndex;
+	DescriptorSet* mpCurDescriptorSet;
+	PipelineLayout* mpCurPipelineLayout;
+
+	struct ModelAsset
 	{
-		mCreateInfo = createInfo;
-		mView = glm::lookAt(createInfo.eye, createInfo.center, createInfo.up);
-	}
-	constexpr const glm::mat4 *GetViewPtr() const
-	{
-		return &mView;
-	}
+		std::vector<Buffer *> sceneBuffers;
+		std::vector<DrawIndirectInfo> primitivesDrawIndirectInfo;
+		std::vector<Image *> images;
+		std::vector<ImageView *> imageViews;
+		std::vector<Sampler *> samplers;
+		Buffer *instanceAttributeBuffer{};
+		Buffer *materialBuffer;	//
+		Buffer *nodeMatrixBuffer;
+	};
+	std::unordered_map<Device *, ModelAsset> mModelAssets;
+
+	VertexInputStateCreateInfo mVertexInputStateCreateInfo;
+
+	std::filesystem::path mModelPath;
+
+	void DrawNode(const tinygltf::Node &node);
+	void DrawMesh(const tinygltf::Mesh &mesh);
+	IndexType GetIndexType(int32_t componentSize);
 };

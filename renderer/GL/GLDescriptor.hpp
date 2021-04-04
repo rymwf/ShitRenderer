@@ -1,5 +1,5 @@
 /**
- * @file GLDescriptor.h
+ * @file GLDescriptor.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
@@ -32,7 +32,7 @@ namespace Shit
 	public:
 		struct BindingAttribute
 		{
-			DescriptorType type;
+			DescriptorType type{DescriptorType::None};
 			std::variant<
 				std::monostate,
 				ImageView *,
@@ -60,7 +60,7 @@ namespace Shit
 
 	private:
 		GLStateManager *mpStateManger;
-		std::array<BindingAttribute, MAX_BINDING_NUM> mBindingAttributes;
+		std::array<BindingAttribute, MAX_BINDING_NUM> mBindingAttributes{};
 	};
 	class GLDescriptorPool final : public DescriptorPool
 	{

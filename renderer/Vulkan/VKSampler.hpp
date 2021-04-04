@@ -1,5 +1,5 @@
 /**
- * @file VKSampler.h
+ * @file VKSampler.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

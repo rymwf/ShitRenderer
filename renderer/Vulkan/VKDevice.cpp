@@ -162,7 +162,7 @@ namespace Shit
 		mQueues.emplace_back(std::make_unique<VKQueue>(mDevice, createInfo));
 		return mQueues.back().get();
 	}
-	Buffer *VKDevice::Create(const BufferCreateInfo &createInfo, void *pData)
+	Buffer *VKDevice::Create(const BufferCreateInfo &createInfo, const void *pData)
 	{
 		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, GetPhysicalDevice(), createInfo));
 
@@ -224,7 +224,7 @@ namespace Shit
 		mpOneTimeCommandQueue->WaitIdle();
 		pOneTimeCommandBuffer->Reset(CommandBufferResetFlatBits::RELEASE_RESOURCES_BIT);
 	}
-	Image *VKDevice::Create(const ImageCreateInfo &createInfo, void *pData)
+	Image *VKDevice::Create(const ImageCreateInfo &createInfo, const void *pData)
 	{
 		mImages.emplace_back(std::make_unique<VKImage>(this, createInfo, pData));
 		return mImages.back().get();
@@ -276,60 +276,82 @@ namespace Shit
 	}
 	void VKDevice::UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, const std::vector<CopyDescriptorSet> &descriptorCopies)
 	{
-		std::vector<VkWriteDescriptorSet> writes(descriptorWrites.size());
-
-		std::vector<VkDescriptorImageInfo> imagesInfo;
-		std::vector<VkDescriptorBufferInfo> buffersInfo;
-		std::vector<VkBufferView> texelBufferViews;
-
-		std::transform(descriptorWrites.begin(), descriptorWrites.end(), writes.begin(), [&](auto &&e) {
-			imagesInfo.clear();
-			buffersInfo.clear();
-			texelBufferViews.clear();
+		struct Temp
+		{
+			std::vector<VkDescriptorImageInfo> imagesInfo;
+			std::vector<VkDescriptorBufferInfo> buffersInfo;
+			std::vector<VkBufferView> texelBufferViews;
+		};
+		auto count = descriptorWrites.size();
+		std::vector<VkWriteDescriptorSet> writes(count);
+		std::vector<Temp> temp(count);
+		std::transform(std::execution::par, descriptorWrites.begin(), descriptorWrites.end(), temp.begin(), [&](auto &&e) {
+			Temp a;			
 			std::visit(
 				overloaded{
-					[&imagesInfo](const std::vector<DescriptorImageInfo> &val) {
-						imagesInfo.resize(val.size());
-						std::transform(std::execution::par, val.begin(), val.end(), imagesInfo.begin(), [](auto &&image) {
+					[&a](const std::vector<DescriptorImageInfo> &val) {
+						a.imagesInfo.resize(val.size());
+						std::transform(std::execution::par, val.begin(), val.end(), a.imagesInfo.begin(), [](auto &&image) {
 							return VkDescriptorImageInfo{
 								image.pSampler ? static_cast<VKSampler *>(image.pSampler)->GetHandle() : VK_NULL_HANDLE,
 								static_cast<VKImageView *>(image.pImageView)->GetHandle(),
 								Map(image.imageLayout)};
 						});
 					},
-					[&buffersInfo](const std::vector<DescriptorBufferInfo> &val) {
-						buffersInfo.resize(val.size());
-						std::transform(std::execution::par, val.begin(), val.end(), buffersInfo.begin(), [](auto &&buffer) {
+					[&a](const std::vector<DescriptorBufferInfo> &val) {
+						a.buffersInfo.resize(val.size());
+						std::transform(std::execution::par, val.begin(), val.end(), a.buffersInfo.begin(), [](auto &&buffer) {
 							return VkDescriptorBufferInfo{
 								static_cast<VKBuffer *>(buffer.pBuffer)->GetHandle(),
 								buffer.offset,
 								buffer.range};
 						});
 					},
-					[&texelBufferViews](const std::vector<BufferView *> &val) {
-						texelBufferViews.resize(val.size());
+					[&a](const std::vector<BufferView *> &val) {
+						a.texelBufferViews.resize(val.size());
 						//TODO: buffer views
 					},
 				},
 				e.values);
-
-			auto descriptorCount = imagesInfo.size();
-			if (!descriptorCount)
-				descriptorCount = buffersInfo.size();
-			if (!descriptorCount)
-				descriptorCount = texelBufferViews.size();
-			return VkWriteDescriptorSet{
-				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-				.pNext = nullptr,
-				.dstSet = static_cast<VKDescriptorSet *>(e.pDstSet)->GetHandle(),
-				.dstBinding = e.dstBinding,
-				.dstArrayElement = 0, //e.dstArrayElement,
-				.descriptorCount = static_cast<uint32_t>(descriptorCount),
-				.descriptorType = Map(e.descriptorType),
-				.pImageInfo = imagesInfo.data(),
-				.pBufferInfo = buffersInfo.data(),
-				.pTexelBufferView = texelBufferViews.data()};
+			return a;
 		});
+		while (count-- > 0)
+		{
+			auto descriptorCount = temp[count].imagesInfo.size();
+			if (!descriptorCount)
+				descriptorCount = temp[count].buffersInfo.size();
+			if (!descriptorCount)
+				descriptorCount = temp[count].texelBufferViews.size();
+			writes[count] = {
+				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				nullptr,
+				static_cast<VKDescriptorSet *>(descriptorWrites[count].pDstSet)->GetHandle(),
+				descriptorWrites[count].dstBinding,
+				0, //e.dstArrayElement,
+				static_cast<uint32_t>(descriptorCount),
+				Map(descriptorWrites[count].descriptorType),
+				temp[count].imagesInfo.data(),
+				temp[count].buffersInfo.data(),
+				temp[count].texelBufferViews.data()};
+		};
+
+		//	auto descriptorCount = imagesInfo.size();
+		//	if (!descriptorCount)
+		//		descriptorCount = buffersInfo.size();
+		//	if (!descriptorCount)
+		//		descriptorCount = texelBufferViews.size();
+		//	return VkWriteDescriptorSet{
+		//		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		//		.pNext = nullptr,
+		//		.dstSet = static_cast<VKDescriptorSet *>(e.pDstSet)->GetHandle(),
+		//		.dstBinding = e.dstBinding,
+		//		.dstArrayElement = 0, //e.dstArrayElement,
+		//		.descriptorCount = static_cast<uint32_t>(descriptorCount),
+		//		.descriptorType = Map(e.descriptorType),
+		//		.pImageInfo = e.imagesInfo.data(),
+		//		.pBufferInfo = e.buffersInfo.data(),
+		//		.pTexelBufferView = e.texelBufferViews.data()};
+		//});
 		std::vector<VkCopyDescriptorSet> copies(descriptorCopies.size());
 		std::transform(std::execution::par, descriptorCopies.begin(), descriptorCopies.end(), copies.begin(), [](auto &&e) {
 			return VkCopyDescriptorSet{

@@ -1,5 +1,5 @@
 /**
- * @file VKSemaphore.h
+ * @file VKSemaphore.hpp
  * @author yangzs
  * @brief 
  * @version 0.1

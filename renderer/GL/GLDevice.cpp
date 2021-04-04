@@ -173,13 +173,13 @@ namespace Shit
 		mQueues.emplace_back(std::make_unique<GLQueue>(this, &mStateManager, createInfo));
 		return mQueues.back().get();
 	}
-	Buffer *GLDevice::Create(const BufferCreateInfo &createInfo, void *pData)
+	Buffer *GLDevice::Create(const BufferCreateInfo &createInfo, const void *pData)
 	{
 		mBuffers.emplace_back(std::make_unique<GLBuffer>(&mStateManager, createInfo, pData));
 		return mBuffers.back().get();
 	}
 
-	Image *GLDevice::Create(const ImageCreateInfo &createInfo, void *pData)
+	Image *GLDevice::Create(const ImageCreateInfo &createInfo, const void *pData)
 	{
 		mImages.emplace_back(std::make_unique<GLImage>(&mStateManager, createInfo, pData));
 		return mImages.back().get();

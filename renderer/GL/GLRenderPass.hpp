@@ -1,5 +1,5 @@
 /**
- * @file GLRenderPass.h
+ * @file GLRenderPass.hpp
  * @author yangzs
  * @brief 
  * @version 0.1
