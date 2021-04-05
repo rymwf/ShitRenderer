@@ -285,6 +285,7 @@ namespace Shit
 
 	public:
 		GLStateManager() = default;
+		void Clear();
 
 		//framebuffer
 		void BindDrawFramebuffer(GLuint framebuffer);

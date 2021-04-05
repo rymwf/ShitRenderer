@@ -47,9 +47,9 @@ namespace Shit
 
 		VkMemoryRequirements imageMemoryRequireMents;
 		vkGetImageMemoryRequirements(device, mHandle, &imageMemoryRequireMents);
-		LOG(imageMemoryRequireMents.size);
-		LOG(imageMemoryRequireMents.alignment);
-		LOG(imageMemoryRequireMents.memoryTypeBits);
+		LOG_VAR(imageMemoryRequireMents.size);
+		LOG_VAR(imageMemoryRequireMents.alignment);
+		LOG_VAR(imageMemoryRequireMents.memoryTypeBits);
 
 		auto memoryTypeIndex = VK::findMemoryTypeIndex(static_cast<VKDevice *>(pDevice)->GetPhysicalDevice(), imageMemoryRequireMents.memoryTypeBits,
 													   Map(createInfo.memoryPropertyFlags));

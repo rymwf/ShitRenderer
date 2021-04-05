@@ -127,5 +127,6 @@ namespace Shit
 		void Destroy(const Fence *pFence);
 		void Destroy(const Framebuffer *pFramebuffer);
 		void Destroy(const DescriptorPool* pDescriptorPool);
+		void Destroy(const Sampler* pSampler);
 	};
 }

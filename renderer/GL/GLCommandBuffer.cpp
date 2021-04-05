@@ -390,7 +390,13 @@ namespace Shit
 		case GLCommandCode::CopyBuffer:
 		{
 			auto cmd = reinterpret_cast<const CopyBufferInfo *>(pCur);
-			return sizeof(*cmd);
+			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, static_cast<GLBuffer *>(cmd->pSrcBuffer)->GetHandle());
+			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, static_cast<GLBuffer *>(cmd->pDstBuffer)->GetHandle());
+			for (uint32_t i = 0; i < cmd->regionCount; ++i)
+			{
+				glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, cmd->pRegions[i].srcOffset, cmd->pRegions[i].dstOffset, cmd->pRegions[i].size);
+			}
+			return sizeof(sizeof(Buffer *) * 2 + sizeof(uint32_t) + sizeof(BufferCopy) * cmd->regionCount);
 		}
 		case GLCommandCode::CopyBufferToImage:
 		{
@@ -450,10 +456,8 @@ namespace Shit
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_PARAMETER_BUFFER, static_cast<GLBuffer *>(cmd->pCountBuffer)->GetHandle());
 			//opengl 4.6
-			//uint32_t offset = static_cast<uint32_t>(cmd->offset);
 			glMultiDrawArraysIndirectCount(
 				mpStateManager->GetPrimitiveTopology(),
-				//&offset,
 				nullptr,
 				static_cast<GLintptr>(cmd->countBufferOffset),
 				cmd->maxDrawCount,
@@ -463,15 +467,27 @@ namespace Shit
 		case GLCommandCode::DrawIndexed:
 		{
 			auto cmd = reinterpret_cast<const DrawIndexedIndirectCommand *>(pCur);
-			//TODO:
-			//uint32_t firstIndex = static_cast<uint32_t>(cmd->firstIndex + mpStateManager->GetIndexOffset() * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
+			auto indexTypeSize=2;
+			switch(mpStateManager->GetIndexType())
+			{
+			case GL_UNSIGNED_BYTE:
+				indexTypeSize = 1;
+				break;
+			case GL_UNSIGNED_SHORT:
+			default:
+				indexTypeSize = 2;
+				break;
+			case GL_UNSIGNED_INT:
+				indexTypeSize = 4;
+				break;
+			}
+			auto offset = cmd->firstIndex*indexTypeSize;
 			//opengl 4.2
 			glDrawElementsInstancedBaseVertexBaseInstance(
 				mpStateManager->GetPrimitiveTopology(),
 				cmd->indexCount,
 				Map(mCurIndexType),
-				//&firstIndex,
-				nullptr,
+				&offset,
 				cmd->instanceCount,
 				cmd->vertexOffset,
 				cmd->firstInstance);
@@ -481,8 +497,6 @@ namespace Shit
 		{
 			auto cmd = reinterpret_cast<const DrawIndirectInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
-			//auto indexOffset=;
-			//uint32_t offset = static_cast<uint32_t>(cmd->offset + mpStateManager->GetIndexOffset() * static_cast<uint32_t>(IndexType::UINT8) / static_cast<uint32_t>(mCurIndexType));
 			//opengl4.3
 			glMultiDrawElementsIndirect(
 				mpStateManager->GetPrimitiveTopology(),
@@ -497,12 +511,12 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectCountInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_PARAMETER_BUFFER, static_cast<GLBuffer *>(cmd->pCountBuffer)->GetHandle());
-			//uint32_t offset = static_cast<uint32_t>(cmd->offset + mpStateManager->GetIndexOffset());
+
 			//opengl 4.6
 			glMultiDrawElementsIndirectCount(
 				mpStateManager->GetPrimitiveTopology(),
 				Map(mCurIndexType),
-				//&offset,
+				//&cmd->offset,
 				nullptr,
 				static_cast<GLintptr>(cmd->countBufferOffset),
 				cmd->maxDrawCount,
@@ -600,7 +614,11 @@ namespace Shit
 	}
 	void GLCommandBuffer::CopyBuffer(const CopyBufferInfo &copyInfo)
 	{
-		memcpy(AllocateCommand<CopyBufferInfo>(GLCommandCode::CopyBuffer), &copyInfo, sizeof(CopyBufferInfo));
+		auto size0 = sizeof(Buffer *) * 2 + sizeof(uint32_t);
+		auto size1 = sizeof(BufferCopy) * copyInfo.regionCount;
+		auto p = AllocateCommand<CopyBufferInfo>(GLCommandCode::CopyBuffer, size0 + size1);
+		memcpy(p, &copyInfo, size0);
+		memcpy(&p->pRegions, copyInfo.pRegions, size1);
 	}
 	void GLCommandBuffer::CopyImage(const CopyImageInfo &copyInfo)
 	{
@@ -632,6 +650,8 @@ namespace Shit
 	void GLCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
 	{
 		memcpy(AllocateCommand<BindIndexBufferInfo>(GLCommandCode::BindIndexBuffer), &info, sizeof(BindIndexBufferInfo));
+		mCurIndexType = info.indexType;
+		mCurIndexOffset = info.offset;
 	}
 	void GLCommandBuffer::BindDescriptorSets(const BindDescriptorSetsInfo &info)
 	{
@@ -668,6 +688,27 @@ namespace Shit
 	}
 	void GLCommandBuffer::DrawIndexedIndirect(const DrawIndirectInfo &info)
 	{
+		if (mCurIndexOffset > 0)
+		{
+			//TODO: will repeat some times, how to fix?
+			GLuint stageBuffer;
+			glGenBuffers(1, &stageBuffer);
+			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, stageBuffer);
+			glBufferStorage(GL_COPY_WRITE_BUFFER, sizeof(DrawIndexedIndirectCommand), nullptr, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
+			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, static_cast<GLBuffer *>(info.pBuffer)->GetHandle());
+			glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(DrawIndexedIndirectCommand));
+
+			auto p = (DrawIndexedIndirectCommand *)glMapBufferRange(GL_COPY_WRITE_BUFFER, 0, sizeof(DrawIndexedIndirectCommand),
+																	GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
+
+			p->firstIndex = static_cast<uint32_t>(mCurIndexOffset) / GetIndexTypeSize(mCurIndexType);
+			glUnmapBuffer(GL_COPY_WRITE_BUFFER);
+
+			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, stageBuffer);
+			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, static_cast<GLBuffer *>(info.pBuffer)->GetHandle());
+			glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(DrawIndexedIndirectCommand));
+		}
+
 		memcpy(AllocateCommand<DrawIndirectInfo>(GLCommandCode::DrawIndexedIndirect), &info, sizeof(DrawIndirectInfo));
 	}
 	void GLCommandBuffer::DrawIndexedIndirectCount(const DrawIndirectCountInfo &info)

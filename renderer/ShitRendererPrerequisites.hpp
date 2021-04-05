@@ -56,6 +56,21 @@
 
 namespace Shit
 {
+
+	inline uint32_t GetIndexTypeSize(IndexType type)
+	{
+		switch (type)
+		{
+		case IndexType::UINT8:
+			return 1;
+		case IndexType::UINT16:
+		default:
+			return 2;
+		case IndexType::UINT32:
+			return 4;
+		}
+	}
+
 	class RenderSystem;
 	class ShitWindow;
 	class Device;

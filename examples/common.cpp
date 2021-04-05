@@ -119,7 +119,7 @@ bool loadModel(tinygltf::Model &model, const char *filename)
 	}
 
 	if (!res)
-		THROW("Failed to load glTF: " + filename) //std::cout << "Failed to load glTF: " << filename << std::endl;
+		std::cout << "Failed to load glTF: " << filename << std::endl;
 	else
 		std::cout << "Loaded glTF: " << filename << std::endl;
 
@@ -170,7 +170,9 @@ Model::Model(const char *filePath)
 {
 	mModelPath = filePath;
 	mpModel = std::make_unique<tinygltf::Model>();
-	loadModel(*mpModel, filePath);
+	if (!loadModel(*mpModel, filePath))
+		return;
+	mLoadSucceed = true;
 
 	//init vertexInputStateInfo
 	mVertexInputStateCreateInfo.vertexAttributeDescriptions = {
@@ -235,14 +237,47 @@ Model::~Model()
 			e.first->Destroy(a.pBuffer);
 		for (auto &&buffer : e.second.sceneBuffers)
 			e.first->Destroy(buffer);
+		for (auto &&a : e.second.images)
+			e.first->Destroy(a);
+		for (auto &&a : e.second.imageViews)
+			e.first->Destroy(a);
+		for (auto &&a : e.second.samplers)
+			e.first->Destroy(a);
+		e.first->Destroy(e.second.materialBuffer);
+		e.first->Destroy(e.second.nodeAttributeBuffer);
+		e.first->Destroy(e.second.descriptorPool);
 	}
+}
+void Model::FreeModel(Device *pDevice)
+{
+	for (auto &&e : mModelAssets[pDevice].primitivesDrawIndirectInfo)
+		pDevice->Destroy(e.pBuffer);
+	for (auto &&buffer : mModelAssets[pDevice].sceneBuffers)
+		pDevice->Destroy(buffer);
+	for (auto &&e : mModelAssets[pDevice].images)
+		pDevice->Destroy(e);
+	for (auto &&e : mModelAssets[pDevice].imageViews)
+		pDevice->Destroy(e);
+	for (auto &&e : mModelAssets[pDevice].samplers)
+		pDevice->Destroy(e);
+	pDevice->Destroy(mModelAssets[pDevice].instanceAttributeBuffer);
+
+	pDevice->Destroy(mModelAssets[pDevice].materialBuffer);
+	pDevice->Destroy(mModelAssets[pDevice].nodeAttributeBuffer);
+
+	pDevice->Destroy(mModelAssets[pDevice].descriptorPool);
+
+	mModelAssets.erase(pDevice);
 }
 size_t Model::GetSceneCount() const
 {
 	return mpModel->scenes.size();
 }
-void Model::DownloadModel(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes)
+void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const std::vector<InstanceAttribute> &instanceAttributes)
 {
+	mpCurPipelineLayout = pipelineLayout;
+
+	//scene buffers
 	for (auto &&buffer : mpModel->buffers)
 	{
 		BufferCreateInfo createInfo{
@@ -251,26 +286,58 @@ void Model::DownloadModel(Device *pDevice, const std::vector<InstanceAttribute> 
 			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 		mModelAssets[pDevice].sceneBuffers.emplace_back(pDevice->Create(createInfo, buffer.data.data()));
 	}
+
+	//primitive draw indexed indiect command info
 	mModelAssets[pDevice].primitivesDrawIndirectInfo.resize(mpModel->accessors.size(), {});
 	for (auto &&mesh : mpModel->meshes)
 	{
 		for (auto &&primitive : mesh.primitives)
 		{
-			auto &&indexAccessor = mpModel->accessors[primitive.indices];
-			DrawIndexedIndirectCommand cmd{
-				indexAccessor.count,
-				(std::max)(instanceAttributes.size(), size_t(1)),
-			};
-			BufferCreateInfo createInfo{
-				{},
-				sizeof(DrawIndexedIndirectCommand),
-				BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
-				MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
-			mModelAssets[pDevice].primitivesDrawIndirectInfo[primitive.indices] = {
-				pDevice->Create(createInfo, &cmd),
-				0,
-				1,
-				sizeof(DrawIndirectInfo)};
+			if (primitive.indices == -1)
+			{
+				int positionAccessorIndex{};
+				for(auto&& e:primitive.attributes)
+				{
+					if (e.first.compare("POSITION") == 0)
+					{
+						positionAccessorIndex = e.second;
+						break;
+					}
+				}
+				auto &&positionAccessor = mpModel->accessors[positionAccessorIndex];
+				DrawIndirectCommand cmd{
+					positionAccessor.count,
+					(std::max)(static_cast<uint32_t>(instanceAttributes.size()), 1u),
+				};
+				BufferCreateInfo createInfo{
+					{},
+					sizeof(DrawIndirectCommand),
+					BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+					MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+				mModelAssets[pDevice].primitivesDrawIndirectInfo[positionAccessorIndex] = {
+					pDevice->Create(createInfo, &cmd),
+					0,
+					1,
+					sizeof(DrawIndirectInfo)};
+			}
+			else
+			{
+				auto &&indexAccessor = mpModel->accessors[primitive.indices];
+				DrawIndexedIndirectCommand cmd{
+					indexAccessor.count,
+					(std::max)(instanceAttributes.size(), size_t(1)),
+				};
+				BufferCreateInfo createInfo{
+					{},
+					sizeof(DrawIndexedIndirectCommand),
+					BufferUsageFlagBits::INDIRECT_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+					MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+				mModelAssets[pDevice].primitivesDrawIndirectInfo[primitive.indices] = {
+					pDevice->Create(createInfo, &cmd),
+					0,
+					1,
+					sizeof(DrawIndirectInfo)};
+			}
 		}
 	}
 
@@ -351,16 +418,49 @@ void Model::DownloadModel(Device *pDevice, const std::vector<InstanceAttribute> 
 		//TODO: edit sampler createInfo
 		mModelAssets[pDevice].samplers.emplace_back(pDevice->Create(samplerCreateInfo));
 	}
+	if (mModelAssets[pDevice].samplers.empty())
+		mModelAssets[pDevice].samplers.emplace_back(pDevice->Create(samplerCreateInfo));
+
+	//node attribute buffer
+	auto nodeCount = mpModel->nodes.size();
+	std::vector<NodeAttribute> nodeAttributes;
+	nodeAttributes.reserve(nodeCount);
+	for (auto &&node : mpModel->nodes)
+	{
+		glm::dmat4 rotate(1);
+		glm::dmat4 scale(1);
+		glm::dmat4 translation(1);
+		glm::dmat4 extra(1);
+		if (!node.rotation.empty())
+		{
+			//double rotateAngle = node.rotation[3];
+			//glm::dvec3 rotateVec = glm::dvec3(node.rotation[0], node.rotation[1], node.rotation[2]);
+			double rotateAngle = node.rotation[0];
+			glm::dvec3 rotateVec = glm::dvec3(node.rotation[1], node.rotation[2], node.rotation[3]);
+			rotate = glm::rotate(glm::dmat4(1), rotateAngle, rotateVec);
+		}
+		if (!node.scale.empty())
+			scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
+		if (!node.translation.empty())
+			scale = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
+		if (!node.matrix.empty())
+			memcpy(&extra, node.matrix.data(), sizeof(double) * node.matrix.size());
+		nodeAttributes.emplace_back(extra * translation * scale * rotate);
+	}
+	mModelAssets[pDevice].nodeAttributeBuffer = pDevice->Create(BufferCreateInfo{
+																	{},
+																	static_cast<uint32_t>(sizeof(NodeAttribute) * nodeAttributes.size()),
+																	BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+																	MemoryPropertyFlagBits::DEVICE_LOCAL_BIT},
+																reinterpret_cast<const void *>(nodeAttributes.data()));
 	//material buffers
 	auto materialCount = mpModel->materials.size();
-
-	auto n = mpModel->materials.size();
 	BufferCreateInfo bufferCreateInfo{
 		{},
-		sizeof(Material) * n,
+		sizeof(Material) * materialCount,
 		BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
 		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
-	std::vector<Material> materials(n);
+	std::vector<Material> materials(materialCount);
 	std::transform(mpModel->materials.begin(), mpModel->materials.end(), materials.begin(), [](auto &&m) {
 		return Material{
 			static_cast<float>(m.alphaCutoff),
@@ -378,53 +478,133 @@ void Model::DownloadModel(Device *pDevice, const std::vector<InstanceAttribute> 
 				static_cast<float>(m.pbrMetallicRoughness.baseColorFactor[3]),
 			}};
 	});
-	mModelAssets[pDevice].materialBuffer=pDevice->Create(bufferCreateInfo,reinterpret_cast<const void*>(materials.data()));
+	mModelAssets[pDevice].materialBuffer = pDevice->Create(bufferCreateInfo, reinterpret_cast<const void *>(materials.data()));
 
-	//node mvp buffer
-	auto nodeCount=mpModel->nodes.size();
-	std::vector<glm::mat4> nodeMatrices;
-	nodeMatrices.reserve(nodeCount);
-	for(auto&& node:mpModel->nodes)
+	auto descriptorSetLayouts = mpCurPipelineLayout->GetCreateInfoPtr()->setLayouts;
+
+	//descriptor pool
+	std::vector<DescriptorPoolSize> poolSizes;
+	for (auto &&e : descriptorSetLayouts[1]->GetCreateInfoPtr()->descriptorSetLayoutBindings)
 	{
-		glm::dmat4 rotate(1);
-		glm::dmat4 scale(1);
-		glm::dmat4 translation(1);
-		glm::dmat4 extra(1);
-		if (!node.rotation.empty())
-		{
-			double rotateAngle = node.rotation[0];
-			glm::dvec3 rotateVec = glm::dvec3(node.rotation[1], node.rotation[2], node.rotation[3]);
-			rotate = glm::rotate(glm::dmat4(1), rotateAngle, rotateVec);
-		}
-		if (!node.scale.empty())
-			scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
-		if (!node.translation.empty())
-			scale = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
-		if (!node.matrix.empty())
-			memcpy(&extra, node.matrix.data(), sizeof(double) * node.matrix.size());
-		nodeMatrices.emplace_back(extra * translation * scale * rotate);	
+		poolSizes.emplace_back(e.descriptorType, e.descriptorCount);
 	}
-	mModelAssets[pDevice].nodeMatrixBuffer = pDevice->Create(BufferCreateInfo{
-															  {},
-															  static_cast<uint32_t>(sizeof(glm::mat4) * nodeMatrices.size()),
-															  BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
-															  MemoryPropertyFlagBits::DEVICE_LOCAL_BIT},
-														  reinterpret_cast<const void *>(nodeMatrices.data()));
-}
-void Model::FreeModel(Device *pDevice)
-{
-	pDevice->Destroy(mModelAssets[pDevice].instanceAttributeBuffer);
-	for (auto &&e : mModelAssets[pDevice].primitivesDrawIndirectInfo)
-		pDevice->Destroy(e.pBuffer);
-	for (auto &&buffer : mModelAssets[pDevice].sceneBuffers)
-		pDevice->Destroy(buffer);
-	mModelAssets.erase(pDevice);
+	for (auto &&e : descriptorSetLayouts[2]->GetCreateInfoPtr()->descriptorSetLayoutBindings)
+	{
+		poolSizes.emplace_back(e.descriptorType, e.descriptorCount);
+	}
+
+	DescriptorPoolCreateInfo descriptorPoolCreateInfo{materialCount + nodeCount, poolSizes};
+	mModelAssets[pDevice].descriptorPool = pDevice->Create(descriptorPoolCreateInfo);
+
+	std::vector<DescriptorSetLayout *> materialSetLayouts(materialCount, descriptorSetLayouts[DESCRIPTORSET_MATERIAL_NUMBER]);
+	DescriptorSetAllocateInfo allocInfo{materialSetLayouts};
+	mModelAssets[pDevice].descriptorPool->Allocate(allocInfo, mModelAssets[pDevice].materialDescriptorSets);
+
+	std::vector<DescriptorSetLayout *> nodeSetLayouts(nodeCount, descriptorSetLayouts[DESCRIPTORSET_NODE_NUMBER]);
+	allocInfo = DescriptorSetAllocateInfo{nodeSetLayouts};
+	mModelAssets[pDevice].descriptorPool->Allocate(allocInfo, mModelAssets[pDevice].nodeDescriptorSets);
+
+	//descriptorsets
+	std::vector<WriteDescriptorSet> writes;
+	for (size_t i = 0; i < nodeCount; ++i)
+	{
+		writes.emplace_back(
+			WriteDescriptorSet{
+				mModelAssets[pDevice].nodeDescriptorSets[i],
+				UNIFORM_BINDING_M,
+				0,
+				DescriptorType::UNIFORM_BUFFER,
+				std::vector<DescriptorBufferInfo>{{mModelAssets[pDevice].nodeAttributeBuffer,
+												   sizeof(NodeAttribute) * i,
+												   sizeof(NodeAttribute)}}});
+	}
+
+	for (size_t i = 0; i < materialCount; ++i)
+	{
+		auto &&material = mpModel->materials[i];
+
+		if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
+		{
+			int sampler = (std::max)(mpModel->textures[material.pbrMetallicRoughness.baseColorTexture.index].sampler, 0);
+			writes.emplace_back(
+				WriteDescriptorSet{
+					mModelAssets[pDevice].materialDescriptorSets[i],
+					TEXTURE_BINDING_ALBEDO,
+					0,
+					DescriptorType::COMBINED_IMAGE_SAMPLER,
+					std::vector<DescriptorImageInfo>{{mModelAssets[pDevice].samplers[sampler], //sampler
+													  mModelAssets[pDevice].imageViews[material.pbrMetallicRoughness.baseColorTexture.index],
+													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+		}
+		if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
+		{
+			int sampler = (std::max)(mpModel->textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].sampler, 0);
+			writes.emplace_back(
+				WriteDescriptorSet{
+					mModelAssets[pDevice].materialDescriptorSets[i],
+					TEXTURE_BINDING_METALLIC_ROUGHNESS,
+					0,
+					DescriptorType::COMBINED_IMAGE_SAMPLER,
+					std::vector<DescriptorImageInfo>{{mModelAssets[pDevice].samplers[sampler], //sampler
+													  mModelAssets[pDevice].imageViews[material.pbrMetallicRoughness.metallicRoughnessTexture.index],
+													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+		}
+		if (material.normalTexture.index != -1)
+		{
+			int sampler = (std::max)(mpModel->textures[material.normalTexture.index].sampler, 0);
+			writes.emplace_back(
+				WriteDescriptorSet{
+					mModelAssets[pDevice].materialDescriptorSets[i],
+					TEXTURE_BINDING_NORMAL,
+					0,
+					DescriptorType::COMBINED_IMAGE_SAMPLER,
+					std::vector<DescriptorImageInfo>{{mModelAssets[pDevice].samplers[sampler], //sampler
+													  mModelAssets[pDevice].imageViews[material.normalTexture.index],
+													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+		}
+		if (material.occlusionTexture.index != -1)
+		{
+			int sampler = (std::max)(mpModel->textures[material.occlusionTexture.index].sampler, 0);
+			writes.emplace_back(
+				WriteDescriptorSet{
+					mModelAssets[pDevice].materialDescriptorSets[i],
+					TEXTURE_BINDING_OCCLUSION,
+					0,
+					DescriptorType::COMBINED_IMAGE_SAMPLER,
+					std::vector<DescriptorImageInfo>{{mModelAssets[pDevice].samplers[sampler], //sampler
+													  mModelAssets[pDevice].imageViews[material.occlusionTexture.index],
+													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+		}
+		if (material.emissiveTexture.index != -1)
+		{
+			int sampler = (std::max)(mpModel->textures[material.emissiveTexture.index].sampler, 0);
+			writes.emplace_back(
+				WriteDescriptorSet{
+					mModelAssets[pDevice].materialDescriptorSets[i],
+					TEXTURE_BINDING_EMISSION,
+					0,
+					DescriptorType::COMBINED_IMAGE_SAMPLER,
+					std::vector<DescriptorImageInfo>{{mModelAssets[pDevice].samplers[sampler], //sampler
+													  mModelAssets[pDevice].imageViews[material.emissiveTexture.index],
+													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+		}
+
+		//material descriptor update
+		writes.emplace_back(
+			WriteDescriptorSet{
+				mModelAssets[pDevice].materialDescriptorSets[i],
+				UNIFORM_BINDING_MATERIAL,
+				0,
+				DescriptorType::UNIFORM_BUFFER,
+				std::vector<DescriptorBufferInfo>{{mModelAssets[pDevice].materialBuffer,
+												   sizeof(Material) * i,
+												   sizeof(Material)}}});
+	}
+	pDevice->UpdateDescriptorSets(writes, {});
 }
 void Model::DrawModel(
 	Device *pDevice,
 	CommandBuffer *pCommandBuffer,
-	DescriptorSet *pDescriptorSet,
-	PipelineLayout *pPipelineLayout,
 	int sceneIndex)
 {
 	if (sceneIndex == -1)
@@ -435,29 +615,23 @@ void Model::DrawModel(
 	{
 		for (size_t i = 0, len = mpModel->scenes.size(); i < len; ++i)
 		{
-			DrawModel(pDevice, pCommandBuffer, pDescriptorSet, pPipelineLayout, i);
+			DrawModel(pDevice, pCommandBuffer, i);
 		}
 	}
 	mpCurDevice = pDevice;
 	mCurSceneIndex = sceneIndex;
 	mpCurCommandBuffer = pCommandBuffer;
-	mpCurDescriptorSet = pDescriptorSet;
-	mpCurPipelineLayout = pPipelineLayout;
 
 	LOG_VAR(mpModel->scenes[sceneIndex].name)
 	for (auto &&nodeIndex : mpModel->scenes[sceneIndex].nodes)
 	{
-		std::vector<WriteDescriptorSet> writes;
-		writes.emplace_back(
-			WriteDescriptorSet{
-				mpCurDescriptorSet,
-				UNIFORM_BINDING_M,
-				0,
-				DescriptorType::UNIFORM_BUFFER,
-				std::vector<DescriptorBufferInfo>{{mModelAssets[mpCurDevice].nodeMatrixBuffer,
-												   sizeof(glm::mat4) * nodeIndex,
-												   sizeof(glm::mat4)}}});
-		mpCurDevice->UpdateDescriptorSets(writes, {});
+		mpCurCommandBuffer->BindDescriptorSets(
+			BindDescriptorSetsInfo{
+				PipelineBindPoint::GRAPHICS,
+				mpCurPipelineLayout,
+				DESCRIPTORSET_NODE_NUMBER,
+				1,
+				&mModelAssets[mpCurDevice].nodeDescriptorSets[nodeIndex]});
 		DrawNode(mpModel->nodes[nodeIndex]);
 	}
 }
@@ -470,17 +644,13 @@ void Model::DrawNode(const tinygltf::Node &node)
 	for (size_t i = 0; i < node.children.size(); i++)
 	{
 		assert((node.children[i] >= 0) && (node.children[i] < mpModel->nodes.size()));
-		std::vector<WriteDescriptorSet> writes;
-		writes.emplace_back(
-			WriteDescriptorSet{
-				mpCurDescriptorSet,
-				UNIFORM_BINDING_M,
-				0,
-				DescriptorType::UNIFORM_BUFFER,
-				std::vector<DescriptorBufferInfo>{{mModelAssets[mpCurDevice].nodeMatrixBuffer,
-												   sizeof(glm::mat4) * node.children[i],
-												   sizeof(glm::mat4)}}});
-		mpCurDevice->UpdateDescriptorSets(writes, {});
+		mpCurCommandBuffer->BindDescriptorSets(
+			BindDescriptorSetsInfo{
+				PipelineBindPoint::GRAPHICS,
+				mpCurPipelineLayout,
+				DESCRIPTORSET_NODE_NUMBER,
+				1,
+				&mModelAssets[mpCurDevice].nodeDescriptorSets[node.children[i]]});
 		DrawNode(mpModel->nodes[node.children[i]]);
 	}
 }
@@ -489,90 +659,14 @@ void Model::DrawMesh(const tinygltf::Mesh &mesh)
 	BindVertexBufferInfo bindVertexBufferInfo{0, VERTEX_LOCATION_COUNT + 1};
 	for (auto &&primitive : mesh.primitives)
 	{
-		//update descriptor sets
-		std::vector<WriteDescriptorSet> writes;
-		auto &&material = mpModel->materials[primitive.material];
-
-		if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
-		{
-			writes.emplace_back(
-				WriteDescriptorSet{
-					mpCurDescriptorSet,
-					TEXTURE_BINDING_ALBEDO,
-					0,
-					DescriptorType::COMBINED_IMAGE_SAMPLER,
-					std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[mpModel->textures[material.pbrMetallicRoughness.baseColorTexture.index].sampler], //sampler
-													  mModelAssets[mpCurDevice].imageViews[material.pbrMetallicRoughness.baseColorTexture.index],
-													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
-		}
-		if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
-		{
-			writes.emplace_back(
-				WriteDescriptorSet{
-					mpCurDescriptorSet,
-					TEXTURE_BINDING_METALLIC_ROUGHNESS,
-					0,
-					DescriptorType::COMBINED_IMAGE_SAMPLER,
-					std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[mpModel->textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].sampler], //sampler
-													  mModelAssets[mpCurDevice].imageViews[material.pbrMetallicRoughness.metallicRoughnessTexture.index],
-													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
-		}
-		if (material.normalTexture.index != -1)
-		{
-			writes.emplace_back(
-				WriteDescriptorSet{
-					mpCurDescriptorSet,
-					TEXTURE_BINDING_NORMAL,
-					0,
-					DescriptorType::COMBINED_IMAGE_SAMPLER,
-					std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[mpModel->textures[material.normalTexture.index].sampler], //sampler
-													  mModelAssets[mpCurDevice].imageViews[material.normalTexture.index],
-													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
-		}
-		if (material.occlusionTexture.index != -1)
-		{
-			writes.emplace_back(
-				WriteDescriptorSet{
-					mpCurDescriptorSet,
-					TEXTURE_BINDING_OCCLUSION,
-					0,
-					DescriptorType::COMBINED_IMAGE_SAMPLER,
-					std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[mpModel->textures[material.occlusionTexture.index].sampler], //sampler
-													  mModelAssets[mpCurDevice].imageViews[material.occlusionTexture.index],
-													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
-		}
-		if (material.emissiveTexture.index != -1)
-		{
-			writes.emplace_back(
-				WriteDescriptorSet{
-					mpCurDescriptorSet,
-					TEXTURE_BINDING_EMISSION,
-					0,
-					DescriptorType::COMBINED_IMAGE_SAMPLER,
-					std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[mpModel->textures[material.emissiveTexture.index].sampler], //sampler
-													  mModelAssets[mpCurDevice].imageViews[material.emissiveTexture.index],
-													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
-		}
-
-		//material descriptor update
-		writes.emplace_back(
-			WriteDescriptorSet{
-				mpCurDescriptorSet,
-				UNIFORM_BINDING_MATERIAL,
-				0,
-				DescriptorType::UNIFORM_BUFFER,
-				std::vector<DescriptorBufferInfo>{{mModelAssets[mpCurDevice].materialBuffer,
-												   sizeof(Material) * primitive.material,
-												   sizeof(Material)}}});
-		mpCurDevice->UpdateDescriptorSets(writes, {});
 		//
 		mpCurCommandBuffer->BindDescriptorSets(
 			BindDescriptorSetsInfo{
 				PipelineBindPoint::GRAPHICS,
 				mpCurPipelineLayout,
-				0,
+				DESCRIPTORSET_MATERIAL_NUMBER,
 				1,
-				&mpCurDescriptorSet});
+				&mModelAssets[mpCurDevice].materialDescriptorSets[primitive.material]});
 
 		std::array<Buffer *, VERTEX_LOCATION_COUNT + 1> buffers;
 		buffers.fill(mModelAssets[mpCurDevice].sceneBuffers[mCurSceneIndex]);
@@ -583,19 +677,19 @@ void Model::DrawMesh(const tinygltf::Mesh &mesh)
 			auto &&accessor = mpModel->accessors[attrib.second];
 			if (attrib.first.compare("POSITION") == 0)
 			{
-				offsets[LOCATION_POSITION] = mpModel->bufferViews[accessor.bufferView].byteOffset;
+				offsets[LOCATION_POSITION] = mpModel->bufferViews[accessor.bufferView].byteOffset + accessor.byteOffset;
 			}
 			else if (attrib.first.compare("NORMAL") == 0)
 			{
-				offsets[LOCATION_NORMAL] = mpModel->bufferViews[accessor.bufferView].byteOffset;
+				offsets[LOCATION_NORMAL] = mpModel->bufferViews[accessor.bufferView].byteOffset + accessor.byteOffset;
 			}
 			else if (attrib.first.compare("TANGENT") == 0)
 			{
-				offsets[LOCATION_TANGENT] = mpModel->bufferViews[accessor.bufferView].byteOffset;
+				offsets[LOCATION_TANGENT] = mpModel->bufferViews[accessor.bufferView].byteOffset + accessor.byteOffset;
 			}
 			else if (attrib.first.compare("TEXCOORD_0") == 0)
 			{
-				offsets[LOCATION_TEXCOORD0] = mpModel->bufferViews[accessor.bufferView].byteOffset;
+				offsets[LOCATION_TEXCOORD0] = mpModel->bufferViews[accessor.bufferView].byteOffset + accessor.byteOffset;
 			}
 		}
 		bindVertexBufferInfo.ppBuffers = buffers.data();
@@ -603,14 +697,32 @@ void Model::DrawMesh(const tinygltf::Mesh &mesh)
 
 		mpCurCommandBuffer->BindVertexBuffer(bindVertexBufferInfo);
 
-		//bind indexbuffer
-		auto &&indexAccessor = mpModel->accessors[primitive.indices];
-		auto &&bufferView = mpModel->bufferViews[indexAccessor.bufferView];
-		mpCurCommandBuffer->BindIndexBuffer(BindIndexBufferInfo{
-			mModelAssets[mpCurDevice].sceneBuffers[bufferView.buffer],
-			bufferView.byteOffset,
-			GetIndexType(tinygltf::GetComponentSizeInBytes(indexAccessor.componentType))});
-		mpCurCommandBuffer->DrawIndexedIndirect(mModelAssets[mpCurDevice].primitivesDrawIndirectInfo[primitive.indices]);
+		if (primitive.indices==-1)
+		{
+			int positionAccessorIndex{};
+			for (auto &&e : primitive.attributes)
+			{
+				if (e.first.compare("POSITION") == 0)
+				{
+					positionAccessorIndex = e.second;
+					break;
+				}
+			}
+			auto &&positionAccessor = mpModel->accessors[positionAccessorIndex];
+			auto &&bufferView = mpModel->bufferViews[positionAccessor.bufferView];
+			mpCurCommandBuffer->DrawIndirect(mModelAssets[mpCurDevice].primitivesDrawIndirectInfo[positionAccessorIndex]);
+		}
+		else
+		{
+			//bind indexbuffer
+			auto &&indexAccessor = mpModel->accessors[primitive.indices];
+			auto &&bufferView = mpModel->bufferViews[indexAccessor.bufferView];
+			mpCurCommandBuffer->BindIndexBuffer(BindIndexBufferInfo{
+				mModelAssets[mpCurDevice].sceneBuffers[bufferView.buffer],
+				bufferView.byteOffset + indexAccessor.byteOffset,
+				GetIndexType(tinygltf::GetComponentSizeInBytes(indexAccessor.componentType))});
+			mpCurCommandBuffer->DrawIndexedIndirect(mModelAssets[mpCurDevice].primitivesDrawIndirectInfo[primitive.indices]);
+		}
 	}
 }
 IndexType Model::GetIndexType(int32_t componentSize)

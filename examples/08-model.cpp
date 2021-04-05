@@ -8,6 +8,7 @@ const char *vertShaderName = "08.vert.spv";
 const char *fragShaderName = "08.frag.spv";
 
 const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf";
 
 std::string vertShaderPath;
 std::string fragShaderPath;
@@ -53,10 +54,7 @@ class Hello
 	RenderPass *renderPass;
 	Pipeline *pipeline;
 
-
-	std::vector<Buffer*> uboPVBuffers;
-
-	Sampler *sampler;
+	std::vector<Buffer *> uboPVBuffers;
 
 	Image *depthImage;
 	ImageView *depthImageView;
@@ -66,14 +64,12 @@ class Hello
 	std::chrono::system_clock::time_point curTime;
 	std::chrono::system_clock::time_point startTime;
 
-
 	//model
 	std::unique_ptr<Model> testModel;
-	std::vector<Buffer *> testModelBuffers;
-
+	std::unique_ptr<Model> testModel2;
 
 	//camera
-	Frustum frustum{PerspectiveProjectionDescription{1, 10, glm::radians(45.f), 1}};
+	Frustum frustum{PerspectiveProjectionDescription{0.1, 100, glm::radians(45.f), 1}};
 	Camera camera{glm::dvec3(0, 5, 0), glm::dvec3(0), glm::dvec3(0, 0, 1)};
 
 public:
@@ -125,26 +121,24 @@ public:
 		createSwapchains();
 		createDepthResources();
 
-		loadModels();
-
 		createShaders();
 		createDescriptorSets();
 		createRenderPasses();
-		createPipeline();
 		createFramebuffers();
-
-		createSamplers();
 		createSyncObjects();
 		createUBOPVBuffers();
-
 		updateDescriptorSets();
 
+		testModel = std::make_unique<Model>(testModelPath);
+		if (testModel->LoadSucceed())
+			testModel->DownloadModel(device, pipelineLayout);
+
+		createPipeline();
 		createCommandBuffers();
 
 		transferQueueFamilyIndex = device->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {graphicsQueueFamilyIndex->index, presentQueueFamilyIndex.index});
 		if (!transferQueueFamilyIndex.has_value())
 			THROW("failed to find a transfer queue");
-
 	}
 	/**
 	 * @brief process window event, do not write render code here
@@ -164,11 +158,11 @@ public:
 						   if (value.height == 0)
 							   return;
 						   frustum.projectionDescription = PerspectiveProjectionDescription{
-							   .1, 10., glm::radians(45.), double(value.width) / value.height};
+							   .1, 100., glm::radians(45.), double(value.width) / value.height};
 						   frustum.Update();
 					   },
 					   [&](const MouseButtonEvent &value) {
-						   if (value.button == MouseButton::MOUSE_L )
+						   if (value.button == MouseButton::MOUSE_L)
 						   {
 							   if (value.action == PressAction::DOWN)
 							   {
@@ -179,18 +173,18 @@ public:
 					   [&](const MouseMoveEvent &value) {
 						   if (static_cast<bool>(ev.modifier & EventModifierBits::BUTTONL))
 						   {
-							   static int pre_x,pre_y;
-							   if(mouseFlagL)
+							   static int pre_x, pre_y;
+							   if (mouseFlagL)
 							   {
 								   pre_x = value.xpos;
 								   pre_y = value.ypos;
 								   mouseFlagL = false;
 								   return;
 							   }
-							   double theta = double(value.ypos-pre_y) / 100.;
-							   double phi = double(value.xpos-pre_x) / 100.;
-							   pre_x=value.xpos;
-							   pre_y=value.ypos;
+							   double theta = double(value.ypos - pre_y) / 100.;
+							   double phi = double(value.xpos - pre_x) / 100.;
+							   pre_x = value.xpos;
+							   pre_y = value.ypos;
 
 							   auto dir = camera.eye - camera.center;
 							   auto eye = glm::dmat3(glm::rotate(glm::rotate(glm::dmat4(1), -phi, camera.up), theta, glm::cross(camera.up, dir))) * dir + camera.center;
@@ -204,6 +198,12 @@ public:
 					   [&](const MouseWheelEvent &value) {
 						   camera.eye += (camera.eye - camera.center) * double(-value.yoffset) / 10.;
 						   camera.Update();
+					   },
+					   [&](const DropEvent &value) {
+						   LOG(value.paths[0]);
+						   testModel2 = std::make_unique<Model>(value.paths[0]);
+						   if (!testModel2->LoadSucceed())
+							   testModel2.reset();
 					   },
 				   },
 				   ev.value);
@@ -239,7 +239,6 @@ public:
 		device->Destroy(renderPass);
 		for (auto &&e : framebuffers)
 			device->Destroy(e);
-		device->Destroy(pipelineLayout);
 		device->Destroy(pipeline);
 		for (auto &&e : commandBuffers)
 			commandPool->DestroyCommandBuffer(e);
@@ -276,6 +275,22 @@ public:
 			THROW("failed to get next image");
 		}
 		//========================================
+		if (testModel2)
+		{
+			presentQueue->WaitIdle();
+			//destroy old model
+			testModel.reset();
+			for (auto &&e : commandBuffers)
+				commandPool->DestroyCommandBuffer(e);
+			device->Destroy(pipeline);
+
+			//download new model
+			testModel = std::move(testModel2);
+			testModel->DownloadModel(device, pipelineLayout);
+			createPipeline();
+			createCommandBuffers();
+		}
+
 		updateUBOPVBuffers(imageIndex);
 		//=================================
 		inFlightFences[currentFrame]->Reset();
@@ -373,21 +388,33 @@ public:
 	}
 	void createDescriptorSets()
 	{
-		std::vector<DescriptorSetLayoutBinding> bindings{
+		std::vector<DescriptorSetLayoutBinding> modelBindings{
+			DescriptorSetLayoutBinding{13, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT}, //UBO PV
+		};
+		std::vector<DescriptorSetLayoutBinding> nodeBindings{
+			DescriptorSetLayoutBinding{12, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT}, //UBO M
+		};
+		std::vector<DescriptorSetLayoutBinding> materialBindings{
 			DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //albedo
 			DescriptorSetLayoutBinding{1, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //normal
 			DescriptorSetLayoutBinding{2, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //metallic and roughness
 			DescriptorSetLayoutBinding{3, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //occlusion
 			DescriptorSetLayoutBinding{4, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //emission
 			DescriptorSetLayoutBinding{5, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
-			DescriptorSetLayoutBinding{12, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT},			 //UBO M
-			DescriptorSetLayoutBinding{13, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT},			 //UBO PV
 			DescriptorSetLayoutBinding{14, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::FRAGMENT_BIT},		 //UBO material
 		};
-		descriptorSetLayouts.resize(swapchainImages.size(), device->Create(DescriptorSetLayoutCreateInfo{bindings}));
+		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{modelBindings}));
+		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{nodeBindings}));
+		descriptorSetLayouts.emplace_back(device->Create(DescriptorSetLayoutCreateInfo{materialBindings}));
 
-		std::vector<DescriptorPoolSize> poolSizes(bindings.size());
-		std::transform(bindings.begin(), bindings.end(), poolSizes.begin(), [](auto &&e) {
+		//pipelineLayout
+		pipelineLayout = device->Create(PipelineLayoutCreateInfo{descriptorSetLayouts});
+
+		//model binding descriptors
+		std::vector<DescriptorSetLayout *> setLayouts(swapchainImages.size(), descriptorSetLayouts[0]);
+
+		std::vector<DescriptorPoolSize> poolSizes(modelBindings.size());
+		std::transform(modelBindings.begin(), modelBindings.end(), poolSizes.begin(), [](auto &&e) {
 			return DescriptorPoolSize{e.descriptorType, e.descriptorCount};
 		});
 		DescriptorPoolCreateInfo descriptorPoolCreateInfo{
@@ -395,7 +422,7 @@ public:
 			.poolSizes = poolSizes};
 		descriptorPool = device->Create(descriptorPoolCreateInfo);
 
-		DescriptorSetAllocateInfo allocInfo{descriptorSetLayouts};
+		DescriptorSetAllocateInfo allocInfo{setLayouts};
 		descriptorPool->Allocate(allocInfo, descriptorSets);
 	}
 	void updateDescriptorSets()
@@ -404,7 +431,6 @@ public:
 		auto len = descriptorSets.size();
 		while (len-- > 0)
 		{
-			writes.clear();
 			writes.emplace_back(
 				WriteDescriptorSet{
 					descriptorSets[len],
@@ -414,8 +440,8 @@ public:
 					std::vector<DescriptorBufferInfo>{{uboPVBuffers[len],
 													   0,
 													   sizeof(glm::mat4)}}});
-			device->UpdateDescriptorSets(writes, {});
 		}
+		device->UpdateDescriptorSets(writes, {});
 	}
 	void createRenderPasses()
 	{
@@ -461,7 +487,6 @@ public:
 	}
 	void createPipeline()
 	{
-		pipelineLayout = device->Create(PipelineLayoutCreateInfo{descriptorSetLayouts});
 		std::vector<PipelineShaderStageCreateInfo> shaderStageCreateInfos{
 			PipelineShaderStageCreateInfo{
 				ShaderStageFlagBits::VERTEX_BIT,
@@ -507,6 +532,27 @@ public:
 			{},
 			{std::move(colorBlendAttachmentstate)},
 		};
+
+		VertexInputStateCreateInfo vertexInputStateCreateInfo{
+			{
+				{LOCATION_POSITION},
+				{LOCATION_NORMAL},
+				{LOCATION_TANGENT},
+				{LOCATION_TEXCOORD0},
+				{VERTEX_LOCATION_COUNT, sizeof(InstanceAttribute), 1},
+			},
+			{
+
+				{LOCATION_POSITION, LOCATION_POSITION, 3, DataType::FLOAT, false, 0},
+				{LOCATION_NORMAL, LOCATION_NORMAL, 3, DataType::FLOAT, false, 0},
+				{LOCATION_TANGENT, LOCATION_TANGENT, 4, DataType::FLOAT, false, 0},
+				{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
+				{LOCATION_INSTANCE_COLOR_FACTOR, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 0},
+				{LOCATION_INSTANCE_MATRIX + 0, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 16},
+				{LOCATION_INSTANCE_MATRIX + 1, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 32},
+				{LOCATION_INSTANCE_MATRIX + 2, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 48},
+				{LOCATION_INSTANCE_MATRIX + 3, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 64},
+			}};
 
 		GraphicsPipelineCreateInfo pipelineCreateInfo{
 			std::move(shaderStageCreateInfos),
@@ -570,10 +616,18 @@ public:
 			renderPassBeginInfo.pFramebuffer = framebuffers[i];
 			commandBuffers[i]->Begin(cmdBufferBeginInfo);
 			commandBuffers[i]->BeginRenderPass(renderPassBeginInfo);
-			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
-
-			testModel->DrawModel(device, commandBuffers[i], descriptorSets[i], pipelineLayout);
-
+			if (testModel)
+			{
+				commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
+				commandBuffers[i]->BindDescriptorSets(
+					BindDescriptorSetsInfo{
+						PipelineBindPoint::GRAPHICS,
+						pipelineLayout,
+						DESCRIPTORSET_MODEL_NUMBER,
+						1,
+						&descriptorSets[DESCRIPTORSET_MODEL_NUMBER]});
+				testModel->DrawModel(device, commandBuffers[i]);
+			}
 			commandBuffers[i]->EndRenderPass();
 			commandBuffers[i]->End();
 		}
@@ -587,19 +641,6 @@ public:
 			renderFinishedSemaphores[i] = device->Create(SemaphoreCreateInfo{});
 			inFlightFences[i] = device->Create(FenceCreateInfo{FenceCreateFlagBits::SIGNALED_BIT});
 		}
-		//inFlightImages.resize(swapchainImages.size());
-	}
-	void createSamplers()
-	{
-		SamplerCreateInfo samplerCreateInfo{
-			.magFilter = Filter::NEAREST,
-			.minFilter = Filter::NEAREST,
-			.mipmapMode = SamplerMipmapMode::NEAREST,
-			.wrapModeU = SamplerWrapMode::REPEAT,
-			.wrapModeV = SamplerWrapMode::REPEAT,
-			.wrapModeW = SamplerWrapMode::REPEAT,
-		};
-		sampler = device->Create(samplerCreateInfo);
 	}
 	void createUBOPVBuffers()
 	{
@@ -657,12 +698,6 @@ public:
 			{0, 1, 0, 1} //subresouce range
 		};
 		depthImageView = device->Create(depthImageViewCreateInfo);
-	}
-
-	void loadModels()
-	{
-		testModel = std::make_unique<Model>(testModelPath);
-		testModel->DownloadModel(device);
 	}
 };
 

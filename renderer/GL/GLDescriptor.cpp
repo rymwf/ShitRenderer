@@ -17,7 +17,6 @@ namespace Shit
 	//===========================================================================================
 	void GLDescriptorPool::Allocate(const DescriptorSetAllocateInfo &createInfo, std::vector<DescriptorSet *> &descriptorSets)
 	{
-		LOG("NOTE: in opengl only ONE descriptor is allowed");
 		auto count = createInfo.setLayouts.size();
 		descriptorSets.resize(count);
 		for (size_t i = 0; i < count; ++i)

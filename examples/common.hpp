@@ -27,6 +27,8 @@ using namespace Shit;
 #define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders/"
 #define IMAGE_PATH SHIT_SOURCE_DIR "/examples/assets/images/"
 
+#define MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT 0x100
+
 #define VERTEX_LOCATION_COUNT 4
 
 #define LOCATION_POSITION 0
@@ -53,6 +55,10 @@ using namespace Shit;
 #define UNIFORM_BINDING_M 12
 #define UNIFORM_BINDING_PV 13
 #define UNIFORM_BINDING_MATERIAL 14
+
+#define DESCRIPTORSET_MODEL_NUMBER 0
+#define DESCRIPTORSET_NODE_NUMBER 1
+#define DESCRIPTORSET_MATERIAL_NUMBER 2
 
 /*
 ///#ifdef NDEBUG
@@ -360,13 +366,13 @@ struct VertexAttribute<glm::mat4>
 	}
 };
 
-struct alignas(16) Material
+struct Material
 {
-	float alphaCutoff;
-	float metallic;
-	float roughness;
-	std::array<float, 3> emissiveFactor;
-	std::array<float, 4> baseColorFactor;
+	alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) float alphaCutoff;
+	alignas(16) float metallic;
+	alignas(16) float roughness;
+	alignas(16) std::array<float, 3> emissiveFactor;
+	alignas(16) std::array<float, 4> baseColorFactor;
 };
 namespace tinygltf
 {
@@ -392,7 +398,7 @@ public:
 	Model(const char *filePath);
 	~Model();
 
-	void DownloadModel(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes = {});
+	void DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const std::vector<InstanceAttribute> &instanceAttributes = {});
 	void FreeModel(Device *pDevice);
 
 	/**
@@ -404,8 +410,6 @@ public:
 	void DrawModel(
 		Device *pDevice,
 		CommandBuffer *pCommandBuffer,
-		DescriptorSet *pDescriptorSet,
-		PipelineLayout* pPipelineLayout,
 		int sceneIndex = -1);
 
 	size_t GetSceneCount() const;
@@ -414,15 +418,24 @@ public:
 	{
 		return &mVertexInputStateCreateInfo;
 	}
+	constexpr bool LoadSucceed() const
+	{
+		return mLoadSucceed;
+	}
 
 private:
 	std::unique_ptr<tinygltf::Model> mpModel;
+	bool mLoadSucceed{};
 
 	CommandBuffer *mpCurCommandBuffer;
 	Device *mpCurDevice;
 	int mCurSceneIndex;
-	DescriptorSet* mpCurDescriptorSet;
-	PipelineLayout* mpCurPipelineLayout;
+	PipelineLayout *mpCurPipelineLayout;
+
+	struct NodeAttribute
+	{
+		alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) glm::mat4 matrix;
+	};
 
 	struct ModelAsset
 	{
@@ -432,8 +445,14 @@ private:
 		std::vector<ImageView *> imageViews;
 		std::vector<Sampler *> samplers;
 		Buffer *instanceAttributeBuffer{};
-		Buffer *materialBuffer;	//
-		Buffer *nodeMatrixBuffer;
+
+		Buffer *nodeAttributeBuffer;
+		std::vector<DescriptorSet *> nodeDescriptorSets;
+
+		Buffer *materialBuffer; //
+		std::vector<DescriptorSet *> materialDescriptorSets;
+
+		DescriptorPool *descriptorPool;
 	};
 	std::unordered_map<Device *, ModelAsset> mModelAssets;
 

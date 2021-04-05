@@ -44,6 +44,7 @@ namespace Shit
 		uint32_t mCurSubpass{};
 		Pipeline *mCurPipeline{};
 		IndexType mCurIndexType{};
+		uint64_t mCurIndexOffset{};
 		GLFramebuffer* mpCurFramebuffer{};
 
 		template <class T>

@@ -31,9 +31,9 @@ namespace Shit
 		VkMemoryRequirements vertexBufferMemoryRequirements;
 		vkGetBufferMemoryRequirements(mDevice, mHandle, &vertexBufferMemoryRequirements);
 
-		LOG_VAR(vertexBufferMemoryRequirements.size);
-		LOG_VAR(vertexBufferMemoryRequirements.alignment);
-		LOG_VAR(vertexBufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
+//		LOG_VAR(vertexBufferMemoryRequirements.size);
+//		LOG_VAR(vertexBufferMemoryRequirements.alignment);
+//		LOG_VAR(vertexBufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
 
 		auto memoryTypeIndex = VK::findMemoryTypeIndex(physicalDevice, vertexBufferMemoryRequirements.memoryTypeBits, Map(createInfo.memoryPropertyFlags)); //the index of memory type
 

@@ -63,7 +63,10 @@ namespace Shit
 		{GL_TRANSFORM_FEEDBACK_BUFFER, 13},
 		{GL_UNIFORM_BUFFER, 14},
 	};
-
+	void GLStateManager::Clear()
+	{
+		//TODO:clear state
+	}
 	void GLStateManager::BindDrawFramebuffer(GLuint framebuffer)
 	{
 		if (mDrawBufferState.buffer != framebuffer)
@@ -164,6 +167,26 @@ namespace Shit
 		{
 			if (e == buffer)
 				e = 0;
+		}
+		for (auto &&e : mIndexedTargetBindingState.uniformBufferStates)
+		{
+			if (e.buffer == buffer)
+				e = {};
+		}
+		for (auto &&e : mIndexedTargetBindingState.atomicCounterBufferStates)
+		{
+			if (e.buffer == buffer)
+				e = {};
+		}
+		for (auto &&e : mIndexedTargetBindingState.transformFeedbackBufferStates)
+		{
+			if (e.buffer == buffer)
+				e = {};
+		}
+		for (auto &&e : mIndexedTargetBindingState.shaderStorageStates)
+		{
+			if (e.buffer == buffer)
+				e = {};
 		}
 	}
 	void GLStateManager::BindVertexArray(GLuint vao)

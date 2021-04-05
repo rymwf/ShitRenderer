@@ -67,4 +67,8 @@ namespace Shit
 	{
 		RemoveSmartPtrFromContainer(mDescriptorPools, pDescriptorPool);
 	}
+	void Device::Destroy(const Sampler *pSampler)
+	{
+		RemoveSmartPtrFromContainer(mSamplers, pSampler);
+	}
 } // namespace Shit

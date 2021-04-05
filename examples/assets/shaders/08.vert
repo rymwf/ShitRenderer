@@ -1,5 +1,11 @@
 #version 460
 
+#ifdef VULKAN
+#define SET(x) ,set=x
+#else
+#define SET(x)
+#endif
+
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inTangent;
@@ -13,10 +19,10 @@ layout(location = 0) out VS_OUT {
 }
 vs_out;
 
-layout(binding=12) uniform UBOM{
+layout(binding=12 SET(1)) uniform UBOM{
 	mat4 M;
 };
-layout(binding=13) uniform UBOFrame{
+layout(binding=13 SET(0)) uniform UBOFrame{
 	mat4 PV;
 };
 

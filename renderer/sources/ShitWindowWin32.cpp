@@ -153,6 +153,14 @@ namespace Shit
 			ev.value = Event::EventType{CharEvent{static_cast<uint32_t>(wParam)}};
 			pThis->mListener.notify(ev);
 			break;
+		case WM_DROPFILES:
+			char filename[256];
+			DragQueryFileA((HDROP)wParam,0,filename,255);
+			char *p = filename;
+			ev.value = Event::EventType{DropEvent{1, &p}};
+			pThis->mListener.notify(ev);
+			DragFinish((HDROP)wParam);
+			break;
 		}
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
