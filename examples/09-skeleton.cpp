@@ -6,14 +6,16 @@ constexpr SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const char *vertShaderName = "08.vert.spv";
-const char *fragShaderName = "08.frag.spv";
+const char *vertShaderName = "09.vert.spv";
+const char *fragShaderName = "09.frag.spv";
 
 const char *axisVertShaderName = "axis.vert.spv";
 const char *axisFragShaderName = "axis.frag.spv";
 
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
 
 class Hello
 {
@@ -82,7 +84,7 @@ class Hello
 	//camera
 	Frustum frustum{PerspectiveProjectionDescription{0.1, 100, glm::radians(45.f), 1}};
 	//Camera camera{glm::dvec3(0, -5, 0), glm::dvec3(0, 0, 1), glm::dvec3(0, 0, 1)};
-	Camera camera{glm::dvec3(0, 0, 5), glm::dvec3(0, 0, 0), glm::dvec3(0, 1, 0)};
+	Camera camera{glm::dvec3(0, 0, 5), glm::dvec3(0, 1, 0), glm::dvec3(0, 1, 0)};
 
 public:
 	void initRenderSystem()
@@ -145,6 +147,7 @@ public:
 		testModel = std::make_unique<Model>(testModelPath);
 		if (testModel->LoadSucceed())
 			testModel->DownloadModel(device, pipelineLayout);
+
 		createDrawCommandBuffers();
 
 		createPipeline();
@@ -202,7 +205,7 @@ public:
 
 							   auto dir = camera.eye - camera.center;
 							   auto eye = glm::dmat3(glm::rotate(glm::rotate(glm::dmat4(1), -phi, camera.up), -theta, glm::cross(camera.up, dir))) * dir + camera.center;
-							   if (glm::length(glm::cross((eye - camera.center),camera.up))> 0.1)
+							   if (glm::length(glm::cross((eye - camera.center),camera.up))> 0.01)
 							   {
 								   camera.eye = eye;
 								   camera.Update();

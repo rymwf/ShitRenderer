@@ -429,7 +429,8 @@ public:
 				{},
 				colorAttachments,
 				resolveAttachments,
-			}};
+			}
+			};
 
 		RenderPassCreateInfo renderPassCreateInfo{
 			attachmentDescriptions,

@@ -283,11 +283,11 @@ namespace Shit
 			std::vector<GLuint> vertexBuffers(cmd->bindingCount);
 			std::vector<GLintptr> offsets(cmd->bindingCount);
 			std::vector<GLsizei> strides(cmd->bindingCount);
-			for (uint32_t i = 0; i < cmd->bindingCount; ++i)
+			for(auto&& bindingDesc:vertexInputState.vertexBindingDescriptions)
 			{
-				vertexBuffers[i] = static_cast<const GLBuffer *>(ppBuffers[i])->GetHandle();
-				offsets[i] = pOffsets[i];
-				strides[i] = vertexInputState.vertexBindingDescriptions[i].stride;
+				vertexBuffers[bindingDesc.binding] = static_cast<const GLBuffer *>(ppBuffers[bindingDesc.binding])->GetHandle();
+				offsets[bindingDesc.binding] = pOffsets[bindingDesc.binding];
+				strides[bindingDesc.binding] = bindingDesc.stride;
 			}
 			mpStateManager->BindVertexBuffer(cmd->firstBinding,
 											 cmd->bindingCount,

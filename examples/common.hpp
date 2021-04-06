@@ -18,6 +18,7 @@
 #include "config.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 //#include <boost/program_options.hpp>
 
@@ -28,13 +29,16 @@ using namespace Shit;
 #define IMAGE_PATH SHIT_SOURCE_DIR "/examples/assets/images/"
 
 #define MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT 0x100
+#define MAX_VERTX_LOCATION
 
-#define VERTEX_LOCATION_COUNT 4
+#define VERTEX_LOCATION_NUM_MAX 16
 
 #define LOCATION_POSITION 0
 #define LOCATION_NORMAL 1
 #define LOCATION_TANGENT 2
 #define LOCATION_TEXCOORD0 3
+#define LOCATION_JOINTS0 4
+#define LOCATION_WEIGHTS0 5
 //#define LOCATION_COLOR 4
 //#define LOCATION_TEXCOORD1 6
 //#define LOCATION_TEXCOORD2 7
@@ -43,7 +47,7 @@ using namespace Shit;
 #define LOCATION_INSTANCE_COLOR_FACTOR 11
 #define LOCATION_INSTANCE_MATRIX 12
 
-#define TEXTURE_MAX_BINDING_COUNT 12
+//#define TEXTURE_MAX_BINDING_COUNT 12
 
 #define TEXTURE_BINDING_ALBEDO 0
 #define TEXTURE_BINDING_NORMAL 1
@@ -52,13 +56,13 @@ using namespace Shit;
 #define TEXTURE_BINDING_EMISSION 4
 #define TEXTURE_BINDING_TRANSPARENCY 5
 
-#define UNIFORM_BINDING_M 12
-#define UNIFORM_BINDING_PV 13
+#define UNIFORM_BINDING_FRAME 12
+#define UNIFORM_BINDING_NODE 13
 #define UNIFORM_BINDING_MATERIAL 14
 
-#define DESCRIPTORSET_MODEL_NUMBER 0
-#define DESCRIPTORSET_NODE_NUMBER 1
-#define DESCRIPTORSET_MATERIAL_NUMBER 2
+#define DESCRIPTORSET_ID_FRAME 0
+#define DESCRIPTORSET_ID_NODE 1
+#define DESCRIPTORSET_ID_MATERIAL 2
 
 /*
 ///#ifdef NDEBUG
@@ -76,6 +80,25 @@ extern Shit::RendererVersion rendererVersion;
 
 void *loadImage(const char *imagePath, int &width, int &height, int &components, int request_components);
 void freeImage(void *pData);
+
+struct Light
+{
+	alignas(16) glm::vec3 pos;
+	alignas(16) glm::vec4 color;
+	alignas(16) glm::vec4 intensity;
+	alignas(8) glm::vec2 lim_r; //the attenuation distance limit,r.x: min dist(sphere light radius), r.y: max dist
+	alignas(16) glm::vec3 direction;
+	alignas(16) glm::vec3 tube_p0;
+	alignas(16) glm::vec3 tube_p1;
+};
+
+//update max once per frame
+struct UBOFrame
+{
+	glm::mat4 PV;
+	Light light;
+	alignas(16) glm::vec3 ambientColor;
+};
 
 struct Vertex
 {
@@ -277,6 +300,7 @@ struct Frustum
 				{
 					projectionMatrix = glm::ortho(arg.left, arg.right, arg.bottom, arg.top, arg.near, arg.far);
 				}
+				projectionMatrix[1][1] *= -1;
 			},
 			projectionDescription);
 		isUpdated = true;
@@ -368,11 +392,11 @@ struct VertexAttribute<glm::mat4>
 
 struct Material
 {
-	alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) float alphaCutoff;
-	alignas(16) float metallic;
-	alignas(16) float roughness;
-	alignas(16) std::array<float, 3> emissiveFactor;
-	alignas(16) std::array<float, 4> baseColorFactor;
+	alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) float emissiveFactor[3];
+	float alphaCutoff;
+	alignas(16) float baseColorFactor[4];
+	float metallic;
+	float roughness;
 };
 namespace tinygltf
 {
@@ -463,4 +487,6 @@ private:
 	void DrawNode(const tinygltf::Node &node);
 	void DrawMesh(const tinygltf::Mesh &mesh);
 	IndexType GetIndexType(int32_t componentSize);
+
+	void LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix);
 };

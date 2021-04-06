@@ -10,6 +10,8 @@ layout(location = 0) out vec4 outColor;
 layout(location = 0) in VS_OUT { 
 	vec4 colorFactor; 
 	vec2 texCoord;
+	vec3 pos;
+	vec3 normal;
 }fs_in;
 
 layout(binding=0 SET(2)) uniform sampler2D texAlbedo;
@@ -19,7 +21,7 @@ layout(binding=3 SET(2)) uniform sampler2D texOcclusion;
 layout(binding=4 SET(2)) uniform sampler2D texEmission;
 layout(binding=5 SET(2)) uniform sampler2D texTransparency;
 
-layout(binding=14 SET(2)) uniform ubo_material{
+layout(binding=14 SET(2)) uniform uboMaterial{
 	vec3 emissiveFactor;
 	float alphaCutoff;
 	vec4 baseColorFactor;	
@@ -27,11 +29,25 @@ layout(binding=14 SET(2)) uniform ubo_material{
 	float roughness;
 };
 
+struct Light{
+	vec3 pos;
+	vec4 color;
+	vec4 intensity;
+	vec2 lim_r; //the attenuation distance limit,r.x: min dist(sphere light radius), r.y: max dist
+	vec3 direction;
+	vec3 tube_p0;
+	vec3 tube_p1;
+};
+layout(binding=12 SET(0)) uniform UBOFrame{
+	mat4 PV;
+	Light light;
+	vec3 ambientColor;
+};
+
 void main() 
 {
-//   outColor = vec4(1,0,0,1);
-//   outColor = fs_in.colorFactor;
-	outColor = vec4(texture(texAlbedo,fs_in.texCoord).rgb,1.);
-	//outColor = vec4(texture(texNormal,fs_in.texCoord).rgb*0.5+0.5,1);
-	//outColor = texture(texAlbedo,fs_in.texCoord);
+	vec3 albedo=pow(texture(texAlbedo,fs_in.texCoord).rgb,vec3(2.2));
+	vec3 L=normalize(light.pos-fs_in.pos);
+	vec3 N=texture(texNormal,fs_in.texCoord).rgb*2-1+fs_in.normal;
+	outColor=vec4(albedo*(light.color.rgb*light.intensity.rgb*max(dot(L,N),0)+ambientColor),1);
 }

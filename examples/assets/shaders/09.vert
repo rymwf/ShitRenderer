@@ -14,10 +14,7 @@ layout(location = 11) in vec4 inInstanceColorFactor;
 layout(location = 12) in mat4 inInstanceMatrix;
 
 layout(location = 0) out VS_OUT { 
-	vec4 colorFactor;
-	vec2 texCoord;
-	vec3 pos;
-	vec3 normal;
+	vec4 color;
 }
 vs_out;
 
@@ -30,6 +27,7 @@ struct Light{
 	vec3 tube_p0;
 	vec3 tube_p1;
 };
+
 layout(binding=12 SET(0)) uniform UBOFrame{
 	mat4 PV;
 	Light light;
@@ -40,11 +38,18 @@ layout(binding=13 SET(1)) uniform UBOM{
 	mat4 M;
 };
 
+layout(binding=14 SET(2)) uniform uboMaterial{
+	vec3 emissiveFactor;
+	float alphaCutoff;
+	vec4 baseColorFactor;	
+	float metallic;
+	float roughness;
+};
+
 void main() 
 {
-  gl_Position = PV*inInstanceMatrix*M*vec4(inPos, 1);
-  vs_out.colorFactor = inInstanceColorFactor;
-  vs_out.texCoord= inTexCoord;
-  vs_out.pos= mat3(M)*inPos;
-  vs_out.normal= mat3(M)*inNormal;
+	vec3 albedo=baseColorFactor.rgb;
+	vec3 L=normalize(light.pos-mat3(M)*inPos);
+	vs_out.color=vec4(albedo*(light.color.rgb*max(dot(L,mat3(M)*inNormal),0)+ambientColor),1.);
+	gl_Position = PV*inInstanceMatrix*M*vec4(inPos, 1);
 }

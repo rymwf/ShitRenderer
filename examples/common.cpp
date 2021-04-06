@@ -180,11 +180,11 @@ Model::Model(const char *filePath)
 		{LOCATION_NORMAL, LOCATION_NORMAL, 3, DataType::FLOAT, false, 0},
 		{LOCATION_TANGENT, LOCATION_TANGENT, 4, DataType::FLOAT, false, 0},
 		{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
-		{LOCATION_INSTANCE_COLOR_FACTOR, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 0},
-		{LOCATION_INSTANCE_MATRIX + 0, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 16},
-		{LOCATION_INSTANCE_MATRIX + 1, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 32},
-		{LOCATION_INSTANCE_MATRIX + 2, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 48},
-		{LOCATION_INSTANCE_MATRIX + 3, VERTEX_LOCATION_COUNT, 4, DataType::FLOAT, false, 64},
+		{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 0},
+		{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 16},
+		{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 32},
+		{LOCATION_INSTANCE_MATRIX + 2, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 48},
+		{LOCATION_INSTANCE_MATRIX + 3, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 64},
 	};
 
 	mVertexInputStateCreateInfo.vertexBindingDescriptions =
@@ -193,7 +193,7 @@ Model::Model(const char *filePath)
 			{LOCATION_NORMAL},
 			{LOCATION_TANGENT},
 			{LOCATION_TEXCOORD0},
-			{VERTEX_LOCATION_COUNT, sizeof(InstanceAttribute), 1},
+			{LOCATION_INSTANCE_COLOR_FACTOR, sizeof(InstanceAttribute), 1},
 		};
 	for (auto &&attrib : mpModel->meshes[0].primitives[0].attributes)
 	{
@@ -424,28 +424,13 @@ void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const
 	//node attribute buffer
 	auto nodeCount = mpModel->nodes.size();
 	std::vector<NodeAttribute> nodeAttributes;
-	nodeAttributes.reserve(nodeCount);
-	for (auto &&node : mpModel->nodes)
+	nodeAttributes.resize(nodeCount);
+	for (auto &&scene : mpModel->scenes)
 	{
-		glm::dmat4 rotate(1);
-		glm::dmat4 scale(1);
-		glm::dmat4 translation(1);
-		glm::dmat4 extra(1);
-		if (!node.rotation.empty())
+		for (auto &&nodeIndex : scene.nodes)
 		{
-			//double rotateAngle = node.rotation[3];
-			//glm::dvec3 rotateVec = glm::dvec3(node.rotation[0], node.rotation[1], node.rotation[2]);
-			double rotateAngle = node.rotation[0];
-			glm::dvec3 rotateVec = glm::dvec3(node.rotation[1], node.rotation[2], node.rotation[3]);
-			rotate = glm::rotate(glm::dmat4(1), rotateAngle, rotateVec);
+			LoadNode(nodeIndex, nodeAttributes, glm::dmat4(1));
 		}
-		if (!node.scale.empty())
-			scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
-		if (!node.translation.empty())
-			scale = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
-		if (!node.matrix.empty())
-			memcpy(&extra, node.matrix.data(), sizeof(double) * node.matrix.size());
-		nodeAttributes.emplace_back(extra * translation * scale * rotate);
 	}
 	mModelAssets[pDevice].nodeAttributeBuffer = pDevice->Create(BufferCreateInfo{
 																	{},
@@ -463,22 +448,23 @@ void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const
 	std::vector<Material> materials(materialCount);
 	std::transform(mpModel->materials.begin(), mpModel->materials.end(), materials.begin(), [](auto &&m) {
 		return Material{
-			static_cast<float>(m.alphaCutoff),
-			static_cast<float>(m.pbrMetallicRoughness.metallicFactor),
-			static_cast<float>(m.pbrMetallicRoughness.roughnessFactor),
 			{
 				static_cast<float>(m.emissiveFactor[0]),
 				static_cast<float>(m.emissiveFactor[1]),
 				static_cast<float>(m.emissiveFactor[2]),
 			},
+			static_cast<float>(m.alphaCutoff),
 			{
 				static_cast<float>(m.pbrMetallicRoughness.baseColorFactor[0]),
 				static_cast<float>(m.pbrMetallicRoughness.baseColorFactor[1]),
 				static_cast<float>(m.pbrMetallicRoughness.baseColorFactor[2]),
 				static_cast<float>(m.pbrMetallicRoughness.baseColorFactor[3]),
-			}};
+			},
+			static_cast<float>(m.pbrMetallicRoughness.metallicFactor),
+			static_cast<float>(m.pbrMetallicRoughness.roughnessFactor),
+		};
 	});
-	mModelAssets[pDevice].materialBuffer = pDevice->Create(bufferCreateInfo, reinterpret_cast<const void *>(materials.data()));
+	mModelAssets[pDevice].materialBuffer = pDevice->Create(bufferCreateInfo, &materials[0]);
 
 	auto descriptorSetLayouts = mpCurPipelineLayout->GetCreateInfoPtr()->setLayouts;
 
@@ -496,11 +482,11 @@ void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const
 	DescriptorPoolCreateInfo descriptorPoolCreateInfo{materialCount + nodeCount, poolSizes};
 	mModelAssets[pDevice].descriptorPool = pDevice->Create(descriptorPoolCreateInfo);
 
-	std::vector<DescriptorSetLayout *> materialSetLayouts(materialCount, descriptorSetLayouts[DESCRIPTORSET_MATERIAL_NUMBER]);
+	std::vector<DescriptorSetLayout *> materialSetLayouts(materialCount, descriptorSetLayouts[DESCRIPTORSET_ID_MATERIAL]);
 	DescriptorSetAllocateInfo allocInfo{materialSetLayouts};
 	mModelAssets[pDevice].descriptorPool->Allocate(allocInfo, mModelAssets[pDevice].materialDescriptorSets);
 
-	std::vector<DescriptorSetLayout *> nodeSetLayouts(nodeCount, descriptorSetLayouts[DESCRIPTORSET_NODE_NUMBER]);
+	std::vector<DescriptorSetLayout *> nodeSetLayouts(nodeCount, descriptorSetLayouts[DESCRIPTORSET_ID_NODE]);
 	allocInfo = DescriptorSetAllocateInfo{nodeSetLayouts};
 	mModelAssets[pDevice].descriptorPool->Allocate(allocInfo, mModelAssets[pDevice].nodeDescriptorSets);
 
@@ -511,7 +497,7 @@ void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const
 		writes.emplace_back(
 			WriteDescriptorSet{
 				mModelAssets[pDevice].nodeDescriptorSets[i],
-				UNIFORM_BINDING_M,
+				UNIFORM_BINDING_NODE,
 				0,
 				DescriptorType::UNIFORM_BUFFER,
 				std::vector<DescriptorBufferInfo>{{mModelAssets[pDevice].nodeAttributeBuffer,
@@ -629,7 +615,7 @@ void Model::DrawModel(
 			BindDescriptorSetsInfo{
 				PipelineBindPoint::GRAPHICS,
 				mpCurPipelineLayout,
-				DESCRIPTORSET_NODE_NUMBER,
+				DESCRIPTORSET_ID_NODE,
 				1,
 				&mModelAssets[mpCurDevice].nodeDescriptorSets[nodeIndex]});
 		DrawNode(mpModel->nodes[nodeIndex]);
@@ -648,7 +634,7 @@ void Model::DrawNode(const tinygltf::Node &node)
 			BindDescriptorSetsInfo{
 				PipelineBindPoint::GRAPHICS,
 				mpCurPipelineLayout,
-				DESCRIPTORSET_NODE_NUMBER,
+				DESCRIPTORSET_ID_NODE,
 				1,
 				&mModelAssets[mpCurDevice].nodeDescriptorSets[node.children[i]]});
 		DrawNode(mpModel->nodes[node.children[i]]);
@@ -656,7 +642,7 @@ void Model::DrawNode(const tinygltf::Node &node)
 }
 void Model::DrawMesh(const tinygltf::Mesh &mesh)
 {
-	BindVertexBufferInfo bindVertexBufferInfo{0, VERTEX_LOCATION_COUNT + 1};
+	BindVertexBufferInfo bindVertexBufferInfo{0, VERTEX_LOCATION_NUM_MAX};
 	for (auto &&primitive : mesh.primitives)
 	{
 		//
@@ -664,14 +650,14 @@ void Model::DrawMesh(const tinygltf::Mesh &mesh)
 			BindDescriptorSetsInfo{
 				PipelineBindPoint::GRAPHICS,
 				mpCurPipelineLayout,
-				DESCRIPTORSET_MATERIAL_NUMBER,
+				DESCRIPTORSET_ID_MATERIAL,
 				1,
 				&mModelAssets[mpCurDevice].materialDescriptorSets[primitive.material]});
 
-		std::array<Buffer *, VERTEX_LOCATION_COUNT + 1> buffers;
+		std::array<Buffer *, VERTEX_LOCATION_NUM_MAX> buffers;
 		buffers.fill(mModelAssets[mpCurDevice].sceneBuffers[mCurSceneIndex]);
-		buffers[VERTEX_LOCATION_COUNT] = mModelAssets[mpCurDevice].instanceAttributeBuffer;
-		std::array<uint64_t, VERTEX_LOCATION_COUNT + 1> offsets{};
+		buffers[LOCATION_INSTANCE_COLOR_FACTOR] = mModelAssets[mpCurDevice].instanceAttributeBuffer;
+		std::array<uint64_t, VERTEX_LOCATION_NUM_MAX> offsets{};
 		for (auto &&attrib : primitive.attributes)
 		{
 			auto &&accessor = mpModel->accessors[attrib.second];
@@ -733,4 +719,28 @@ IndexType Model::GetIndexType(int32_t componentSize)
 		return IndexType::UINT16;
 	else
 		return IndexType::UINT32;
+}
+void Model::LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix)
+{
+	glm::dmat4 rotate(1);
+	glm::dmat4 scale(1);
+	glm::dmat4 translation(1);
+	glm::dmat4 extra(1);
+
+	auto &&node = mpModel->nodes[nodeIndex];
+	if (!node.rotation.empty())
+	{
+		rotate = glm::mat4_cast(glm::dquat(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
+	}
+	if (!node.scale.empty())
+		scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
+	if (!node.translation.empty())
+		translation = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
+	if (!node.matrix.empty())
+		memcpy(&extra, node.matrix.data(), sizeof(double) * node.matrix.size());
+	nodeAttributes[nodeIndex].matrix = extra * translation * rotate * scale * preMatrix;
+	for (auto &&subNodeIndex : node.children)
+	{
+		LoadNode(subNodeIndex, nodeAttributes, nodeAttributes[nodeIndex].matrix);
+	}
 }
