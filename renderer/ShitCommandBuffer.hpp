@@ -54,5 +54,6 @@ namespace Shit
 		virtual void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) = 0;
 
 		virtual void PipeplineBarrier(const PipelineBarrierInfo& info)=0;
+		virtual void PushConstants(const PushConstantUpdateInfo& info)=0;
 	};
 }

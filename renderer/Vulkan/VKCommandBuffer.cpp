@@ -267,14 +267,31 @@ namespace Shit
 	void VKCommandBuffer::BindVertexBuffer(const BindVertexBufferInfo &info)
 	{
 		std::vector<VkBuffer> buffers;
+		//std::vector<VkDeviceSize> offsets;
 		for (size_t i = 0; i < info.bindingCount; ++i)
-			buffers.emplace_back(static_cast<const VKBuffer *>(info.ppBuffers[i])->GetHandle());
+		{
+			//TODO: use null descriptor binding, need VK_EXT_robustness2
+			//if (info.ppBuffers[i])
+			{
+				buffers.emplace_back(static_cast<const VKBuffer *>(info.ppBuffers[i])->GetHandle());
+				//offsets.emplace_back(info.pOffsets[i]);
+			}
+			//else{
+			//	buffers.emplace_back(VK_NULL_HANDLE);
+			//}
+		}
 		vkCmdBindVertexBuffers(
 			mHandle,
 			info.firstBinding,
 			info.bindingCount,
 			buffers.data(),
 			info.pOffsets);
+		//vkCmdBindVertexBuffers(
+		//	mHandle,
+		//	0,
+		//	static_cast<uint32_t>(buffers.size()),
+		//	buffers.data(),
+		//	offsets.data());
 	}
 	void VKCommandBuffer::BindIndexBuffer(const BindIndexBufferInfo &info)
 	{
@@ -429,5 +446,15 @@ namespace Shit
 			bufferMemoryBarriers.data(),
 			static_cast<uint32_t>(imageMemoryBarriers.size()),
 			imageMemoryBarriers.data());
+	}
+	void VKCommandBuffer::PushConstants(const PushConstantUpdateInfo &info)
+	{
+		vkCmdPushConstants(
+			mHandle,
+			static_cast<VKPipelineLayout *>(info.pPipelineLayout)->GetHandle(),
+			Map(info.stageFlags),
+			info.offset,
+			info.size,
+			info.pValues);
 	}
 } // namespace Shi

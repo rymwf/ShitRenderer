@@ -231,20 +231,23 @@ namespace Shit
 								 0, nullptr,
 								 1, &barrier);
 
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			barrier.subresourceRange.baseMipLevel = 0;
-			barrier.subresourceRange.levelCount= mipLevels - 1;
+			if (mipLevels > 1)
+			{
+				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+				barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				barrier.subresourceRange.baseMipLevel = 0;
+				barrier.subresourceRange.levelCount = mipLevels - 1;
 
-			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-								 VK_PIPELINE_STAGE_TRANSFER_BIT,
-								 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-								 0,
-								 0, nullptr,
-								 0, nullptr,
-								 1, &barrier);
+				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
+									 VK_PIPELINE_STAGE_TRANSFER_BIT,
+									 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+									 0,
+									 0, nullptr,
+									 0, nullptr,
+									 1, &barrier);
+			}
 		});
 	}
 

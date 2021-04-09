@@ -48,7 +48,7 @@ namespace Shit
 			extensionNames.emplace_back(extensionProperty.extensionName);
 		}
 
-		//physical device  features
+		//TODO: set physical device  features, put this outside
 		VkPhysicalDeviceFeatures deviceFeatures;
 		vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 

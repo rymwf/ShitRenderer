@@ -755,4 +755,12 @@ namespace Shit
 		std::vector<BufferMemoryBarrier> bufferMemoryBarriers;
 		std::vector<ImageMemoryBarrier> imageMemoryBarriers;
 	};
+	struct PushConstantUpdateInfo
+	{
+		PipelineLayout *pPipelineLayout;
+		ShaderStageFlagBits stageFlags;
+		uint32_t offset;
+		uint32_t size;
+		const void *pValues; //an array of size bytes
+	};
 } // namespace Shit

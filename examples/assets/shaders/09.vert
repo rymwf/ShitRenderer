@@ -2,8 +2,10 @@
 
 #ifdef VULKAN
 #define SET(x) ,set=x
+#define PUSH_CONSTANT push_constant
 #else
 #define SET(x)
+#define PUSH_CONSTANT binding=15
 #endif
 
 layout(location = 0) in vec3 inPos;
@@ -34,7 +36,7 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 	vec3 ambientColor;
 };
 
-layout(binding=13 SET(1)) uniform UBOM{
+layout(binding=13 SET(1)) uniform UBONode{
 	mat4 M;
 };
 
@@ -50,6 +52,6 @@ void main()
 {
 	vec3 albedo=baseColorFactor.rgb;
 	vec3 L=normalize(light.pos-mat3(M)*inPos);
-	vs_out.color=vec4(albedo*(light.color.rgb*max(dot(L,mat3(M)*inNormal),0)+ambientColor),1.);
-	gl_Position = PV*inInstanceMatrix*M*vec4(inPos, 1);
+	vs_out.color=vec4(albedo*(light.color.rgb*max(dot(L,mat3(M)*inNormal),0)+ambientColor)+emissiveFactor,1.);
+	gl_Position = PV*M*vec4(inPos, 1);
 }

@@ -1,4 +1,7 @@
 #include "common.hpp"
+#include "model.hpp"
+
+#define MODEL_SIZE 1.
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 
@@ -14,8 +17,9 @@ const char *axisFragShaderName = "axis.frag.spv";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf";
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/AnimatedCube/glTF/AnimatedCube.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoxAnimated/glTF/BoxAnimated.gltf";
 
 class Hello
 {
@@ -71,7 +75,6 @@ class Hello
 	Image *colorImage;
 	ImageView *colorImageView;
 
-
 	uint32_t FPS;
 	float frameTimeInterval_ms;
 	std::chrono::system_clock::time_point curTime;
@@ -82,9 +85,9 @@ class Hello
 	std::unique_ptr<Model> testModel2;
 
 	//camera
-	Frustum frustum{PerspectiveProjectionDescription{0.1, 100, glm::radians(45.f), 1}};
+	Frustum frustum{{0.1, 0., PerspectiveProjectionDescription{glm::radians(45.f), 1}}};
 	//Camera camera{glm::dvec3(0, -5, 0), glm::dvec3(0, 0, 1), glm::dvec3(0, 0, 1)};
-	Camera camera{glm::dvec3(0, 0, 5), glm::dvec3(0, 1, 0), glm::dvec3(0, 1, 0)};
+	Camera camera{glm::dvec3(0, 0, 5), glm::dvec3(0, 0, 0), glm::dvec3(0, 1, 0)};
 
 public:
 	void initRenderSystem()
@@ -146,7 +149,9 @@ public:
 
 		testModel = std::make_unique<Model>(testModelPath);
 		if (testModel->LoadSucceed())
-			testModel->DownloadModel(device, pipelineLayout);
+			DownloadModel(testModel.get());
+		else
+			testModel.reset();
 
 		createDrawCommandBuffers();
 
@@ -174,8 +179,16 @@ public:
 					   [&](const WindowResizeEvent &value) {
 						   if (value.height == 0)
 							   return;
-						   frustum.projectionDescription = PerspectiveProjectionDescription{
-							   .1, 100., glm::radians(45.), double(value.width) / value.height};
+						   std::visit(
+							   [&](auto &&e) {
+								   using T = std::decay_t<decltype(e)>;
+								   if constexpr (std::is_same_v<T, PerspectiveProjectionDescription>)
+								   {
+									   e = PerspectiveProjectionDescription{
+										   glm::radians(45.), double(value.width) / value.height};
+								   }
+							   },
+							   frustum.projectionDescription.extraDesc);
 						   frustum.Update();
 					   },
 					   [&](const MouseButtonEvent &value) {
@@ -205,7 +218,7 @@ public:
 
 							   auto dir = camera.eye - camera.center;
 							   auto eye = glm::dmat3(glm::rotate(glm::rotate(glm::dmat4(1), -phi, camera.up), -theta, glm::cross(camera.up, dir))) * dir + camera.center;
-							   if (glm::length(glm::cross((eye - camera.center),camera.up))> 0.01)
+							   if (glm::length(glm::cross((eye - camera.center), camera.up)) > 0.01)
 							   {
 								   camera.eye = eye;
 								   camera.Update();
@@ -307,12 +320,23 @@ public:
 
 			//download new model
 			testModel = std::move(testModel2);
-			testModel->DownloadModel(device, pipelineLayout);
+
+			DownloadModel(testModel.get());
+
 			createPipeline();
 			createCommandBuffers();
 		}
-
 		updateUBOPVBuffers(imageIndex);
+
+		if (testModel->HasAnimation())
+		{
+			//update model animation
+			static auto animationStartTime = curTime;
+			static float cycleTime = -1; //ms
+			auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(curTime - animationStartTime).count();
+			testModel->UpdateAnimation(0, elapsedTime, imageIndex);
+		}
+
 		//=================================
 		inFlightFences[currentFrame]->Reset();
 
@@ -435,6 +459,11 @@ public:
 		descriptorSetLayouts[DESCRIPTORSET_ID_FRAME] = (device->Create(DescriptorSetLayoutCreateInfo{frameBindings}));
 		descriptorSetLayouts[DESCRIPTORSET_ID_NODE] = (device->Create(DescriptorSetLayoutCreateInfo{nodeBindings}));
 		descriptorSetLayouts[DESCRIPTORSET_ID_MATERIAL] = (device->Create(DescriptorSetLayoutCreateInfo{materialBindings}));
+
+		//		std::vector<PushConstantRange> pushConstantRanges{
+		//			{ShaderStageFlagBits::VERTEX_BIT,
+		//			 0,
+		//			 sizeof(glm::mat4)}};
 
 		//pipelineLayout
 		pipelineLayout = device->Create(PipelineLayoutCreateInfo{descriptorSetLayouts});
@@ -583,6 +612,10 @@ public:
 				{LOCATION_NORMAL},
 				{LOCATION_TANGENT},
 				{LOCATION_TEXCOORD0},
+				{LOCATION_TEXCOORD1},
+				{LOCATION_COLOR0},
+				{LOCATION_JOINTS0},
+				{LOCATION_WEIGHTS0},
 				{LOCATION_INSTANCE_COLOR_FACTOR, sizeof(InstanceAttribute), 1},
 			},
 			{
@@ -591,6 +624,10 @@ public:
 				{LOCATION_NORMAL, LOCATION_NORMAL, 3, DataType::FLOAT, false, 0},
 				{LOCATION_TANGENT, LOCATION_TANGENT, 4, DataType::FLOAT, false, 0},
 				{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
+				{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, 2, DataType::FLOAT, false, 0},
+				{LOCATION_COLOR0, LOCATION_COLOR0, 4, DataType::FLOAT, false, 0},
+				{LOCATION_JOINTS0, LOCATION_JOINTS0, 4, DataType::FLOAT, false, 0},
+				{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, 4, DataType::FLOAT, false, 0},
 				{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 0},
 				{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 16},
 				{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 32},
@@ -643,7 +680,6 @@ public:
 			pipelineLayout,
 			renderPass,
 			0});
-
 	}
 	void createFramebuffers()
 	{
@@ -671,8 +707,8 @@ public:
 		CommandBufferBeginInfo cmdBufferBeginInfo{};
 
 		std::vector<ClearValue> clearValues{
-			std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f},
-			std::array<float, 4>{0.2f, 0.2f, 0.2f, 1.f},
+			std::array<float, 4>{0.1f, 0.1f, .1f, 1.f},
+			std::array<float, 4>{0.1f, 0.1f, .1f, 1.f},
 			ClearDepthStencilValue{1.f, 0},
 		};
 
@@ -710,7 +746,7 @@ public:
 			if (testModel)
 			{
 				commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
-				testModel->DrawModel(device, commandBuffers[i]);
+				testModel->DrawModel(device, commandBuffers[i], i);
 			}
 			commandBuffers[i]->EndRenderPass();
 			commandBuffers[i]->End();
@@ -736,7 +772,7 @@ public:
 								  glm::vec3(-1),
 							  },
 						  glm::vec3(0.2)};
-
+		//move model to origin
 		BufferCreateInfo bufferCreateInfo{
 			.size = sizeof(UBOFrame),
 			.usage = BufferUsageFlagBits::UNIFORM_BUFFER_BIT,
@@ -824,6 +860,19 @@ public:
 			{},
 			{0, 1, 0, 1}};
 		colorImageView = device->Create(imageViewCreateInfo);
+	}
+	void DownloadModel(Model *pModel)
+	{
+		pModel->DownloadModel(device, pipelineLayout, swapchainImages.size());
+
+		camera.center = pModel->GetModelBoundingVolumePtr()->box.aabb.center;
+		camera.Update();
+
+		auto a = pModel->GetModelBoundingVolumePtr()->box.aabb.maxValue - glm::vec3(camera.center);
+		auto scaleFactor = MODEL_SIZE / (std::max)((std::max)(a.x, a.y), a.z);
+		auto intanceAttribute = InstanceAttribute{glm::vec4(1)};
+		intanceAttribute.matrix = glm::translate(glm::scale(glm::translate(glm::dmat4(1), -camera.center), glm::dvec3(scaleFactor)), camera.center);
+		pModel->CreateImageInstanceAttributeBuffers(device, {intanceAttribute}, true);
 	}
 };
 

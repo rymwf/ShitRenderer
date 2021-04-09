@@ -36,15 +36,16 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 	vec3 ambientColor;
 };
 
-layout(binding=13 SET(1)) uniform UBOM{
+layout(binding=13 SET(1)) uniform UBONode{
 	mat4 M;
 };
 
 void main() 
 {
-  gl_Position = PV*inInstanceMatrix*M*vec4(inPos, 1);
-  vs_out.colorFactor = inInstanceColorFactor;
-  vs_out.texCoord= inTexCoord;
-  vs_out.pos= mat3(M)*inPos;
-  vs_out.normal= mat3(M)*inNormal;
+	mat4 tempMat=inInstanceMatrix*M;
+	gl_Position = PV*tempMat*vec4(inPos, 1);
+	vs_out.colorFactor = inInstanceColorFactor;
+	vs_out.texCoord= inTexCoord;
+	vs_out.pos= mat3(tempMat)*inPos;
+	vs_out.normal= mat3(tempMat)*inNormal;
 }

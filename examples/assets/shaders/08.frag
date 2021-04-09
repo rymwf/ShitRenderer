@@ -46,8 +46,10 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 
 void main() 
 {
-	vec3 albedo=pow(texture(texAlbedo,fs_in.texCoord).rgb,vec3(2.2));
+	vec3 albedo=pow(texture(texAlbedo,fs_in.texCoord).rgb*baseColorFactor.rgb,vec3(2.2));
+	vec3 emissiveColor=pow(texture(texEmission,fs_in.texCoord).rgb*emissiveFactor,vec3(2.2));
+
 	vec3 L=normalize(light.pos-fs_in.pos);
 	vec3 N=texture(texNormal,fs_in.texCoord).rgb*2-1+fs_in.normal;
-	outColor=vec4(albedo*(light.color.rgb*light.intensity.rgb*max(dot(L,N),0)+ambientColor),1);
+	outColor=vec4(albedo*(light.color.rgb*light.intensity.rgb*max(dot(L,N),0)+ambientColor)+emissiveColor,1);
 }

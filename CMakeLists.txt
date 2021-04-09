@@ -146,7 +146,7 @@ find_package(RapidJSON CONFIG REQUIRED)
 function(newexample examplename)
 message(${examplename})
 
-add_executable(${examplename} examples/${examplename}.cpp examples/common.cpp)
+add_executable(${examplename} examples/${examplename}.cpp examples/common.cpp examples/model.cpp)
 
 set_target_properties(${examplename} PROPERTIES FOLDER examples
 #DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX}
@@ -195,6 +195,7 @@ newexample(05-depth)
 newexample(06-mipmap)
 newexample(07-multisample)
 newexample(08-model)
+newexample(09-skeleton)
 endif()
 
 

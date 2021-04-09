@@ -707,6 +707,8 @@ namespace Shit
 			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, stageBuffer);
 			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, static_cast<GLBuffer *>(info.pBuffer)->GetHandle());
 			glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(DrawIndexedIndirectCommand));
+			glDeleteBuffers(1, &stageBuffer);
+			mpStateManager->NotifyReleaseBuffer(stageBuffer);
 		}
 
 		memcpy(AllocateCommand<DrawIndirectInfo>(GLCommandCode::DrawIndexedIndirect), &info, sizeof(DrawIndirectInfo));
@@ -718,5 +720,10 @@ namespace Shit
 	void GLCommandBuffer::PipeplineBarrier([[maybe_unused]] const PipelineBarrierInfo &info)
 	{
 		//TODO: opengl pipeline barrier
+		LOG_VAR("PipeplineBarrier not implemented yet");
+	}
+	void GLCommandBuffer::PushConstants([[maybe_unused]] const PushConstantUpdateInfo &info)
+	{
+		LOG_VAR("PushConstants not implemented yet");
 	}
 } // namespace Shit

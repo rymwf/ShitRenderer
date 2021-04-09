@@ -37,12 +37,10 @@ using namespace Shit;
 #define LOCATION_NORMAL 1
 #define LOCATION_TANGENT 2
 #define LOCATION_TEXCOORD0 3
-#define LOCATION_JOINTS0 4
-#define LOCATION_WEIGHTS0 5
-//#define LOCATION_COLOR 4
-//#define LOCATION_TEXCOORD1 6
-//#define LOCATION_TEXCOORD2 7
-//#define LOCATION_BITANGENT 8
+#define LOCATION_TEXCOORD1 4
+#define LOCATION_COLOR0 5
+#define LOCATION_JOINTS0 6
+#define LOCATION_WEIGHTS0 7
 
 #define LOCATION_INSTANCE_COLOR_FACTOR 11
 #define LOCATION_INSTANCE_MATRIX 12
@@ -59,6 +57,7 @@ using namespace Shit;
 #define UNIFORM_BINDING_FRAME 12
 #define UNIFORM_BINDING_NODE 13
 #define UNIFORM_BINDING_MATERIAL 14
+#define UNIFORM_BINDING_PUSH_CONSTANT 15
 
 #define DESCRIPTORSET_ID_FRAME 0
 #define DESCRIPTORSET_ID_NODE 1
@@ -260,21 +259,20 @@ inline void parseArgument(int ac, char **av)
 
 struct PerspectiveProjectionDescription
 {
-	double near;
-	double far;
 	double fovy;
 	double aspect;
 };
 struct OrthogonalProjectionDescription
 {
-	double near;
-	double far;
-	double left;
-	double right;
-	double bottom;
-	double top;
+	double xmag;
+	double ymag;
 };
-using ProjectionDescription = std::variant<PerspectiveProjectionDescription, OrthogonalProjectionDescription>;
+struct ProjectionDescription
+{
+	double near;
+	double far; //if far==0, means infinite perspective, orthogonal cannot be 0
+	std::variant<PerspectiveProjectionDescription, OrthogonalProjectionDescription> extraDesc;
+};
 
 struct Frustum
 {
@@ -294,15 +292,18 @@ struct Frustum
 				using T = std::decay_t<decltype(arg)>;
 				if constexpr (std::is_same_v<T, PerspectiveProjectionDescription>)
 				{
-					projectionMatrix = glm::perspective(arg.fovy, arg.aspect, arg.near, arg.far);
+					if (projectionDescription.far == 0)
+						projectionMatrix = glm::infinitePerspective(arg.fovy, arg.aspect, projectionDescription.near);
+					else
+						projectionMatrix = glm::perspective(arg.fovy, arg.aspect, projectionDescription.near, projectionDescription.far);
 				}
 				else if constexpr (std::is_same_v<T, OrthogonalProjectionDescription>)
 				{
-					projectionMatrix = glm::ortho(arg.left, arg.right, arg.bottom, arg.top, arg.near, arg.far);
+					projectionMatrix = glm::ortho(-arg.xmag / 2, arg.xmag / 2, -arg.ymag / 2, arg.ymag / 2, projectionDescription.near, projectionDescription.far);
 				}
 				projectionMatrix[1][1] *= -1;
 			},
-			projectionDescription);
+			projectionDescription.extraDesc);
 		isUpdated = true;
 	}
 };
@@ -390,103 +391,8 @@ struct VertexAttribute<glm::mat4>
 	}
 };
 
-struct Material
+template<typename T>
+float intToFloat(T value)
 {
-	alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) float emissiveFactor[3];
-	float alphaCutoff;
-	alignas(16) float baseColorFactor[4];
-	float metallic;
-	float roughness;
-};
-namespace tinygltf
-{
-	class Model;
-	struct Accessor;
-	struct Animation;
-	struct Buffer;
-	struct BufferView;
-	struct Material;
-	struct Mesh;
-	class Node;
-	struct Texture;
-	struct Image;
-	struct Skin;
-	struct Sampler;
-	struct Camera;
-	struct Scene;
-	struct Light;
+	return (std::max)(float(value) / std::numeric_limits<T>::max(), -1.f);
 }
-class Model
-{
-public:
-	Model(const char *filePath);
-	~Model();
-
-	void DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, const std::vector<InstanceAttribute> &instanceAttributes = {});
-	void FreeModel(Device *pDevice);
-
-	/**
-	 * @brief 
-	 * 
-	 * @param pDevice 
-	 * @param sceneIndex -1 :default scene. -2: all scenes
-	 */
-	void DrawModel(
-		Device *pDevice,
-		CommandBuffer *pCommandBuffer,
-		int sceneIndex = -1);
-
-	size_t GetSceneCount() const;
-
-	constexpr const VertexInputStateCreateInfo *GetVertexInputStateCreateInfoPtr() const
-	{
-		return &mVertexInputStateCreateInfo;
-	}
-	constexpr bool LoadSucceed() const
-	{
-		return mLoadSucceed;
-	}
-
-private:
-	std::unique_ptr<tinygltf::Model> mpModel;
-	bool mLoadSucceed{};
-
-	CommandBuffer *mpCurCommandBuffer;
-	Device *mpCurDevice;
-	int mCurSceneIndex;
-	PipelineLayout *mpCurPipelineLayout;
-
-	struct NodeAttribute
-	{
-		alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) glm::mat4 matrix;
-	};
-
-	struct ModelAsset
-	{
-		std::vector<Buffer *> sceneBuffers;
-		std::vector<DrawIndirectInfo> primitivesDrawIndirectInfo;
-		std::vector<Image *> images;
-		std::vector<ImageView *> imageViews;
-		std::vector<Sampler *> samplers;
-		Buffer *instanceAttributeBuffer{};
-
-		Buffer *nodeAttributeBuffer;
-		std::vector<DescriptorSet *> nodeDescriptorSets;
-
-		Buffer *materialBuffer; //
-		std::vector<DescriptorSet *> materialDescriptorSets;
-
-		DescriptorPool *descriptorPool;
-	};
-	std::unordered_map<Device *, ModelAsset> mModelAssets;
-
-	VertexInputStateCreateInfo mVertexInputStateCreateInfo;
-
-	std::filesystem::path mModelPath;
-
-	void DrawNode(const tinygltf::Node &node);
-	void DrawMesh(const tinygltf::Mesh &mesh);
-	IndexType GetIndexType(int32_t componentSize);
-
-	void LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix);
-};

@@ -88,5 +88,6 @@ namespace Shit
 		void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) override;
 
 		void PipeplineBarrier(const PipelineBarrierInfo &info) override;
+		void PushConstants(const PushConstantUpdateInfo &info) override;
 	};
 } // namespace Shit
