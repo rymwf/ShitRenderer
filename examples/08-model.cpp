@@ -2,6 +2,7 @@
 #include "model.hpp"
 
 #define MODEL_SIZE 1.
+#define PERSPECTIVE 1
 
 uint32_t WIDTH = 800, HEIGHT = 600;
 
@@ -9,20 +10,21 @@ constexpr SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
+int animationIndex = 0;
+
 const char *vertShaderName = "08.vert.spv";
 const char *fragShaderName = "08.frag.spv";
 
 const char *axisVertShaderName = "axis.vert.spv";
 const char *axisFragShaderName = "axis.frag.spv";
 
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSkin/glTF/SimpleSkin.gltf";
-//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMorph/glTF/SimpleMorph.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSparseAccessor/glTF/SimpleSparseAccessor.gltf";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
-//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
 
 class Hello
@@ -89,8 +91,11 @@ class Hello
 	std::unique_ptr<Model> testModel2;
 
 	//camera
+	#if PERSPECTIVE
 	Frustum frustum{{0.1, 0., PerspectiveProjectionDescription{glm::radians(45.f), 1}}};
-	//Frustum frustum{{-10., 10., OrthogonalProjectionDescription{5., 5.}}};
+	#else
+	Frustum frustum{{-10., 10., OrthogonalProjectionDescription{5., 5.}}};
+	#endif
 	//Camera camera{glm::dvec3(0, -5, 0), glm::dvec3(0, 0, 1), glm::dvec3(0, 0, 1)};
 	Camera camera{glm::dvec3(0, 0, 5), glm::dvec3(0, 0, 0), glm::dvec3(0, 1, 0)};
 
@@ -336,13 +341,13 @@ public:
 
 		updateUBOPVBuffers(imageIndex);
 
-		if (testModel->HasAnimation())
+		if (testModel->GetAnimationNum() > 0)
 		{
 			//update model animation
 			static auto animationStartTime = curTime;
 			static float cycleTime = -1; //ms
 			auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(curTime - animationStartTime).count();
-			testModel->UpdateAnimation(0, elapsedTime, imageIndex);
+			testModel->UpdateAnimation(animationIndex, elapsedTime, imageIndex);
 		}
 
 		//=================================
@@ -408,7 +413,7 @@ public:
 		auto presentMode = choosePresentMode({PresentMode::IMMEDIATE, PresentMode::FIFO}, device, window);
 
 		swapchainCreateInfo = SwapchainCreateInfo{
-			2,
+			2,	//min image count
 			swapchainFormat.format,
 			swapchainFormat.colorSpace,
 			{800, 600},
@@ -889,6 +894,10 @@ public:
 		pModel->CreateImageInstanceAttributeBuffers(device, {intanceAttribute}, true);
 
 		camera.center = trans;
+#if PERSPECTIVE != 1
+		camera.eye.x = camera.center.x;
+		camera.eye.y = camera.center.y;
+#endif
 		camera.Update();
 	}
 };

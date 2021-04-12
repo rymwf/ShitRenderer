@@ -1,7 +1,7 @@
 /**
  * @file model.hpp
  * @author yangzs
- * @brief 
+ * @brief 	simple gltf model loader, do not support morph and sparse accessor
  * @version 0.1
  * 
  * @copyright Copyright (c) 2021
@@ -21,6 +21,10 @@ struct Material
 	float metallic{1.};
 	float roughness{0.};
 	float normalTextureFactor{0};
+};
+struct NodeAttribute
+{
+	alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) glm::mat4 matrix;
 };
 
 namespace tinygltf
@@ -121,9 +125,9 @@ public:
 	{
 		return &mBoundingVolume;
 	}
-	bool HasAnimation() const
+	int GetAnimationNum() const
 	{
-		return !mAnimationStates.empty();
+		return mAnimationStates.size();
 	}
 	uint32_t GetJointMatrixMaxNum() const;
 
@@ -138,12 +142,16 @@ private:
 	Device *mpCurDevice;
 	uint32_t mCurSceneIndex;
 	PipelineLayout *mpCurPipelineLayout;
-	uint32_t mCurAnimationIndex{};
 	uint32_t mCurImageIndex;
 
-	struct NodeAttribute
+	std::vector<int> mNodeToJointIndex;	//only skin 0
+
+	struct NodeTransformation
 	{
-		alignas(MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT) glm::mat4 matrix;
+		glm::dmat4 translate{1};
+		glm::dmat4 rotate{1};
+		glm::dmat4 scale{1};
+		glm::dmat4 extra{1};
 	};
 
 	struct AnimationState
@@ -152,11 +160,13 @@ private:
 		float endTime{std::numeric_limits<float>::min()};
 	};
 	std::vector<AnimationState> mAnimationStates;
-	std::vector<NodeAttribute> mDefaultNodeAttributes;
+	std::vector<NodeTransformation> mDefaultNodeTransformations;
 
 	struct ModelAsset
 	{
 		std::vector<Buffer *> buffers;
+		std::vector<std::vector<Buffer*>>  framePrimitiveBuffers;
+
 		std::vector<DrawIndirectInfo> primitivesDrawIndirectInfo;
 		std::vector<Image *> images;
 		std::vector<ImageView *> imageViews;
@@ -185,14 +195,14 @@ private:
 	void DrawMesh(const tinygltf::Mesh &mesh);
 	IndexType GetIndexType(int32_t componentSize);
 
-	void LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix);
+	void LoadNode(int nodeIndex, std::vector<NodeTransformation> &nodeTransformations, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix);
 	void LoadMaterial();
 	void LoadImages();
 	void CreateDrawCommandInfo();
 	void CreateDescriptorSets(uint32_t imageCount);
 	void LoadNodeAttributes();
 	void CreateVertexInputStateInfo();
-	void UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, std::vector<bool> &edited, const glm::mat4 &preMatrix);
+	void UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, const glm::dmat4 &preMatrix);
 	void LoadSkins();
-	void UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, const std::vector<glm::mat4> &nodeMatrices, int &skinIndex);
+	void UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, const std::vector<glm::mat4> &nodeMatrices);
 };

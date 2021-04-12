@@ -301,12 +301,13 @@ void Model::CreateDescriptorSets(uint32_t imageCount)
 void Model::LoadNodeAttributes()
 {
 	auto nodeCount = mpModel->nodes.size();
-	mDefaultNodeAttributes.resize(nodeCount);
+	mDefaultNodeTransformations.resize(nodeCount);
+	std::vector<NodeAttribute> nodeAttributes(nodeCount);
 	for (auto &&scene : mpModel->scenes)
 	{
 		for (auto &&nodeIndex : scene.nodes)
 		{
-			LoadNode(nodeIndex, mDefaultNodeAttributes, glm::dmat4(1));
+			LoadNode(nodeIndex, mDefaultNodeTransformations, nodeAttributes, glm::dmat4(1));
 		}
 	}
 	mBoundingVolume.box.aabb.center = (mBoundingVolume.box.aabb.minValue + mBoundingVolume.box.aabb.maxValue) / glm::dvec3(2);
@@ -319,10 +320,10 @@ void Model::LoadNodeAttributes()
 	{
 		mModelAssets[mpCurDevice].frameNodeAttributeBuffers[i] = mpCurDevice->Create(BufferCreateInfo{
 																						 {},
-																						 static_cast<uint32_t>(sizeof(NodeAttribute) * mDefaultNodeAttributes.size()),
+																						 static_cast<uint32_t>(sizeof(NodeAttribute) * nodeAttributes.size()),
 																						 BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
 																						 MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT},
-																					 reinterpret_cast<const void *>(mDefaultNodeAttributes.data()));
+																					 reinterpret_cast<const void *>(nodeAttributes.data()));
 		for (size_t j = 0; j < nodeCount; ++j)
 		{
 			writes.emplace_back(
@@ -642,7 +643,7 @@ void Model::DrawModel(
 	mpCurCommandBuffer = pCommandBuffer;
 	mCurImageIndex = imageIndex;
 
-	//TODO: multiple skins
+	//always use skin 0
 	mpCurCommandBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
 		PipelineBindPoint::GRAPHICS,
 		mpCurPipelineLayout,
@@ -765,25 +766,23 @@ IndexType Model::GetIndexType(int32_t componentSize)
 	else
 		return IndexType::UINT32;
 }
-void Model::LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix)
+void Model::LoadNode(int nodeIndex, std::vector<NodeTransformation> &nodeTransformations, std::vector<NodeAttribute> &nodeAttributes, const glm::dmat4 &preMatrix)
 {
-	glm::dmat4 rotate(1);
-	glm::dmat4 scale(1);
-	glm::dmat4 translation(1);
-	glm::dmat4 extra(1);
-
 	auto &&node = mpModel->nodes[nodeIndex];
 	if (!node.rotation.empty())
-	{
-		rotate = glm::mat4_cast(glm::dquat(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
-	}
+		nodeTransformations[nodeIndex].rotate = glm::mat4_cast(glm::dquat(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]));
 	if (!node.scale.empty())
-		scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
+		nodeTransformations[nodeIndex].scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
 	if (!node.translation.empty())
-		translation = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
+		nodeTransformations[nodeIndex].translate= glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
 	if (!node.matrix.empty())
-		memcpy(&extra, node.matrix.data(), sizeof(double) * node.matrix.size());
-	nodeAttributes[nodeIndex].matrix = preMatrix * extra * translation * rotate * scale;
+		memcpy(&nodeTransformations[nodeIndex].extra, node.matrix.data(), sizeof(double) * node.matrix.size());
+
+	nodeAttributes[nodeIndex].matrix = preMatrix *
+									   nodeTransformations[nodeIndex].extra *
+									   nodeTransformations[nodeIndex].translate *
+									   nodeTransformations[nodeIndex].rotate *
+									   nodeTransformations[nodeIndex].scale;
 
 	//update bounding volume
 	if (node.mesh != -1)
@@ -800,7 +799,7 @@ void Model::LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, 
 
 	for (auto &&subNodeIndex : node.children)
 	{
-		LoadNode(subNodeIndex, nodeAttributes, nodeAttributes[nodeIndex].matrix);
+		LoadNode(subNodeIndex, nodeTransformations, nodeAttributes, nodeAttributes[nodeIndex].matrix);
 	}
 }
 void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
@@ -809,11 +808,6 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 	auto c = time / period;
 	c -= static_cast<long long>(c);
 	auto animationTime = c * period + mAnimationStates[index].startTime;
-
-	static std::vector<glm::mat4> nodeMatrices(mpModel->nodes.size(), glm::mat4(1));
-	static std::vector<bool> edited(mpModel->nodes.size());
-	nodeMatrices.assign(mpModel->nodes.size(), glm::mat4(1));
-	edited.assign(mpModel->nodes.size(), false);
 
 	for (auto &&channel : mpModel->animations[index].channels)
 	{
@@ -829,7 +823,6 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 		auto &&outputBufferView = mpModel->bufferViews[outputAccessor.bufferView];
 
 		float *pNextTime = pPreTime + 1;
-		edited[channel.target_node] = true;
 		auto outValueSize = tinygltf::GetComponentSizeInBytes(outputAccessor.componentType);
 		auto outValueComponentCount = tinygltf::GetNumComponentsInType(outputAccessor.type);
 		for (size_t i = 0; i < inputAccessor.count; ++i, ++pPreTime, ++pNextTime)
@@ -844,14 +837,12 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 					auto preVal = glm::vec3(*reinterpret_cast<float *>(pPreOutValue), *(reinterpret_cast<float *>(pPreOutValue) + 1), *(reinterpret_cast<float *>(pPreOutValue) + 2));
 					auto nextVal = glm::vec3(*reinterpret_cast<float *>(pNextOutValue), *(reinterpret_cast<float *>(pNextOutValue) + 1), *(reinterpret_cast<float *>(pNextOutValue) + 2));
 
-					glm::mat4 trans(1);
 					if (sampler.interpolation.compare("LINEAR") == 0)
-						trans = glm::translate(glm::mat4(1), glm::mix(preVal, nextVal, glm::vec3(factor)));
+						mDefaultNodeTransformations[channel.target_node].translate = glm::translate(glm::mat4(1), glm::mix(preVal, nextVal, glm::vec3(factor)));
 					else if (sampler.interpolation.compare("STEP") == 0)
-						trans = glm::translate(glm::mat4(1), preVal);
+						mDefaultNodeTransformations[channel.target_node].translate = glm::translate(glm::mat4(1), preVal);
 					else if (sampler.interpolation.compare("CUBICSPLINE") == 0)
-						trans = glm::translate(glm::mat4(1), glm::smoothstep(preVal, nextVal, glm::vec3(factor)));
-					nodeMatrices[channel.target_node] = trans * nodeMatrices[channel.target_node];
+						mDefaultNodeTransformations[channel.target_node].translate = glm::translate(glm::mat4(1), glm::smoothstep(preVal, nextVal, glm::vec3(factor)));
 				}
 				else if (channel.target_path.compare("rotation") == 0)
 				{
@@ -934,8 +925,7 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 					{
 						//TODO:
 					}
-					auto b = glm::mat4_cast(interpolation);
-					nodeMatrices[channel.target_node] *= b;
+					mDefaultNodeTransformations[channel.target_node].rotate= glm::mat4_cast(interpolation);
 				}
 				else if (channel.target_path.compare("scale") == 0)
 				{
@@ -949,7 +939,7 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 						trans = glm::scale(glm::mat4(1), preVal);
 					else if (sampler.interpolation.compare("CUBICSPLINE") == 0)
 						trans = glm::scale(glm::mat4(1), glm::smoothstep(preVal, nextVal, glm::vec3(factor)));
-					nodeMatrices[channel.target_node] *= trans;
+					mDefaultNodeTransformations[channel.target_node].scale= trans;
 				}
 				else if (channel.target_path.compare("weights") == 0)
 				{
@@ -960,23 +950,26 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 		}
 	}
 
+	std::vector<glm::mat4> nodeMatrices(mpModel->nodes.size());
 	for (auto nodeIndex : mpModel->scenes[mCurSceneIndex].nodes)
 	{
-		UpdateNodeAnimation(nodeIndex, nodeMatrices, edited, glm::mat4(1));
+		UpdateNodeAnimation(nodeIndex, nodeMatrices, glm::mat4(1));
 	}
-	std::vector<glm::mat4> jointMatrices;
-	int skinIndex = -1;
-	for (auto nodeIndex : mpModel->scenes[mCurSceneIndex].nodes)
+	if (!mpModel->skins.empty())
 	{
-		UpdateSkins(nodeIndex, jointMatrices, nodeMatrices, skinIndex);
-	}
-	if (!jointMatrices.empty())
-	{
-		void *data;
-		auto size = sizeof(glm::mat4) * jointMatrices.size();
-		mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][skinIndex]->MapBuffer(0, size, &data);
-		memcpy(data, jointMatrices.data(), size);
-		mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][skinIndex]->UnMapBuffer();
+		std::vector<glm::mat4> jointMatrices(mpModel->skins[0].joints.size());
+		for (auto &&nodeIndex : mpModel->scenes[mCurSceneIndex].nodes)
+			UpdateSkins(nodeIndex, jointMatrices, nodeMatrices);
+
+		//always use skin 0
+		if (!jointMatrices.empty())
+		{
+			void *data;
+			auto size = sizeof(glm::mat4) * jointMatrices.size();
+			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][0]->MapBuffer(0, size, &data);
+			memcpy(data, jointMatrices.data(), size);
+			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][0]->UnMapBuffer();
+		}
 	}
 
 	//copy node
@@ -991,24 +984,30 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 	}
 	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->UnMapBuffer();
 }
-void Model::UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, std::vector<bool> &edited, const glm::mat4 &preMatrix)
+void Model::UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, const glm::dmat4 &preMatrix)
 {
-	if (!edited[nodeIndex])
-		nodeMatrices[nodeIndex] = mDefaultNodeAttributes[nodeIndex].matrix;
-	else
-		nodeMatrices[nodeIndex] = preMatrix * nodeMatrices[nodeIndex];
+	nodeMatrices[nodeIndex]= preMatrix *
+									 mDefaultNodeTransformations[nodeIndex].extra *
+									 mDefaultNodeTransformations[nodeIndex].translate *
+									 mDefaultNodeTransformations[nodeIndex].rotate *
+									 mDefaultNodeTransformations[nodeIndex].scale;
 	for (auto &&subNodeIndex : mpModel->nodes[nodeIndex].children)
-	{
-		if (edited[nodeIndex])
-			edited[subNodeIndex] = true;
-		UpdateNodeAnimation(subNodeIndex, nodeMatrices, edited, nodeMatrices[nodeIndex]);
-	}
+		UpdateNodeAnimation(subNodeIndex, nodeMatrices, nodeMatrices[nodeIndex]);
 }
 void Model::LoadSkins()
 {
 	auto imageCount = mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets.size();
-	auto skinCount = mpModel->skins.size();
 	mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers.resize(imageCount);
+
+	auto skinCount = mpModel->skins.size();
+	if (skinCount > 0)
+	{
+		mNodeToJointIndex.resize(mpModel->nodes.size(), -1);
+		for (size_t i = 0; i < mpModel->skins[0].joints.size(); ++i)
+		{
+			mNodeToJointIndex[mpModel->skins[0].joints[i]] = i;
+		}
+	}
 
 	std::vector<WriteDescriptorSet> writes;
 	for (size_t k = 0; k < imageCount; ++k)
@@ -1058,12 +1057,11 @@ void Model::LoadSkins()
 	}
 	mpCurDevice->UpdateDescriptorSets(writes, {});
 }
-void Model::UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, const std::vector<glm::mat4> &nodeMatrices, int &skinIndex)
+void Model::UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, const std::vector<glm::mat4> &nodeMatrices)
 {
 	if (mpModel->nodes[nodeIndex].skin != -1)
 	{
-		skinIndex = mpModel->nodes[nodeIndex].skin;
-		auto &&skin = mpModel->skins[skinIndex];
+		auto &&skin = mpModel->skins[0];
 		auto &&accessor = mpModel->accessors[skin.inverseBindMatrices];
 		auto &&bufferView = mpModel->bufferViews[accessor.bufferView];
 		auto p = reinterpret_cast<glm::mat4 *>(mpModel->buffers[bufferView.buffer].data.data() + accessor.byteOffset + bufferView.byteOffset);
@@ -1076,9 +1074,10 @@ void Model::UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, co
 			auto m = nodeMatrices[skin.joints[i]];
 			jointMatrices[i] = invM * m * (*(p + i));
 		}
+		return;
 	}
-	for (auto child : mpModel->nodes[nodeIndex].children)
+	for (auto &&child : mpModel->nodes[nodeIndex].children)
 	{
-		UpdateSkins(child, jointMatrices, nodeMatrices, skinIndex);
+		UpdateSkins(child, jointMatrices, nodeMatrices);
 	}
 }
