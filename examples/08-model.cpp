@@ -15,8 +15,15 @@ const char *fragShaderName = "08.frag.spv";
 const char *axisVertShaderName = "axis.vert.spv";
 const char *axisFragShaderName = "axis.frag.spv";
 
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
-//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSkin/glTF/SimpleSkin.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMorph/glTF/SimpleMorph.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSparseAccessor/glTF/SimpleSparseAccessor.gltf";
+
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
 
 class Hello
 {
@@ -71,7 +78,6 @@ class Hello
 
 	Image *colorImage;
 	ImageView *colorImageView;
-
 
 	uint32_t FPS;
 	float frameTimeInterval_ms;
@@ -308,6 +314,8 @@ public:
 			THROW("failed to get next image");
 		}
 		//========================================
+		//		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
 		if (testModel2)
 		{
 			presentQueue->WaitIdle();
@@ -455,10 +463,15 @@ public:
 			DescriptorSetLayoutBinding{TEXTURE_BINDING_TRANSPARENCY, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT | ShaderStageFlagBits::VERTEX_BIT},		//transparency
 			DescriptorSetLayoutBinding{UNIFORM_BINDING_MATERIAL, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::FRAGMENT_BIT | ShaderStageFlagBits::VERTEX_BIT},					//UBO material
 		};
-		descriptorSetLayouts.resize(3);
+		std::vector<DescriptorSetLayoutBinding> jointMatrixBindings{
+			DescriptorSetLayoutBinding{UNIFORM_BINDING_JOINTMATRIX, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT},
+		};
+
+		descriptorSetLayouts.resize(4);
 		descriptorSetLayouts[DESCRIPTORSET_ID_FRAME] = (device->Create(DescriptorSetLayoutCreateInfo{frameBindings}));
 		descriptorSetLayouts[DESCRIPTORSET_ID_NODE] = (device->Create(DescriptorSetLayoutCreateInfo{nodeBindings}));
 		descriptorSetLayouts[DESCRIPTORSET_ID_MATERIAL] = (device->Create(DescriptorSetLayoutCreateInfo{materialBindings}));
+		descriptorSetLayouts[DESCRIPTORSET_ID_JOINTMATRIX] = (device->Create(DescriptorSetLayoutCreateInfo{jointMatrixBindings}));
 
 		//pipelineLayout
 		pipelineLayout = device->Create(PipelineLayoutCreateInfo{descriptorSetLayouts});
@@ -550,18 +563,24 @@ public:
 	}
 	void createPipeline()
 	{
-		std::vector<PipelineShaderStageCreateInfo> shaderStageCreateInfos{
-			PipelineShaderStageCreateInfo{
-				ShaderStageFlagBits::VERTEX_BIT,
-				vertShader,
-				"main",
-			},
-			PipelineShaderStageCreateInfo{
-				ShaderStageFlagBits::FRAGMENT_BIT,
-				fragShader,
-				"main",
-			},
-		};
+		uint32_t jointMatrixNum = testModel->GetJointMatrixMaxNum();
+		std::vector<uint32_t> constantIDs{CONSTANT_ID_JOINTNUM};
+		std::vector<uint32_t> constantValues{jointMatrixNum};
+
+		std::vector<PipelineShaderStageCreateInfo>
+			shaderStageCreateInfos{
+				PipelineShaderStageCreateInfo{
+					ShaderStageFlagBits::VERTEX_BIT,
+					vertShader,
+					"main",
+					{constantIDs,
+					 constantValues}},
+				PipelineShaderStageCreateInfo{
+					ShaderStageFlagBits::FRAGMENT_BIT,
+					fragShader,
+					"main",
+				},
+			};
 		PipelineInputAssemblyStateCreateInfo inputAssemblyState{
 			PrimitiveTopology::TRIANGLE_LIST,
 		};
@@ -675,7 +694,6 @@ public:
 			pipelineLayout,
 			renderPass,
 			0});
-
 	}
 	void createFramebuffers()
 	{
@@ -865,8 +883,13 @@ public:
 		auto a = pModel->GetModelBoundingVolumePtr()->box.aabb.maxValue - modelCenter;
 		auto scaleFactor = MODEL_SIZE / (std::max)((std::max)(a.x, a.y), a.z);
 		auto intanceAttribute = InstanceAttribute{glm::vec4(1)};
-		intanceAttribute.matrix = glm::scale(glm::translate(glm::mat4(1), -modelCenter), glm::vec3(scaleFactor));
+		auto trans = glm::dvec3(modelCenter.x, a.y, modelCenter.z) * scaleFactor;
+		//auto trans = glm::dvec3(0, 0, 0);
+		intanceAttribute.matrix = glm::translate(glm::scale(glm::translate(glm::dmat4(1), trans), glm::dvec3(scaleFactor)), -modelCenter);
 		pModel->CreateImageInstanceAttributeBuffers(device, {intanceAttribute}, true);
+
+		camera.center = trans;
+		camera.Update();
 	}
 };
 

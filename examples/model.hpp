@@ -20,6 +20,7 @@ struct Material
 	alignas(16) float baseColorFactor[4]{1.f, 1.f, 1.f, 1.f};
 	float metallic{1.};
 	float roughness{0.};
+	float normalTextureFactor{0};
 };
 
 namespace tinygltf
@@ -47,9 +48,9 @@ struct BoundingVolume
 	{
 		struct AABB
 		{
-			glm::vec3 minValue{std::numeric_limits<float>::max()};
-			glm::vec3 maxValue{std::numeric_limits<float>::min()};
-			glm::vec3 center;
+			glm::dvec3 minValue{std::numeric_limits<double>::max()};
+			glm::dvec3 maxValue{std::numeric_limits<double>::lowest()};
+			glm::dvec3 center;
 		} aabb;
 		struct OBB
 		{
@@ -124,12 +125,11 @@ public:
 	{
 		return !mAnimationStates.empty();
 	}
+	uint32_t GetJointMatrixMaxNum() const;
 
 private:
 	std::unique_ptr<tinygltf::Model> mpModel;
 	bool mLoadSucceed{};
-
-	float animationTime{};
 
 	//TODO: changing with animation
 	BoundingVolume mBoundingVolume;
@@ -161,7 +161,7 @@ private:
 		std::vector<Image *> images;
 		std::vector<ImageView *> imageViews;
 		std::vector<Sampler *> samplers;
-		std::vector<Buffer *> frameInstanceAttributeBuffer;
+		std::vector<Buffer *> frameInstanceAttributeBuffers;
 		uint32_t instanceCount;
 
 		std::vector<Buffer *> frameNodeAttributeBuffers;
@@ -169,6 +169,9 @@ private:
 
 		Buffer *materialBuffer; //
 		std::vector<DescriptorSet *> materialDescriptorSets;
+
+		std::vector<std::vector<Buffer *>> frameSkinJointMatrixBuffers;
+		std::vector<std::vector<DescriptorSet *>> frameSkinJointMatrixDescriptorSets;
 
 		DescriptorPool *descriptorPool;
 	};
@@ -189,5 +192,7 @@ private:
 	void CreateDescriptorSets(uint32_t imageCount);
 	void LoadNodeAttributes();
 	void CreateVertexInputStateInfo();
-	void UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, const std::vector<bool> &edited, const glm::mat4 &preMatrix);
+	void UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, std::vector<bool> &edited, const glm::mat4 &preMatrix);
+	void LoadSkins();
+	void UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, const std::vector<glm::mat4> &nodeMatrices, int &skinIndex);
 };

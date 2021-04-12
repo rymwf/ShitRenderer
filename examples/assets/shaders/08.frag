@@ -27,6 +27,7 @@ layout(binding=14 SET(2)) uniform uboMaterial{
 	vec4 baseColorFactor;	
 	float metallic;
 	float roughness;
+	float normalScale;
 };
 
 struct Light{
@@ -44,12 +45,23 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 	vec3 ambientColor;
 };
 
+mat3 TBN(vec3 N)
+{
+	vec3 up=vec3(0,1,0);
+	vec3 T=cross(up,N);
+	vec3 B=cross(N,T);
+	return mat3(T,B,N);
+}
+
 void main() 
 {
-	vec3 albedo=pow(texture(texAlbedo,fs_in.texCoord).rgb*baseColorFactor.rgb,vec3(2.2));
+	vec3 albedo=pow(texture(texAlbedo,fs_in.texCoord).rgb,vec3(2.2))*baseColorFactor.rgb*fs_in.colorFactor.rgb;
 	vec3 emissiveColor=pow(texture(texEmission,fs_in.texCoord).rgb*emissiveFactor,vec3(2.2));
 
 	vec3 L=normalize(light.pos-fs_in.pos);
-	vec3 N=texture(texNormal,fs_in.texCoord).rgb*2-1+fs_in.normal;
+	vec3 N=normalize(TBN(fs_in.normal)*((texture(texNormal,fs_in.texCoord).rgb*2-1)*vec3(normalScale,normalScale,1.)));
+
+	//lambertian
 	outColor=vec4(albedo*(light.color.rgb*light.intensity.rgb*max(dot(L,N),0)+ambientColor)+emissiveColor,1);
+
 }

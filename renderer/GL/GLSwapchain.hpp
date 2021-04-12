@@ -48,7 +48,7 @@ namespace Shit
 
 		constexpr uint32_t GetSwapchainImageCount() const
 		{
-			return (std::min)((std::max)(mCreateInfo.minImageCount, 8U), 8U);
+			return (std::min)((std::max)(mCreateInfo.minImageCount, 2U), 8U);
 		}
 
 		void EnableDebugOutput(const void *userParam);

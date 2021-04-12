@@ -82,6 +82,15 @@ DataType getComponentDataType(uint32_t componentType)
 	}
 }
 
+uint32_t Model::GetJointMatrixMaxNum() const
+{
+	int ret = 0;
+	for (auto &&skin : mpModel->skins)
+	{
+		ret = (std::max)(int(skin.joints.size()), ret);
+	}
+	return ret;
+}
 Model::Model(const char *filePath)
 {
 	mModelPath = filePath;
@@ -103,18 +112,6 @@ Model::Model(const char *filePath)
 				mAnimationStates.back().startTime = static_cast<float>(accessor.minValues[0]);
 		}
 	}
-
-	//init bounding volume
-	for (auto &&mesh : mpModel->meshes)
-	{
-		for (auto &&primitive : mesh.primitives)
-		{
-			auto &&accessor = mpModel->accessors[primitive.attributes.at("POSITION")];
-			mBoundingVolume.box.aabb.minValue = glm::min(mBoundingVolume.box.aabb.minValue, glm::vec3(accessor.minValues[0], accessor.minValues[1], accessor.minValues[2]));
-			mBoundingVolume.box.aabb.maxValue = glm::max(mBoundingVolume.box.aabb.maxValue, glm::vec3(accessor.maxValues[0], accessor.maxValues[1], accessor.maxValues[2]));
-		}
-	}
-	mBoundingVolume.box.aabb.center = (mBoundingVolume.box.aabb.maxValue + mBoundingVolume.box.aabb.minValue) / glm::vec3(2.);
 	CreateVertexInputStateInfo();
 }
 void Model::CreateVertexInputStateInfo()
@@ -127,7 +124,7 @@ void Model::CreateVertexInputStateInfo()
 		{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
 		{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, 2, DataType::FLOAT, false, 0},
 		{LOCATION_COLOR0, LOCATION_COLOR0, 4, DataType::FLOAT, false, 0},
-		{LOCATION_JOINTS0, LOCATION_JOINTS0, 4, DataType::FLOAT, false, 0},
+		{LOCATION_JOINTS0, LOCATION_JOINTS0, 4, DataType::UNSIGNED_INT, false, 0},
 		{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, 4, DataType::FLOAT, false, 0},
 		{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 0},
 		{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 16},
@@ -171,7 +168,8 @@ void Model::CreateVertexInputStateInfo()
 		{
 			auto &&accessor = mpModel->accessors[attrib.second];
 			auto componentNum = tinygltf::GetNumComponentsInType(accessor.type);
-			uint32_t stride = tinygltf::GetComponentSizeInBytes(accessor.componentType) * componentNum;
+			uint32_t stride = (std::max)(tinygltf::GetComponentSizeInBytes(accessor.componentType) * componentNum,
+										 static_cast<int32_t>(mpModel->bufferViews[accessor.bufferView].byteStride));
 
 			//location equals to binding
 			mVertexInputStateCreateInfo.vertexBindingDescriptions[location].stride = stride;
@@ -185,7 +183,7 @@ Model::~Model()
 {
 	for (auto &&e : mModelAssets)
 	{
-		for (auto &&a : e.second.frameInstanceAttributeBuffer)
+		for (auto &&a : e.second.frameInstanceAttributeBuffers)
 			e.first->Destroy(a);
 		for (auto &&a : e.second.primitivesDrawIndirectInfo)
 			e.first->Destroy(a.pBuffer);
@@ -200,6 +198,11 @@ Model::~Model()
 		e.first->Destroy(e.second.materialBuffer);
 		for (auto &&a : e.second.frameNodeAttributeBuffers)
 			e.first->Destroy(a);
+		for (auto &&a : e.second.frameSkinJointMatrixBuffers)
+		{
+			for (auto &&b : a)
+				e.first->Destroy(b);
+		}
 		e.first->Destroy(e.second.descriptorPool);
 	}
 }
@@ -215,12 +218,16 @@ void Model::FreeModel(Device *pDevice)
 		pDevice->Destroy(e);
 	for (auto &&e : mModelAssets[pDevice].samplers)
 		pDevice->Destroy(e);
-	for (auto &&e : mModelAssets[pDevice].frameInstanceAttributeBuffer)
+	for (auto &&e : mModelAssets[pDevice].frameInstanceAttributeBuffers)
 		pDevice->Destroy(e);
 	pDevice->Destroy(mModelAssets[pDevice].materialBuffer);
 	for (auto &&e : mModelAssets[pDevice].frameNodeAttributeBuffers)
 		pDevice->Destroy(e);
-
+	for (auto &&e : mModelAssets[pDevice].frameSkinJointMatrixBuffers)
+	{
+		for (auto &&b : e)
+			pDevice->Destroy(b);
+	}
 	pDevice->Destroy(mModelAssets[pDevice].descriptorPool);
 
 	mModelAssets.erase(pDevice);
@@ -249,6 +256,7 @@ void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, uint3
 	LoadNodeAttributes();
 	LoadImages();
 	LoadMaterial();
+	LoadSkins();
 }
 void Model::CreateDescriptorSets(uint32_t imageCount)
 {
@@ -265,20 +273,30 @@ void Model::CreateDescriptorSets(uint32_t imageCount)
 	}
 	auto materialCount = (std::max)(mpModel->materials.size(), size_t(1));
 	auto nodeCount = mpModel->nodes.size();
+	auto skinCount = (std::max)(mpModel->skins.size(), size_t(1));
 
-	DescriptorPoolCreateInfo descriptorPoolCreateInfo{materialCount + nodeCount * imageCount, poolSizes};
+	//create descriptor pool
+	DescriptorPoolCreateInfo descriptorPoolCreateInfo{materialCount + (nodeCount + skinCount) * imageCount, poolSizes};
 	mModelAssets[mpCurDevice].descriptorPool = mpCurDevice->Create(descriptorPoolCreateInfo);
 
+	//material descriptor
 	std::vector<DescriptorSetLayout *> materialSetLayouts(materialCount, descriptorSetLayouts[DESCRIPTORSET_ID_MATERIAL]);
 	DescriptorSetAllocateInfo allocInfo{materialSetLayouts};
 	mModelAssets[mpCurDevice].descriptorPool->Allocate(allocInfo, mModelAssets[mpCurDevice].materialDescriptorSets);
 
+	//node attribute descriptor
 	std::vector<DescriptorSetLayout *> nodeSetLayouts(nodeCount, descriptorSetLayouts[DESCRIPTORSET_ID_NODE]);
 	allocInfo = DescriptorSetAllocateInfo{nodeSetLayouts};
-
 	mModelAssets[mpCurDevice].frameNodeDescriptorSets.resize(imageCount);
 	for (uint32_t k = 0; k < imageCount; ++k)
 		mModelAssets[mpCurDevice].descriptorPool->Allocate(allocInfo, mModelAssets[mpCurDevice].frameNodeDescriptorSets[k]);
+
+	//joint matrix descriptor
+	std::vector<DescriptorSetLayout *> jointMatrixSetLayouts(skinCount, descriptorSetLayouts[DESCRIPTORSET_ID_JOINTMATRIX]);
+	allocInfo = DescriptorSetAllocateInfo{jointMatrixSetLayouts};
+	mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets.resize(imageCount);
+	for (uint32_t k = 0; k < imageCount; ++k)
+		mModelAssets[mpCurDevice].descriptorPool->Allocate(allocInfo, {mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets[k]});
 }
 void Model::LoadNodeAttributes()
 {
@@ -291,11 +309,7 @@ void Model::LoadNodeAttributes()
 			LoadNode(nodeIndex, mDefaultNodeAttributes, glm::dmat4(1));
 		}
 	}
-
-	//update bounding volume
-	mBoundingVolume.box.aabb.minValue = glm::mat3(mDefaultNodeAttributes[0].matrix) * mBoundingVolume.box.aabb.minValue;
-	mBoundingVolume.box.aabb.maxValue = glm::mat3(mDefaultNodeAttributes[0].matrix) * mBoundingVolume.box.aabb.maxValue;
-	mBoundingVolume.box.aabb.center = glm::mat3(mDefaultNodeAttributes[0].matrix) * mBoundingVolume.box.aabb.center;
+	mBoundingVolume.box.aabb.center = (mBoundingVolume.box.aabb.minValue + mBoundingVolume.box.aabb.maxValue) / glm::dvec3(2);
 
 	auto imageCount = mModelAssets[mpCurDevice].frameNodeDescriptorSets.size();
 	mModelAssets[mpCurDevice].frameNodeAttributeBuffers.resize(imageCount);
@@ -304,11 +318,11 @@ void Model::LoadNodeAttributes()
 	for (uint32_t i = 0; i < imageCount; ++i)
 	{
 		mModelAssets[mpCurDevice].frameNodeAttributeBuffers[i] = mpCurDevice->Create(BufferCreateInfo{
-																					{},
-																					static_cast<uint32_t>(sizeof(NodeAttribute) * mDefaultNodeAttributes.size()),
-																					BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
-																					MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT},
-																				reinterpret_cast<const void *>(mDefaultNodeAttributes.data()));
+																						 {},
+																						 static_cast<uint32_t>(sizeof(NodeAttribute) * mDefaultNodeAttributes.size()),
+																						 BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+																						 MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT},
+																					 reinterpret_cast<const void *>(mDefaultNodeAttributes.data()));
 		for (size_t j = 0; j < nodeCount; ++j)
 		{
 			writes.emplace_back(
@@ -417,26 +431,27 @@ void Model::CreateImageInstanceAttributeBuffers(Device *pDevice, const std::vect
 	if (instanceAttributes.size() == 0)
 	{
 		InstanceAttribute attribute{glm::vec4{1}, glm::mat4{1}};
+		//image count
 		for (size_t i = 0, len = mModelAssets[pDevice].frameNodeDescriptorSets.size(); i < len; ++i)
-			mModelAssets[pDevice].frameInstanceAttributeBuffer.emplace_back(pDevice->Create(instanceAttributeCreateInfo, &attribute));
+			mModelAssets[pDevice].frameInstanceAttributeBuffers.emplace_back(pDevice->Create(instanceAttributeCreateInfo, &attribute));
 	}
 	else
 	{
 		for (size_t i = 0, len = mModelAssets[pDevice].frameNodeDescriptorSets.size(); i < len; ++i)
-			mModelAssets[pDevice].frameInstanceAttributeBuffer.emplace_back(pDevice->Create(instanceAttributeCreateInfo, reinterpret_cast<const void *>(instanceAttributes.data())));
+			mModelAssets[pDevice].frameInstanceAttributeBuffers.emplace_back(pDevice->Create(instanceAttributeCreateInfo, reinterpret_cast<const void *>(instanceAttributes.data())));
 	}
 }
 void Model::UpdateImageInstanceAttributes(Device *pDevice, uint32_t imageIndex, const std::vector<InstanceAttribute> &instanceAttributes)
 {
 	void *data;
 	auto size = sizeof(InstanceAttribute) * mModelAssets[pDevice].instanceCount;
-	mModelAssets[pDevice].frameInstanceAttributeBuffer[imageIndex]->MapBuffer(0, size, &data);
+	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->MapBuffer(0, size, &data);
 	memcpy(data, instanceAttributes.data(), size);
-	mModelAssets[pDevice].frameInstanceAttributeBuffer[imageIndex]->UnMapBuffer();
+	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->UnMapBuffer();
 }
 void Model::CreateDrawCommandInfo()
 {
-	if (mModelAssets[mpCurDevice].frameInstanceAttributeBuffer.empty())
+	if (mModelAssets[mpCurDevice].frameInstanceAttributeBuffers.empty())
 		CreateImageInstanceAttributeBuffers(mpCurDevice, {}, true);
 	//primitive draw indexed indiect command info
 	mModelAssets[mpCurDevice].primitivesDrawIndirectInfo.resize(mpModel->accessors.size(), {});
@@ -495,6 +510,7 @@ void Model::LoadMaterial()
 		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 	std::vector<Material> materials((std::max)(materialCount, size_t(1)), Material{});
 	std::transform(mpModel->materials.begin(), mpModel->materials.end(), materials.begin(), [](auto &&m) {
+		float normalScale = m.normalTexture.index == -1 ? 0 : m.normalTexture.scale;
 		return Material{
 			{
 				static_cast<float>(m.emissiveFactor[0]),
@@ -510,7 +526,7 @@ void Model::LoadMaterial()
 			},
 			static_cast<float>(m.pbrMetallicRoughness.metallicFactor),
 			static_cast<float>(m.pbrMetallicRoughness.roughnessFactor),
-		};
+			normalScale};
 	});
 	mModelAssets[mpCurDevice].materialBuffer = mpCurDevice->Create(bufferCreateInfo, (void *)materials.data());
 
@@ -530,12 +546,12 @@ void Model::LoadMaterial()
 					0,
 					DescriptorType::COMBINED_IMAGE_SAMPLER,
 					std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[samplerIndex], //sampler
-													  mModelAssets[mpCurDevice].imageViews[blackTextureIndex],
+													  mModelAssets[mpCurDevice].imageViews[whiteTextureIndex],
 													  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
 		}
-		writes[TEXTURE_BINDING_ALBEDO].values =
+		writes[TEXTURE_BINDING_EMISSION].values =
 			std::vector<DescriptorImageInfo>{{mModelAssets[mpCurDevice].samplers[samplerIndex], //sampler
-											  mModelAssets[mpCurDevice].imageViews[whiteTextureIndex],
+											  mModelAssets[mpCurDevice].imageViews[blackTextureIndex],
 											  ImageLayout::SHADER_READ_ONLY_OPTIMAL}};
 		writes.emplace_back(
 			WriteDescriptorSet{
@@ -552,17 +568,12 @@ void Model::LoadMaterial()
 	for (size_t i = 0; i < materialCount; ++i)
 	{
 		auto &&material = mpModel->materials[i];
-		texIndices.fill({blackTextureIndex, samplerIndex});
+		texIndices.fill({whiteTextureIndex, samplerIndex});
 		if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
 		{
 			int sampler = (std::max)(mpModel->textures[material.pbrMetallicRoughness.baseColorTexture.index].sampler, samplerIndex);
 			texIndices[TEXTURE_BINDING_ALBEDO] = {material.pbrMetallicRoughness.baseColorTexture.index, sampler};
 		}
-		else
-		{
-			texIndices[TEXTURE_BINDING_ALBEDO].first = whiteTextureIndex;
-		}
-
 		if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
 		{
 			int sampler = (std::max)(mpModel->textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].sampler, samplerIndex);
@@ -631,6 +642,14 @@ void Model::DrawModel(
 	mpCurCommandBuffer = pCommandBuffer;
 	mCurImageIndex = imageIndex;
 
+	//TODO: multiple skins
+	mpCurCommandBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
+		PipelineBindPoint::GRAPHICS,
+		mpCurPipelineLayout,
+		DESCRIPTORSET_ID_JOINTMATRIX,
+		1,
+		&mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets[imageIndex][0]});
+
 	if (mModelAssets[mpCurDevice].primitivesDrawIndirectInfo.empty())
 		CreateDrawCommandInfo();
 
@@ -642,14 +661,6 @@ void Model::DrawModel(
 }
 void Model::DrawNode(uint32_t nodeIndex)
 {
-
-	mpCurCommandBuffer->BindDescriptorSets(
-		BindDescriptorSetsInfo{
-			PipelineBindPoint::GRAPHICS,
-			mpCurPipelineLayout,
-			DESCRIPTORSET_ID_NODE,
-			1,
-			&mModelAssets[mpCurDevice].frameNodeDescriptorSets[mCurImageIndex][nodeIndex]});
 	//	mpCurCommandBuffer->PushConstants(PushConstantUpdateInfo{
 	//		mpCurPipelineLayout,
 	//		ShaderStageFlagBits::VERTEX_BIT,
@@ -660,6 +671,13 @@ void Model::DrawNode(uint32_t nodeIndex)
 	auto &&node = mpModel->nodes[nodeIndex];
 	if ((node.mesh >= 0) && (node.mesh < mpModel->meshes.size()))
 	{
+		mpCurCommandBuffer->BindDescriptorSets(
+			BindDescriptorSetsInfo{
+				PipelineBindPoint::GRAPHICS,
+				mpCurPipelineLayout,
+				DESCRIPTORSET_ID_NODE,
+				1,
+				&mModelAssets[mpCurDevice].frameNodeDescriptorSets[mCurImageIndex][nodeIndex]});
 		DrawMesh(mpModel->meshes[node.mesh]);
 	}
 	for (size_t i = 0; i < node.children.size(); i++)
@@ -685,7 +703,7 @@ void Model::DrawMesh(const tinygltf::Mesh &mesh)
 
 		std::array<Buffer *, VERTEX_LOCATION_NUM_MAX> buffers{};
 		buffers.fill(mModelAssets[mpCurDevice].buffers[0]); //TODO: ....
-		buffers[LOCATION_INSTANCE_COLOR_FACTOR] = mModelAssets[mpCurDevice].frameInstanceAttributeBuffer[mCurImageIndex];
+		buffers[LOCATION_INSTANCE_COLOR_FACTOR] = mModelAssets[mpCurDevice].frameInstanceAttributeBuffers[mCurImageIndex];
 		std::array<uint64_t, VERTEX_LOCATION_NUM_MAX> offsets{};
 		for (auto &&attrib : primitive.attributes)
 		{
@@ -765,7 +783,21 @@ void Model::LoadNode(int nodeIndex, std::vector<NodeAttribute> &nodeAttributes, 
 		translation = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
 	if (!node.matrix.empty())
 		memcpy(&extra, node.matrix.data(), sizeof(double) * node.matrix.size());
-	nodeAttributes[nodeIndex].matrix = extra * translation * rotate * scale * preMatrix;
+	nodeAttributes[nodeIndex].matrix = preMatrix * extra * translation * rotate * scale;
+
+	//update bounding volume
+	if (node.mesh != -1)
+	{
+		for (auto &&primitive : mpModel->meshes[node.mesh].primitives)
+		{
+			auto &&accessor = mpModel->accessors[primitive.attributes["POSITION"]];
+			auto a = nodeAttributes[nodeIndex].matrix * glm::dvec4(accessor.maxValues[0], accessor.maxValues[1], accessor.maxValues[2], 1);
+			auto b = nodeAttributes[nodeIndex].matrix * glm::dvec4(accessor.minValues[0], accessor.minValues[1], accessor.minValues[2], 1);
+			mBoundingVolume.box.aabb.maxValue = glm::max(glm::max(mBoundingVolume.box.aabb.maxValue, glm::dvec3(a)), glm::dvec3(b));
+			mBoundingVolume.box.aabb.minValue = glm::min(glm::min(mBoundingVolume.box.aabb.minValue, glm::dvec3(a)), glm::dvec3(b));
+		}
+	}
+
 	for (auto &&subNodeIndex : node.children)
 	{
 		LoadNode(subNodeIndex, nodeAttributes, nodeAttributes[nodeIndex].matrix);
@@ -819,12 +851,12 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 						trans = glm::translate(glm::mat4(1), preVal);
 					else if (sampler.interpolation.compare("CUBICSPLINE") == 0)
 						trans = glm::translate(glm::mat4(1), glm::smoothstep(preVal, nextVal, glm::vec3(factor)));
-					nodeMatrices[channel.target_node]= trans * nodeMatrices[channel.target_node];
+					nodeMatrices[channel.target_node] = trans * nodeMatrices[channel.target_node];
 				}
 				else if (channel.target_path.compare("rotation") == 0)
 				{
-					glm::quat preVal;
-					glm::quat nextVal;
+					glm::quat preVal{};
+					glm::quat nextVal{};
 					switch (outputAccessor.componentType)
 					{
 					case TINYGLTF_PARAMETER_TYPE_FLOAT:
@@ -903,7 +935,7 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 						//TODO:
 					}
 					auto b = glm::mat4_cast(interpolation);
-					nodeMatrices[channel.target_node]*= b;
+					nodeMatrices[channel.target_node] *= b;
 				}
 				else if (channel.target_path.compare("scale") == 0)
 				{
@@ -917,7 +949,7 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 						trans = glm::scale(glm::mat4(1), preVal);
 					else if (sampler.interpolation.compare("CUBICSPLINE") == 0)
 						trans = glm::scale(glm::mat4(1), glm::smoothstep(preVal, nextVal, glm::vec3(factor)));
-					nodeMatrices[channel.target_node]*= trans;
+					nodeMatrices[channel.target_node] *= trans;
 				}
 				else if (channel.target_path.compare("weights") == 0)
 				{
@@ -927,8 +959,27 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 			}
 		}
 	}
-	UpdateNodeAnimation(0, nodeMatrices, edited, glm::mat4(1));
 
+	for (auto nodeIndex : mpModel->scenes[mCurSceneIndex].nodes)
+	{
+		UpdateNodeAnimation(nodeIndex, nodeMatrices, edited, glm::mat4(1));
+	}
+	std::vector<glm::mat4> jointMatrices;
+	int skinIndex = -1;
+	for (auto nodeIndex : mpModel->scenes[mCurSceneIndex].nodes)
+	{
+		UpdateSkins(nodeIndex, jointMatrices, nodeMatrices, skinIndex);
+	}
+	if (!jointMatrices.empty())
+	{
+		void *data;
+		auto size = sizeof(glm::mat4) * jointMatrices.size();
+		mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][skinIndex]->MapBuffer(0, size, &data);
+		memcpy(data, jointMatrices.data(), size);
+		mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][skinIndex]->UnMapBuffer();
+	}
+
+	//copy node
 	auto nodeCount = mpModel->nodes.size();
 	void *pData;
 	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->MapBuffer(0, sizeof(NodeAttribute) * nodeCount, &pData);
@@ -940,11 +991,94 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 	}
 	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->UnMapBuffer();
 }
-void Model::UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices,const std::vector<bool>& edited,const glm::mat4 &preMatrix)
+void Model::UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, std::vector<bool> &edited, const glm::mat4 &preMatrix)
 {
 	if (!edited[nodeIndex])
 		nodeMatrices[nodeIndex] = mDefaultNodeAttributes[nodeIndex].matrix;
-	nodeMatrices[nodeIndex] = preMatrix * nodeMatrices[nodeIndex];
+	else
+		nodeMatrices[nodeIndex] = preMatrix * nodeMatrices[nodeIndex];
 	for (auto &&subNodeIndex : mpModel->nodes[nodeIndex].children)
+	{
+		if (edited[nodeIndex])
+			edited[subNodeIndex] = true;
 		UpdateNodeAnimation(subNodeIndex, nodeMatrices, edited, nodeMatrices[nodeIndex]);
+	}
+}
+void Model::LoadSkins()
+{
+	auto imageCount = mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets.size();
+	auto skinCount = mpModel->skins.size();
+	mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers.resize(imageCount);
+
+	std::vector<WriteDescriptorSet> writes;
+	for (size_t k = 0; k < imageCount; ++k)
+	{
+		if (skinCount == 0)
+		{
+			writes.emplace_back(
+				WriteDescriptorSet{
+					mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets[k][0],
+					UNIFORM_BINDING_JOINTMATRIX,
+					0,
+					DescriptorType::UNIFORM_BUFFER,
+					std::vector<DescriptorBufferInfo>{
+						DescriptorBufferInfo{mModelAssets[mpCurDevice].buffers[0],
+											 0,
+											 sizeof(glm::mat4)}}});
+		}
+		else
+		{
+			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[k].resize(skinCount);
+
+			for (size_t i = 0; i < skinCount; ++i)
+			{
+				auto &&accessor = mpModel->accessors[mpModel->skins[i].inverseBindMatrices];
+				auto &&bufferView = mpModel->bufferViews[accessor.bufferView];
+
+				mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[k][i] = mpCurDevice->Create(
+					BufferCreateInfo{
+						{},
+						sizeof(glm::mat4) * accessor.count,
+						BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+						MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT},
+					//(void *)(nullptr)
+					mpModel->buffers[bufferView.buffer].data.data() + accessor.byteOffset + bufferView.byteOffset);
+				writes.emplace_back(
+					WriteDescriptorSet{
+						mModelAssets[mpCurDevice].frameSkinJointMatrixDescriptorSets[k][i],
+						UNIFORM_BINDING_JOINTMATRIX,
+						0,
+						DescriptorType::UNIFORM_BUFFER,
+						std::vector<DescriptorBufferInfo>{
+							DescriptorBufferInfo{mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[k][i],
+												 0,
+												 sizeof(glm::mat4) * accessor.count}}});
+			}
+		}
+	}
+	mpCurDevice->UpdateDescriptorSets(writes, {});
+}
+void Model::UpdateSkins(int nodeIndex, std::vector<glm::mat4> &jointMatrices, const std::vector<glm::mat4> &nodeMatrices, int &skinIndex)
+{
+	if (mpModel->nodes[nodeIndex].skin != -1)
+	{
+		skinIndex = mpModel->nodes[nodeIndex].skin;
+		auto &&skin = mpModel->skins[skinIndex];
+		auto &&accessor = mpModel->accessors[skin.inverseBindMatrices];
+		auto &&bufferView = mpModel->bufferViews[accessor.bufferView];
+		auto p = reinterpret_cast<glm::mat4 *>(mpModel->buffers[bufferView.buffer].data.data() + accessor.byteOffset + bufferView.byteOffset);
+
+		auto jointCount = skin.joints.size();
+		jointMatrices.assign(jointCount, glm::mat4(1));
+		auto invM = glm::inverse(nodeMatrices[nodeIndex]);
+		for (size_t i = 0; i < jointCount; ++i)
+		{
+			auto m = nodeMatrices[skin.joints[i]];
+			jointMatrices[i] = invM * m * (*(p + i));
+		}
+	}
+	for (auto child : mpModel->nodes[nodeIndex].children)
+	{
+		UpdateSkins(child, jointMatrices, nodeMatrices, skinIndex);
+	}
 }

@@ -17,7 +17,6 @@ namespace Shit
 	{
 		GLuint mHandle;
 		GLStateManager *mpStateManager;
-		bool mIsBound{};
 
 	public:
 		GLBuffer(GLStateManager *pStateManager, const BufferCreateInfo &createInfo, const void *pData);
