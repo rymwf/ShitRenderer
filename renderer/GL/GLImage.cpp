@@ -24,7 +24,7 @@ namespace Shit
 			glDeleteTextures(1, &mHandle);
 		}
 	}
-	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo,const void* pData)
+	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo, const void *pData)
 		: Image(createInfo), mpStateManager(pStateManager)
 	{
 		if (!static_cast<bool>(createInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT) &&
@@ -156,7 +156,7 @@ namespace Shit
 			}
 		}
 	}
-	void GLImage::UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData)
+	void GLImage::UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData)
 	{
 		GLenum target = Map(mCreateInfo.imageType, mCreateInfo.samples);
 		mpStateManager->PushTextureUnit(0, target, mHandle);
@@ -191,6 +191,19 @@ namespace Shit
 			break;
 		}
 		mpStateManager->PopTextureUnit();
+	}
+	void GLImage::MapMemory([[maybe_unused]] uint64_t offset, [[maybe_unused]] uint64_t size, void **ppData)
+	{
+		mpStateManager->BindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+		auto target = Map(mCreateInfo.imageType, mCreateInfo.samples);
+		mpStateManager->BindTextureUnit(0, target, mHandle);
+		mTempData.resize(mCreateInfo.extent.width * mCreateInfo.extent.height * GetFormatComponentNum(mCreateInfo.format));
+		glGetTexImage(target, 0, MapExternalFormat(mCreateInfo.format), MapDataTypeFromFormat(mCreateInfo.format), mTempData.data());
+		*ppData = mTempData.data() + offset;
+	}
+	void GLImage::UnMapMemory()
+	{
+		UpdateSubData(0, Rect3D{{}, mCreateInfo.extent}, mTempData.data());
 	}
 
 	//===================================================================

@@ -2,21 +2,30 @@
 
 #ifdef VULKAN
 #define SET(x) ,set=x
-#define PUSH_CONSTANT push_constant
 #else
 #define SET(x)
-#define PUSH_CONSTANT binding=15
 #endif
 
 layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inTangent;
-layout(location = 3) in vec2 inTexCoord;
+layout(location = 3) in vec2 inTexCoord0;
+layout(location = 4) in vec2 inTexCoord1;
+layout(location = 5) in vec4 inColor0;
+#ifdef VULKAN
+layout(location = 6) in uvec4 inJoints0;
+#else
+layout(location = 6) in vec4 inJoints0;
+#endif
+layout(location = 7) in vec4 inWeights0;
 layout(location = 11) in vec4 inInstanceColorFactor;
 layout(location = 12) in mat4 inInstanceMatrix;
 
 layout(location = 0) out VS_OUT { 
-	vec4 color;
+	vec4 colorFactor;
+	vec2 texCoord;
+	vec3 pos;
+	vec3 normal;
 }
 vs_out;
 
@@ -29,9 +38,9 @@ struct Light{
 	vec3 tube_p0;
 	vec3 tube_p1;
 };
-
 layout(binding=12 SET(0)) uniform UBOFrame{
 	mat4 PV;
+	vec3 eyePosition;
 	Light light;
 	vec3 ambientColor;
 };
@@ -40,18 +49,29 @@ layout(binding=13 SET(1)) uniform UBONode{
 	mat4 M;
 };
 
-layout(binding=14 SET(2)) uniform uboMaterial{
-	vec3 emissiveFactor;
-	float alphaCutoff;
-	vec4 baseColorFactor;	
-	float metallic;
-	float roughness;
+layout(constant_id=0) const int jointNum=0;
+layout(binding=15 SET(3)) uniform UBOJointMatrix
+{
+	mat4 jointMatrices[jointNum+1];
 };
 
 void main() 
 {
-	vec3 albedo=baseColorFactor.rgb;
-	vec3 L=normalize(light.pos-mat3(M)*inPos);
-	vs_out.color=vec4(albedo*(light.color.rgb*max(dot(L,mat3(M)*inNormal),0)+ambientColor)+emissiveFactor,1.);
-	gl_Position = PV*M*vec4(inPos, 1);
+	mat4 tempMat=inInstanceMatrix*M;
+	if(bool(jointNum))
+	{
+		mat4 skinMatrix=
+			inWeights0[0]*jointMatrices[int(inJoints0[0])]+ 
+			inWeights0[1]*jointMatrices[int(inJoints0[1])]+ 
+			inWeights0[2]*jointMatrices[int(inJoints0[2])]+ 
+			inWeights0[3]*jointMatrices[int(inJoints0[3])];
+		tempMat=tempMat*skinMatrix;
+	}
+
+	vec4 vertexPos=tempMat*vec4(inPos, 1);
+	gl_Position = PV*vertexPos;
+	vs_out.colorFactor = inInstanceColorFactor;//*mix(vec4(1),inColor0,step(0.001,inColor0.r+inColor0.g+inColor0.b));
+	vs_out.texCoord= inTexCoord0;
+	vs_out.pos= vertexPos.xyz;
+	vs_out.normal= normalize(mat3(tempMat)*inNormal);
 }

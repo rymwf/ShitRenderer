@@ -252,4 +252,51 @@ namespace Shit
 									  &mHandle) != VK_SUCCESS)
 			THROW("failed to create graphics pipeline");
 	}
+	//=======================================================
+	VKComputePipeline::VKComputePipeline(VkDevice device, const ComputePipelineCreateInfo &createInfo)
+		: VKPipeline(device), ComputePipeline(createInfo)
+	{
+		using constantVaule_T = std::decay_t<decltype(SpecializationInfo::constantValues)>::value_type;
+		auto constantVaule_T_size = sizeof(constantVaule_T);
+
+		auto count = createInfo.stage.specializationInfo.constantIDs.size();
+		std::vector<VkSpecializationMapEntry> mapEntries;
+		for (size_t i = 0; i < count; ++i)
+		{
+			mapEntries.emplace_back(
+				createInfo.stage.specializationInfo.constantIDs[i],
+				static_cast<uint32_t>(i * constantVaule_T_size),
+				constantVaule_T_size);
+		}
+		VkSpecializationInfo specInfo{
+			static_cast<uint32_t>(count),
+			mapEntries.data(),
+			count * constantVaule_T_size,
+			createInfo.stage.specializationInfo.constantValues.data()};
+
+		VkPipelineShaderStageCreateInfo stageCreateInfo{
+			VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			nullptr,
+			{},
+			Map(createInfo.stage.stage),
+			static_cast<VKShader *>(createInfo.stage.pShader)->GetHandle(),
+			createInfo.stage.entryName,
+			&specInfo};
+
+		VkComputePipelineCreateInfo info{
+			VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+			nullptr,
+			{},
+			std::move(stageCreateInfo),
+			static_cast<VKPipelineLayout *>(createInfo.pLayout)->GetHandle(),
+			VK_NULL_HANDLE, //base pipeline handle
+			0				//base pipeline index
+		};
+		CHECK_VK_RESULT(vkCreateComputePipelines(device,
+												 VK_NULL_HANDLE, //pipeline cache
+												 1,
+												 &info,
+												 nullptr,
+												 &mHandle))
+	}
 } // namespace Shit

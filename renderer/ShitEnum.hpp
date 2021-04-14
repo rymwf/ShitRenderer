@@ -249,15 +249,18 @@ namespace Shit
 	enum class EventModifierBits
 	{
 		None = 0,
-		ALT = 0x1,
-		CTRL = 0x2,
-		SHIFT = 0x4,
+		ALTL = 0x1,
+		CTRLL = 0x2,
+		SHIFTL = 0x4,
 		META = 0x8,
 		BUTTONL = 0x10, //mouse left button
 		BUTTONR = 0x20,
 		BUTTONM = 0x40,
 		BUTTONX1 = 0x80,
-		BUTTONX2 = 0x100
+		BUTTONX2 = 0x100,
+		ALTR = 0x200,
+		CTRLR = 0x400,
+		SHIFTR = 0x800,
 	};
 	ENABLE_BITMASK_OPERATORS(EventModifierBits);
 

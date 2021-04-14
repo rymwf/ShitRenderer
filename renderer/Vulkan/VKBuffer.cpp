@@ -41,11 +41,11 @@ namespace Shit
 
 		vkBindBufferMemory(mDevice, mHandle, mMemory, 0);
 	}
-	void VKBuffer::MapBuffer(uint64_t offset, uint64_t size, void **ppData)
+	void VKBuffer::MapMemory(uint64_t offset, uint64_t size, void **ppData)
 	{
 		vkMapMemory(mDevice, mMemory, offset, size, 0, ppData);
 	}
-	void VKBuffer::UnMapBuffer()
+	void VKBuffer::UnMapMemory()
 	{
 		vkUnmapMemory(mDevice, mMemory);
 	}

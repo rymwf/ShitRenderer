@@ -31,6 +31,7 @@ namespace Shit
 		DrawIndexedIndirect,
 		DrawIndexedIndirectCount,
 		EndRenderPass,
+		PipelineBarrier,
 		SecondaryCommandBuffer,
 		NextSubpass,
 	};

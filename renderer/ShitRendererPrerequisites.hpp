@@ -50,7 +50,10 @@
 	std::cout << __FILE__ << " " << __LINE__ << ":  " << #str << ": " << str << std::endl;
 #endif
 
-#define THROW(str) {throw std::runtime_error(__FILE__ " " + std::to_string(__LINE__) + ": " + str);}
+#define THROW(str)                                                                      \
+	{                                                                                   \
+		throw std::runtime_error(__FILE__ " " + std::to_string(__LINE__) + ": " + str); \
+	}
 
 #define SHIT_ATTACHMENT_UNUSED (~0U)
 
@@ -167,6 +170,7 @@ namespace Shit
 		ColorSpace colorSpace;	   //!<only sRGB
 		Extent2D imageExtent;	   //!<no use for opengl
 		uint32_t imageArrayLayers; //!< alway 1 unless you are developing a stereoscopic 3D applicaiton
+		ImageUsageFlagBits imageUsage;
 		PresentMode presentMode;
 	};
 
@@ -199,7 +203,7 @@ namespace Shit
 
 	struct VertexBindingDescription
 	{
-		uint32_t binding; 
+		uint32_t binding;
 		uint32_t stride;
 		uint32_t divisor; //attributes advance once per divior instances,when 0, advance per vertex
 	};
@@ -316,6 +320,8 @@ namespace Shit
 	};
 	struct ComputePipelineCreateInfo
 	{
+		PipelineShaderStageCreateInfo stage;
+		PipelineLayout *pLayout;
 	};
 	struct BufferCreateInfo
 	{
@@ -446,8 +452,8 @@ namespace Shit
 	struct BufferImageCopy
 	{
 		uint64_t bufferOffset;
-		uint32_t bufferRowLength;
-		uint32_t bufferImageHeight;
+		uint32_t bufferRowLength;	//0 means tightly packed
+		uint32_t bufferImageHeight; //0 means tightly packed
 		ImageSubresourceLayer imageSubresource;
 		Offset3D imageOffset;
 		Extent3D imageExtent;
@@ -477,9 +483,9 @@ namespace Shit
 	{
 		Image *pSrcImage;
 		Image *pDstImage;
+		Filter filter;
 		uint32_t regionCount;
 		ImageBlit *pRegions;
-		Filter filter;
 	};
 
 	struct DescriptorSetLayoutBinding
@@ -536,8 +542,8 @@ namespace Shit
 	{
 		DescriptorSet *pDstSet;
 		uint32_t dstBinding;
-		uint32_t dstArrayElement;	//start array index 
-		DescriptorType descriptorType;	//must be same as type of dstset at dstbinding
+		uint32_t dstArrayElement;	   //start array index
+		DescriptorType descriptorType; //must be same as type of dstset at dstbinding
 		std::variant<
 			std::vector<DescriptorImageInfo>,
 			std::vector<DescriptorBufferInfo>,
@@ -630,7 +636,7 @@ namespace Shit
 
 	struct AttachmentReference
 	{
-		uint32_t attachment;	//canbe SHIT_ATTACHMENT_UNUSED
+		uint32_t attachment; //canbe SHIT_ATTACHMENT_UNUSED
 		ImageLayout layout;
 	};
 
@@ -687,7 +693,7 @@ namespace Shit
 	{
 		uint32_t firstBinding;
 		uint32_t bindingCount;
-		Buffer **ppBuffers;	//buffer pointer array
+		Buffer **ppBuffers; //buffer pointer array
 		uint64_t *pOffsets; //offset array
 	};
 	struct BindIndexBufferInfo
@@ -713,7 +719,7 @@ namespace Shit
 		uint32_t firstset;
 		uint32_t descriptorSetCount;
 		DescriptorSet **ppDescriptorSets;
-		uint32_t dynamicOffsetCount;	//dynamic uniform or storage buffer
+		uint32_t dynamicOffsetCount; //dynamic uniform or storage buffer
 		uint32_t *pDynamicOffsets;
 	};
 	struct BufferViewCreateInfo
@@ -722,15 +728,15 @@ namespace Shit
 
 	struct MemoryBarrier
 	{
-		AccessFlagBits srcAccessMask;	
-		AccessFlagBits dstAccessMask;	
+		AccessFlagBits srcAccessMask;
+		AccessFlagBits dstAccessMask;
 	};
 	struct BufferMemoryBarrier
 	{
 		AccessFlagBits srcAccessMask;
 		AccessFlagBits dstAccessMask;
-//		uint32_t srcQueueFamilyIndex;
-//		uint32_t dstQueueFamilyIndex;
+		//		uint32_t srcQueueFamilyIndex;
+		//		uint32_t dstQueueFamilyIndex;
 		Buffer *pBuffer;
 		uint64_t offset;
 		uint64_t size;
@@ -741,8 +747,8 @@ namespace Shit
 		AccessFlagBits dstAccessMask;
 		ImageLayout oldImageLayout;
 		ImageLayout newImageLayout;
-	//	uint32_t srcQueueFamilyIndex;
-	//	uint32_t dstQueueFamilyIndex;
+		//	uint32_t srcQueueFamilyIndex;
+		//	uint32_t dstQueueFamilyIndex;
 		Image *pImage;
 		ImageSubresourceRange subresourceRange;
 	};
@@ -751,9 +757,12 @@ namespace Shit
 		PipelineStageFlagBits srcStageMask;
 		PipelineStageFlagBits dstStageMask;
 		DependencyFlagBits dependencyFlags;
-		std::vector<MemoryBarrier> memoryBarriers;
-		std::vector<BufferMemoryBarrier> bufferMemoryBarriers;
-		std::vector<ImageMemoryBarrier> imageMemoryBarriers;
+		uint32_t memoryBarrierCount;
+		MemoryBarrier *pMemoryBarriers;
+		uint32_t bufferMemoryBarrierCount;
+		BufferMemoryBarrier *pBufferMemoryBarriers;
+		uint32_t imageMemoryBarrierCount;
+		ImageMemoryBarrier *pImageMemoryBarriers;
 	};
 	struct PushConstantUpdateInfo
 	{
@@ -763,4 +772,54 @@ namespace Shit
 		uint32_t size;
 		const void *pValues; //an array of size bytes
 	};
+	inline uint32_t GetFormatComponentNum(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::R8_UNORM:
+		case ShitFormat::R8_SRGB:
+		case ShitFormat::D16_UNORM:
+		case ShitFormat::D24_UNORM:
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D24_UNORM_S8_UINT:
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+		case ShitFormat::S8_UINT:
+		default:
+			return 1;
+
+		case ShitFormat::RG8_UNORM:
+		case ShitFormat::RG8_SRGB:
+			return 2;
+
+		case ShitFormat::RGB8_UNORM:
+		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::BGR8_UNORM:
+		case ShitFormat::BGR8_SRGB:
+			return 3;
+
+		case ShitFormat::RGBA8_UNORM:
+		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::BGRA8_UNORM:
+		case ShitFormat::BGRA8_SRGB:
+			return 4;
+		}
+	}
+	inline uint32_t GetFormatComponentSize(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::D16_UNORM:
+			return 2;
+		case ShitFormat::D24_UNORM:
+			return 3;
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D24_UNORM_S8_UINT:
+			return 4;
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+			return 5;
+		case ShitFormat::S8_UINT:
+		default:
+			return 1;
+		}
+	}
 } // namespace Shit

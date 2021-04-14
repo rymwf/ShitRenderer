@@ -11,10 +11,6 @@
 
 #include <GL/glew.h>
 
-#ifdef _WIN32
-#include <GL/wglew.h>
-#endif
-
 #include <renderer/ShitRendererPrerequisites.hpp>
 #include "GLState.hpp"
 
@@ -29,19 +25,7 @@
 		}                                                                 \
 	}
 
-#define LOADWGL                                                           \
-	{                                                                     \
-		GLenum err = wglewInit();                                         \
-		if (GLEW_OK != err)                                               \
-		{                                                                 \
-			/* Problem: glewInit failed, something is seriously wrong. */ \
-			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));      \
-			THROW("failed to init wglew");                                \
-		}                                                                 \
-	}
-
 #define glIsExtensionSupported(x) glewIsExtensionSupported(x)
-#define wglIsExtensionSupported(x) wglewIsSupported(x)
 
 #define CLIP_ORIGIN_UPPER_LEFT
 //#define CLIP_ORIGIN_LOWER_LEFT
@@ -89,10 +73,6 @@ namespace Shit
 		void querySupportedShaderBinaryFormat(std::vector<GLint> &shaderBinaryFormats);
 		void querySupportedProgramBinaryFormat(std::vector<GLint> &programBinaryFormats);
 		bool isSupportShaderBinaryFormat(GLenum format);
-
-#ifdef _WIN32
-		const char *queryWGLExtensionNames(HDC hdc);
-#endif
 		void listGLInfo();
 	}
 

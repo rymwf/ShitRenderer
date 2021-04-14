@@ -33,7 +33,10 @@ namespace Shit
 		{
 			return mHandle;
 		}
-		void UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData) override;
+		void UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData) override;
+
+		void MapMemory(uint64_t offset, uint64_t size, void **ppData) override;
+		void UnMapMemory() override;
 	};
 
 	class VKImageView final : public ImageView

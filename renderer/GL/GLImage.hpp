@@ -17,6 +17,7 @@ namespace Shit
 		GLuint mHandle;
 		GLStateManager *mpStateManager;
 		bool mIsRenderbuffer{};
+		std::vector<unsigned char> mTempData;
 
 	public:
 		GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo, const void *pData);
@@ -31,11 +32,13 @@ namespace Shit
 		 * 
 		 * @param imageSubData 
 		 */
-		void UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData) override;
+		void UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData) override;
 		constexpr bool IsRenderbuffer() const
 		{
 			return mIsRenderbuffer;
 		}
+		void MapMemory(uint64_t offset, uint64_t size, void **ppData) override;
+		void UnMapMemory() override;
 	};
 
 	class GLImageView final : public ImageView
@@ -43,6 +46,7 @@ namespace Shit
 		GLuint mHandle;
 		GLStateManager *mpStateManger;
 		Sampler *mpSampler;
+
 	public:
 		GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo);
 		~GLImageView() override;
@@ -50,6 +54,6 @@ namespace Shit
 		{
 			return mHandle;
 		}
-		void SetSampler(Sampler* pSampler);
+		void SetSampler(Sampler *pSampler);
 	};
 }

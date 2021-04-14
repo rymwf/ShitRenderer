@@ -446,9 +446,9 @@ void Model::UpdateImageInstanceAttributes(Device *pDevice, uint32_t imageIndex, 
 {
 	void *data;
 	auto size = sizeof(InstanceAttribute) * mModelAssets[pDevice].instanceCount;
-	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->MapBuffer(0, size, &data);
+	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->MapMemory(0, size, &data);
 	memcpy(data, instanceAttributes.data(), size);
-	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->UnMapBuffer();
+	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->UnMapMemory();
 }
 void Model::CreateDrawCommandInfo()
 {
@@ -966,23 +966,23 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 		{
 			void *data;
 			auto size = sizeof(glm::mat4) * jointMatrices.size();
-			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][0]->MapBuffer(0, size, &data);
+			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][0]->MapMemory(0, size, &data);
 			memcpy(data, jointMatrices.data(), size);
-			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][0]->UnMapBuffer();
+			mModelAssets[mpCurDevice].frameSkinJointMatrixBuffers[imageIndex][0]->UnMapMemory();
 		}
 	}
 
 	//copy node
 	auto nodeCount = mpModel->nodes.size();
 	void *pData;
-	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->MapBuffer(0, sizeof(NodeAttribute) * nodeCount, &pData);
+	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->MapMemory(0, sizeof(NodeAttribute) * nodeCount, &pData);
 	NodeAttribute *pNodeAttribute = reinterpret_cast<NodeAttribute *>(pData);
 	for (auto &&e : nodeMatrices)
 	{
 		pNodeAttribute->matrix = e;
 		pNodeAttribute++;
 	}
-	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->UnMapBuffer();
+	mModelAssets[mpCurDevice].frameNodeAttributeBuffers[imageIndex]->UnMapMemory();
 }
 void Model::UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, const glm::dmat4 &preMatrix)
 {

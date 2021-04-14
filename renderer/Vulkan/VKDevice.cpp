@@ -83,16 +83,7 @@ namespace Shit
 			&deviceFeatures};
 		if (vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
 			THROW("create logical device failed");
-
-		//create a transfer command pool for memory transfer operation
-		auto transferQueueFamilyIndex = GetQueueFamilyIndexByFlag(
-			QueueFlagBits::TRANSFER_BIT | QueueFlagBits::GRAPHICS_BIT | QueueFlagBits::COMPUTE_BIT,
-			{});
-		mpOneTimeCommandPool = Create(
-			//{CommandPoolCreateFlagBits::TRANSIENT_BIT,
-			{CommandPoolCreateFlagBits::RESET_COMMAND_BUFFER_BIT,
-			 transferQueueFamilyIndex.value()});
-		mpOneTimeCommandQueue = Create({transferQueueFamilyIndex->index, transferQueueFamilyIndex->count - 1});
+		CreateOneTimeCommandPool();
 	}
 
 	std::optional<QueueFamilyIndex> VKDevice::GetPresentQueueFamilyIndex(ShitWindow *pWindow)
@@ -172,9 +163,9 @@ namespace Shit
 			{
 				Buffer *buffer = mBuffers.back().get();
 				void *data;
-				buffer->MapBuffer(0, createInfo.size, &data);
+				buffer->MapMemory(0, createInfo.size, &data);
 				memcpy(data, pData, static_cast<size_t>(createInfo.size));
-				buffer->UnMapBuffer();
+				buffer->UnMapMemory();
 			}
 			else if (static_cast<bool>(createInfo.usage & BufferUsageFlagBits::TRANSFER_DST_BIT))
 			{
@@ -186,9 +177,9 @@ namespace Shit
 				};
 				VKBuffer stagingbuffer{mDevice, GetPhysicalDevice(), stagingBufferCreateInfo};
 				void *data;
-				stagingbuffer.MapBuffer(0, createInfo.size, &data);
+				stagingbuffer.MapMemory(0, createInfo.size, &data);
 				memcpy(data, pData, static_cast<size_t>(createInfo.size));
-				stagingbuffer.UnMapBuffer();
+				stagingbuffer.UnMapMemory();
 
 				ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
 					BufferCopy bufferCopy{0, 0, createInfo.size};
@@ -204,25 +195,6 @@ namespace Shit
 			}
 		}
 		return mBuffers.back().get();
-	}
-	void VKDevice::ExecuteOneTimeCommands(const std::function<void(CommandBuffer *)> &func)
-	{
-		static CommandBuffer *pOneTimeCommandBuffer;
-		if (!pOneTimeCommandBuffer)
-		{
-			std::vector<CommandBuffer *> cmdBuffers;
-			if (cmdBuffers.empty())
-				mpOneTimeCommandPool->CreateCommandBuffers({CommandBufferLevel::PRIMARY, 1}, cmdBuffers);
-			pOneTimeCommandBuffer = cmdBuffers[0];
-		}
-		CommandBufferBeginInfo beginInfo{
-			CommandBufferUsageFlagBits::ONE_TIME_SUBMIT_BIT};
-		pOneTimeCommandBuffer->Begin(beginInfo);
-		func(pOneTimeCommandBuffer);
-		pOneTimeCommandBuffer->End();
-		mpOneTimeCommandQueue->Submit({{{}, {pOneTimeCommandBuffer}}}, nullptr);
-		mpOneTimeCommandQueue->WaitIdle();
-		pOneTimeCommandBuffer->Reset(CommandBufferResetFlatBits::RELEASE_RESOURCES_BIT);
 	}
 	Image *VKDevice::Create(const ImageCreateInfo &createInfo, const void *pData)
 	{

@@ -157,12 +157,12 @@ namespace Shit
 
 		if (mods & MK_CONTROL)
 		{
-			modifiers |= EventModifierBits::CTRL;
+			modifiers |= EventModifierBits::CTRLL | EventModifierBits::CTRLR;
 		}
 
 		if (mods & MK_SHIFT)
 		{
-			modifiers |= EventModifierBits::SHIFT;
+			modifiers |= EventModifierBits::SHIFTL|EventModifierBits::SHIFTR;
 		}
 		if (mods & MK_LBUTTON)
 		{

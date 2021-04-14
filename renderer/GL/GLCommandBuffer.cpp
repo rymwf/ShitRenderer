@@ -277,13 +277,12 @@ namespace Shit
 			auto cmd = reinterpret_cast<const BindVertexBufferInfo *>(pCur);
 			auto ppBuffers = reinterpret_cast<Buffer *const *>(&cmd->ppBuffers);
 			auto pOffsets = reinterpret_cast<const uint64_t *>(&cmd->ppBuffers + cmd->bindingCount);
-			//auto graphicsPipeline = ;
 			auto &&vertexInputState = dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetCreateInfoPtr()->vertexInputState;
 
 			std::vector<GLuint> vertexBuffers(cmd->bindingCount);
 			std::vector<GLintptr> offsets(cmd->bindingCount);
 			std::vector<GLsizei> strides(cmd->bindingCount);
-			for(auto&& bindingDesc:vertexInputState.vertexBindingDescriptions)
+			for (auto &&bindingDesc : vertexInputState.vertexBindingDescriptions)
 			{
 				vertexBuffers[bindingDesc.binding] = static_cast<const GLBuffer *>(ppBuffers[bindingDesc.binding])->GetHandle();
 				offsets[bindingDesc.binding] = pOffsets[bindingDesc.binding];
@@ -385,33 +384,153 @@ namespace Shit
 		case GLCommandCode::BlitImage:
 		{
 			auto cmd = reinterpret_cast<const BlitImageInfo *>(pCur);
-			return sizeof(*cmd);
+			//TODO :blit image
+			LOG("blitimage not implemented yet");
+			return sizeof(Image *) * 2 + sizeof(Filter) + sizeof(uint32_t) + sizeof(ImageBlit) * cmd->regionCount;
 		}
 		case GLCommandCode::CopyBuffer:
 		{
 			auto cmd = reinterpret_cast<const CopyBufferInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, static_cast<GLBuffer *>(cmd->pSrcBuffer)->GetHandle());
 			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, static_cast<GLBuffer *>(cmd->pDstBuffer)->GetHandle());
+			auto regions = reinterpret_cast<const BufferCopy *>(&cmd->regionCount + 1);
 			for (uint32_t i = 0; i < cmd->regionCount; ++i)
 			{
-				glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, cmd->pRegions[i].srcOffset, cmd->pRegions[i].dstOffset, cmd->pRegions[i].size);
+				glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, regions[i].srcOffset, regions[i].dstOffset, regions[i].size);
 			}
 			return sizeof(sizeof(Buffer *) * 2 + sizeof(uint32_t) + sizeof(BufferCopy) * cmd->regionCount);
 		}
 		case GLCommandCode::CopyBufferToImage:
 		{
 			auto cmd = reinterpret_cast<const CopyBufferToImageInfo *>(pCur);
-			return sizeof(*cmd);
+			mpStateManager->BindBuffer(GL_PIXEL_UNPACK_BUFFER, static_cast<GLBuffer *>(cmd->pSrcBuffer)->GetHandle());
+			auto regions = reinterpret_cast<const BufferImageCopy *>(&cmd->regionCount + 1);
+			for (uint32_t i = 0; i < cmd->regionCount; ++i)
+			{
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, regions[i].bufferRowLength);
+				glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, regions[i].bufferImageHeight);
+				cmd->pDstImage->UpdateSubData(
+					regions[i].imageSubresource.mipLevel,
+					Rect3D{
+						Offset3D{
+							regions[i].imageOffset.x,
+							static_cast<int32_t>(cmd->pDstImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_1D ? regions[i].imageSubresource.baseArrayLayer : regions[i].imageOffset.y),
+							static_cast<int32_t>(cmd->pDstImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_2D ? regions[i].imageSubresource.baseArrayLayer : regions[i].imageOffset.z),
+						},
+						Extent3D{
+							regions[i].imageExtent.width,
+							cmd->pDstImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_1D ? regions[i].imageSubresource.layerCount : regions[i].imageExtent.height,
+							cmd->pDstImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_2D ? regions[i].imageSubresource.layerCount : regions[i].imageExtent.depth,
+						}},
+					&regions[i].bufferOffset);
+			}
+			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+			glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0);
+			return sizeof(Buffer *) + sizeof(Image *) + sizeof(uint32_t) + sizeof(BufferImageCopy) * cmd->regionCount;
 		}
 		case GLCommandCode::CopyImage:
 		{
 			auto cmd = reinterpret_cast<const CopyImageInfo *>(pCur);
-			return sizeof(*cmd);
+			auto pSrcImage = static_cast<GLImage *>(cmd->pSrcImage);
+			auto pDstImage = static_cast<GLImage *>(cmd->pDstImage);
+			auto regions = reinterpret_cast<const ImageCopy *>(&cmd->regionCount + 1);
+			auto srcTarget =
+				pSrcImage->IsRenderbuffer() ? GL_RENDERBUFFER
+											: Map(cmd->pSrcImage->GetCreateInfoPtr()->imageType, cmd->pSrcImage->GetCreateInfoPtr()->samples);
+			auto dstTarget =
+				pDstImage->IsRenderbuffer() ? GL_RENDERBUFFER
+											: Map(cmd->pDstImage->GetCreateInfoPtr()->imageType, cmd->pDstImage->GetCreateInfoPtr()->samples);
+			for (uint32_t i = 0; i < cmd->regionCount; ++i)
+			{
+				glCopyImageSubData(
+					pSrcImage->GetHandle(),
+					srcTarget,
+					regions[i].srcSubresource.mipLevel,
+					regions[i].srcOffset.x,
+					regions[i].srcOffset.y,
+					regions[i].srcOffset.z,
+					pDstImage->GetHandle(),
+					dstTarget,
+					regions[i].dstSubresource.mipLevel,
+					regions[i].dstOffset.x,
+					regions[i].dstOffset.y,
+					regions[i].dstOffset.z,
+					regions[i].extent.width,
+					regions[i].extent.height,
+					regions[i].extent.depth);
+			}
+			return sizeof(Image *) * 2 + sizeof(uint32_t) + sizeof(ImageCopy) * cmd->regionCount;
 		}
 		case GLCommandCode::CopyImageToBuffer:
 		{
 			auto cmd = reinterpret_cast<const CopyImageToBufferInfo *>(pCur);
-			return sizeof(*cmd);
+			mpStateManager->BindBuffer(GL_PIXEL_PACK_BUFFER, static_cast<GLBuffer *>(cmd->pDstBuffer)->GetHandle());
+			auto internalformat = MapInternalFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
+			auto externalformat = MapExternalFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
+			auto type = MapDataTypeFromFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
+			if (static_cast<GLImage *>(cmd->pSrcImage)->IsRenderbuffer())
+			{
+				GLuint fbo;
+				glGenFramebuffers(1, &fbo);
+				mpStateManager->BindReadFramebuffer(fbo);
+				glFramebufferRenderbuffer(
+					GL_READ_FRAMEBUFFER,
+					GL_COLOR_ATTACHMENT0,
+					GL_RENDERBUFFER,
+					static_cast<GLImage *>(cmd->pSrcImage)->GetHandle());
+				glReadBuffer(GL_COLOR_ATTACHMENT0);
+				auto regions = reinterpret_cast<const BufferImageCopy *>(&cmd->regionCount + 1);
+				for (uint32_t i = 0; i < cmd->regionCount; ++i)
+				{
+					//int32_t offset[] = {static_cast<int32_t>(regions[i].bufferOffset)};
+					glReadPixels(
+						regions[i].imageOffset.x,
+						regions[i].imageOffset.y,
+						regions[i].imageExtent.width,
+						regions[i].imageExtent.height,
+						externalformat,
+						type,
+						0 //TODO: offset??
+					);
+				}
+				mpStateManager->NotifyReleasedFramebuffer(fbo);
+				glDeleteFramebuffers(1, &fbo);
+			}
+			else
+			{
+				auto target = Map(cmd->pSrcImage->GetCreateInfoPtr()->imageType, cmd->pSrcImage->GetCreateInfoPtr()->samples);
+				mpStateManager->BindTextureUnit(0,
+												target,
+												static_cast<GLImage *>(cmd->pSrcImage)->GetHandle());
+				auto regions = reinterpret_cast<const BufferImageCopy *>(&cmd->regionCount + 1);
+				for (uint32_t i = 0; i < cmd->regionCount; ++i)
+				{
+#if 0
+				glGetTexImage(target,
+							  regions[i].imageSubresource.mipLevel,
+							  internalformat,
+							  type,
+							  &regions[i].bufferOffset);
+#endif
+#if 1
+					//opengl 4.5
+					glGetTextureSubImage(
+						target,
+						regions[i].imageSubresource.mipLevel,
+						regions[i].imageOffset.x,
+						cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_1D ? regions[i].imageSubresource.baseArrayLayer : regions[i].imageOffset.y,
+						cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_2D ? regions[i].imageSubresource.baseArrayLayer : regions[i].imageOffset.z,
+						static_cast<GLsizei>(regions[i].imageExtent.width),
+						static_cast<GLsizei>(cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_1D ? regions[i].imageSubresource.layerCount : regions[i].imageExtent.height),
+						static_cast<GLsizei>(cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_2D ? regions[i].imageSubresource.layerCount : regions[i].imageExtent.depth),
+						internalformat,
+						type,
+						static_cast<GLsizei>(cmd->pDstBuffer->GetCreateInfoPtr()->size),
+						(void *)&regions[i].bufferOffset);
+#endif
+				}
+			}
+			return sizeof(Buffer *) + sizeof(Image *) + sizeof(uint32_t) + sizeof(BufferImageCopy) * cmd->regionCount;
 		}
 		case GLCommandCode::Draw:
 		{
@@ -446,7 +565,6 @@ namespace Shit
 					mpStateManager->GetPrimitiveTopology(),
 					(void *)&offset[i]);
 			}
-
 #endif
 			return sizeof(*cmd);
 		}
@@ -467,8 +585,8 @@ namespace Shit
 		case GLCommandCode::DrawIndexed:
 		{
 			auto cmd = reinterpret_cast<const DrawIndexedIndirectCommand *>(pCur);
-			auto indexTypeSize=2;
-			switch(mpStateManager->GetIndexType())
+			auto indexTypeSize = 2;
+			switch (mpStateManager->GetIndexType())
 			{
 			case GL_UNSIGNED_BYTE:
 				indexTypeSize = 1;
@@ -481,7 +599,7 @@ namespace Shit
 				indexTypeSize = 4;
 				break;
 			}
-			auto offset = cmd->firstIndex*indexTypeSize;
+			auto offset = cmd->firstIndex * indexTypeSize;
 			//opengl 4.2
 			glDrawElementsInstancedBaseVertexBaseInstance(
 				mpStateManager->GetPrimitiveTopology(),
@@ -530,6 +648,44 @@ namespace Shit
 			mCurRenderPass = nullptr;
 			mCurSubpass = 0;
 			return 0;
+		case GLCommandCode::PipelineBarrier:
+		{
+			//TODO: how to set memory barrier??
+			auto cmd = reinterpret_cast<const PipelineBarrierInfo *>(pCur);
+			auto p = reinterpret_cast<const char *>(&cmd->memoryBarrierCount + 1);
+			//[[maybe_unused]] auto pMemoryBarrier = reinterpret_cast<const MemoryBarrier *>(p);
+			//for (uint32_t i = 0; i < cmd->memoryBarrierCount; ++i)
+			//{
+			//}
+			p += sizeof(MemoryBarrier) * cmd->memoryBarrierCount;
+			if (cmd->memoryBarrierCount)
+			{
+				glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			}
+			auto bufferMemoryBarrierCount = *reinterpret_cast<const uint32_t *>(p);
+			p += sizeof(uint32_t);
+			//[[maybe_unused]] auto pBufferMemoryBarriers = reinterpret_cast<BufferMemoryBarrier *>(p);
+			//for (uint32_t i = 0; i < bufferMemoryBarrierCount; ++i)
+			//{
+			//}
+			p += sizeof(BufferMemoryBarrier) * bufferMemoryBarrierCount;
+			auto imageMemoryBarrierCount = *reinterpret_cast<const uint32_t *>(p);
+			p += sizeof(uint32_t);
+			//[[maybe_unused]] auto pImageMemoryBarriers = reinterpret_cast<ImageMemoryBarrier *>(p);
+			//for (uint32_t i = 0; i < imageMemoryBarrierCount; ++i)
+			//{
+			//}
+			if (imageMemoryBarrierCount)
+			{
+				glTextureBarrier();
+			}
+			return sizeof(PipelineStageFlagBits) * 2 +
+				   sizeof(DependencyFlagBits) +
+				   sizeof(uint32_t) * 3 +
+				   sizeof(MemoryBarrier) * cmd->memoryBarrierCount +
+				   sizeof(BufferMemoryBarrier) * bufferMemoryBarrierCount +
+				   sizeof(ImageMemoryBarrier) * imageMemoryBarrierCount;
+		}
 		case GLCommandCode::SecondaryCommandBuffer:
 		{
 			auto cmd = reinterpret_cast<const ExecuteSecondaryCommandBufferInfo *>(pCur);
@@ -618,23 +774,51 @@ namespace Shit
 		auto size1 = sizeof(BufferCopy) * copyInfo.regionCount;
 		auto p = AllocateCommand<CopyBufferInfo>(GLCommandCode::CopyBuffer, size0 + size1);
 		memcpy(p, &copyInfo, size0);
-		memcpy(&p->pRegions, copyInfo.pRegions, size1);
+		auto p2 = &p->regionCount + 1;
+		memcpy(&p2, copyInfo.pRegions, size1);
 	}
 	void GLCommandBuffer::CopyImage(const CopyImageInfo &copyInfo)
 	{
-		memcpy(AllocateCommand<CopyImageInfo>(GLCommandCode::CopyImage), &copyInfo, sizeof(CopyImageInfo));
+		auto p = AllocateCommand<CopyImageInfo>(GLCommandCode::CopyImage, sizeof(Image *) * 2 + sizeof(uint32_t) + sizeof(ImageCopy) * copyInfo.regionCount);
+		p->pSrcImage = copyInfo.pSrcImage;
+		p->pDstImage = copyInfo.pDstImage;
+		p->regionCount = copyInfo.regionCount;
+		auto p2 = &p->regionCount + 1;
+		memcpy(p2, copyInfo.pRegions, sizeof(ImageCopy) * copyInfo.regionCount);
 	}
 	void GLCommandBuffer::CopyBufferToImage(const CopyBufferToImageInfo &copyInfo)
 	{
-		memcpy(AllocateCommand<CopyBufferToImageInfo>(GLCommandCode::CopyBufferToImage), &copyInfo, sizeof(CopyBufferToImageInfo));
+		auto p = AllocateCommand<CopyBufferToImageInfo>(
+			GLCommandCode::CopyBufferToImage,
+			sizeof(Image *) + sizeof(Buffer *) + sizeof(uint32_t) + copyInfo.regionCount * sizeof(BufferImageCopy));
+		p->pSrcBuffer = copyInfo.pSrcBuffer;
+		p->pDstImage = copyInfo.pDstImage;
+		p->regionCount = copyInfo.regionCount;
+		auto p2 = &p->regionCount + 1;
+		memcpy(p2, copyInfo.pRegions, sizeof(BufferImageCopy) * copyInfo.regionCount);
 	}
 	void GLCommandBuffer::CopyImageToBuffer(const CopyImageToBufferInfo &copyInfo)
 	{
-		memcpy(AllocateCommand<CopyImageToBufferInfo>(GLCommandCode::CopyImageToBuffer), &copyInfo, sizeof(CopyImageToBufferInfo));
+		auto p = AllocateCommand<CopyImageToBufferInfo>(
+			GLCommandCode::CopyImageToBuffer,
+			sizeof(Image *) + sizeof(Buffer *) + sizeof(uint32_t) + copyInfo.regionCount * sizeof(BufferImageCopy));
+		p->pSrcImage = copyInfo.pSrcImage;
+		p->pDstBuffer = copyInfo.pDstBuffer;
+		p->regionCount = copyInfo.regionCount;
+		auto p2 = &p->regionCount + 1;
+		memcpy(p2, copyInfo.pRegions, sizeof(BufferImageCopy) * copyInfo.regionCount);
 	}
 	void GLCommandBuffer::BlitImage(const BlitImageInfo &blitInfo)
 	{
-		memcpy(AllocateCommand<BlitImageInfo>(GLCommandCode::BlitImage), &blitInfo, sizeof(BlitImageInfo));
+		auto p = AllocateCommand<BlitImageInfo>(
+			GLCommandCode::BlitImage,
+			sizeof(Image *) * 2 + sizeof(Filter) + sizeof(uint32_t) + sizeof(ImageBlit) * blitInfo.regionCount);
+		p->pSrcImage = blitInfo.pSrcImage;
+		p->pDstImage = blitInfo.pDstImage;
+		p->filter = blitInfo.filter;
+		p->regionCount = blitInfo.regionCount;
+		auto p2 = &p->regionCount + 1;
+		memcpy(p2, blitInfo.pRegions, sizeof(ImageBlit) * blitInfo.regionCount);
 	}
 	void GLCommandBuffer::BindVertexBuffer(const BindVertexBufferInfo &info)
 	{
@@ -717,10 +901,30 @@ namespace Shit
 	{
 		memcpy(AllocateCommand<DrawIndirectCountInfo>(GLCommandCode::DrawIndexedIndirectCount), &info, sizeof(DrawIndirectCountInfo));
 	}
-	void GLCommandBuffer::PipeplineBarrier([[maybe_unused]] const PipelineBarrierInfo &info)
+	void GLCommandBuffer::PipeplineBarrier(const PipelineBarrierInfo &info)
 	{
-		//TODO: opengl pipeline barrier
-		LOG_VAR("PipeplineBarrier not implemented yet");
+		auto p = AllocateCommand<PipelineBarrierInfo>(
+			GLCommandCode::PipelineBarrier,
+			sizeof(PipelineStageFlagBits) * 2 +
+				sizeof(DependencyFlagBits) +
+				sizeof(uint32_t) * 3 +
+				sizeof(MemoryBarrier) * info.memoryBarrierCount +
+				sizeof(BufferMemoryBarrier) * info.bufferMemoryBarrierCount +
+				sizeof(ImageMemoryBarrier) * info.imageMemoryBarrierCount);
+		p->srcStageMask = info.srcStageMask;
+		p->dstStageMask = info.dstStageMask;
+		p->dependencyFlags = info.dependencyFlags;
+		p->memoryBarrierCount = info.memoryBarrierCount;
+		char *p2 = reinterpret_cast<char *>(&p->memoryBarrierCount + 1);
+		memcpy(p2, info.pMemoryBarriers, sizeof(MemoryBarrier) * info.memoryBarrierCount);
+		p2 += sizeof(MemoryBarrier) * info.memoryBarrierCount;
+		memcpy(p2, &info.bufferMemoryBarrierCount, sizeof(uint32_t));
+		p2 += sizeof(uint32_t);
+		memcpy(p2, info.pBufferMemoryBarriers, sizeof(BufferMemoryBarrier) * info.bufferMemoryBarrierCount);
+		p2 += sizeof(BufferMemoryBarrier) * info.bufferMemoryBarrierCount;
+		memcpy(p2, &info.imageMemoryBarrierCount, sizeof(uint32_t));
+		p2 += sizeof(uint32_t);
+		memcpy(p2, info.pImageMemoryBarriers, sizeof(ImageMemoryBarrier) * info.imageMemoryBarrierCount);
 	}
 	void GLCommandBuffer::PushConstants([[maybe_unused]] const PushConstantUpdateInfo &info)
 	{

@@ -225,7 +225,7 @@ namespace Shit
 		vkCmdCopyImageToBuffer(
 			mHandle,
 			static_cast<VKImage *>(copyInfo.pSrcImage)->GetHandle(),
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			static_cast<VKBuffer *>(copyInfo.pDstBuffer)->GetHandle(),
 			static_cast<uint32_t>(regions.size()),
 			regions.data());
@@ -394,47 +394,50 @@ namespace Shit
 
 	void VKCommandBuffer::PipeplineBarrier(const PipelineBarrierInfo &info)
 	{
-		std::vector<VkMemoryBarrier> memoryBarriers(info.memoryBarriers.size());
-		std::vector<VkBufferMemoryBarrier> bufferMemoryBarriers(info.bufferMemoryBarriers.size());
-		std::vector<VkImageMemoryBarrier> imageMemoryBarriers(info.imageMemoryBarriers.size());
-		std::transform(std::execution::par, info.memoryBarriers.begin(), info.memoryBarriers.end(), memoryBarriers.begin(), [](auto &&e) {
-			return VkMemoryBarrier{
+		std::vector<VkMemoryBarrier> memoryBarriers(info.memoryBarrierCount);
+		std::vector<VkBufferMemoryBarrier> bufferMemoryBarriers(info.bufferMemoryBarrierCount);
+		std::vector<VkImageMemoryBarrier> imageMemoryBarriers(info.imageMemoryBarrierCount);
+		for (uint32_t i = 0; i < info.memoryBarrierCount; ++i)
+		{
+			memoryBarriers[i] = VkMemoryBarrier{
 				VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 				nullptr,
-				Map(e.srcAccessMask),
-				Map(e.dstAccessMask)};
-		});
-		std::transform(std::execution::par, info.bufferMemoryBarriers.begin(), info.bufferMemoryBarriers.end(), bufferMemoryBarriers.begin(), [](auto &&e) {
-			return VkBufferMemoryBarrier{
+				Map(info.pMemoryBarriers[i].srcAccessMask),
+				Map(info.pMemoryBarriers[i].dstAccessMask)};
+		}
+		for (uint32_t i = 0; i < info.bufferMemoryBarrierCount; ++i)
+		{
+			bufferMemoryBarriers[i] = VkBufferMemoryBarrier{
 				VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 				nullptr,
-				Map(e.srcAccessMask),
-				Map(e.dstAccessMask),
-				VK_QUEUE_FAMILY_IGNORED,//e.srcQueueFamilyIndex,
-				VK_QUEUE_FAMILY_IGNORED,//e.dstQueueFamilyIndex,
-				static_cast<VKBuffer *>(e.pBuffer)->GetHandle(),
-				e.offset,
-				e.size};
-		});
-		std::transform(std::execution::par, info.imageMemoryBarriers.begin(), info.imageMemoryBarriers.end(), imageMemoryBarriers.begin(), [](auto &&e) {
-			return VkImageMemoryBarrier{
+				Map(info.pBufferMemoryBarriers[i].srcAccessMask),
+				Map(info.pBufferMemoryBarriers[i].dstAccessMask),
+				VK_QUEUE_FAMILY_IGNORED, //e.srcQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED, //e.dstQueueFamilyIndex,
+				static_cast<VKBuffer *>(info.pBufferMemoryBarriers[i].pBuffer)->GetHandle(),
+				info.pBufferMemoryBarriers[i].offset,
+				info.pBufferMemoryBarriers[i].size};
+		}
+		for (uint32_t i = 0; i < info.imageMemoryBarrierCount; ++i)
+		{
+			imageMemoryBarriers[i] = VkImageMemoryBarrier{
 				VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 				nullptr,
-				Map(e.srcAccessMask),
-				Map(e.dstAccessMask),
-				Map(e.oldImageLayout),
-				Map(e.newImageLayout),
-				VK_QUEUE_FAMILY_IGNORED,//e.srcQueueFamilyIndex,
-				VK_QUEUE_FAMILY_IGNORED,//e.dstQueueFamilyIndex,
-				static_cast<VKImage *>(e.pImage)->GetHandle(),
+				Map(info.pImageMemoryBarriers[i].srcAccessMask),
+				Map(info.pImageMemoryBarriers[i].dstAccessMask),
+				Map(info.pImageMemoryBarriers[i].oldImageLayout),
+				Map(info.pImageMemoryBarriers[i].newImageLayout),
+				VK_QUEUE_FAMILY_IGNORED, //e.srcQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED, //e.dstQueueFamilyIndex,
+				static_cast<VKImage *>(info.pImageMemoryBarriers[i].pImage)->GetHandle(),
 				VkImageSubresourceRange{
-					GetImageAspectFromFormat(static_cast<VKImage *>(e.pImage)->GetCreateInfoPtr()->format),
-					e.subresourceRange.baseMipLevel,
-					e.subresourceRange.levelCount,
-					e.subresourceRange.baseArrayLayer,
-					e.subresourceRange.layerCount,
+					GetImageAspectFromFormat(static_cast<VKImage *>(info.pImageMemoryBarriers[i].pImage)->GetCreateInfoPtr()->format),
+					info.pImageMemoryBarriers[i].subresourceRange.baseMipLevel,
+					info.pImageMemoryBarriers[i].subresourceRange.levelCount,
+					info.pImageMemoryBarriers[i].subresourceRange.baseArrayLayer,
+					info.pImageMemoryBarriers[i].subresourceRange.layerCount,
 				}};
-		});
+		}
 		vkCmdPipelineBarrier(
 			mHandle,
 			Map(info.srcStageMask),

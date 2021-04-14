@@ -11,6 +11,9 @@
 
 #include <renderer/ShitDevice.hpp>
 #include "GLPrerequisites.hpp"
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 namespace Shit
 {
@@ -32,8 +35,7 @@ namespace Shit
 		virtual void CreateRenderContext() = 0;
 
 	public:
-		GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo)
-			: Device(createInfo), mRenderSystemCreateInfo(renderSystemCreateInfo) {}
+		GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo);
 
 		constexpr GLStateManager *GetStateManager()
 		{

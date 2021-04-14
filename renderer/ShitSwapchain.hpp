@@ -37,6 +37,10 @@ namespace Shit
 			images.resize(mImages.size());
 			std::transform(mImages.begin(), mImages.end(), images.begin(), [](auto &&e) { return e.get(); });
 		}
+		Image *GetImageByIndex(uint32_t index) const
+		{
+			return mImages[index].get();
+		}
 		virtual Result GetNextImage(const GetNextImageInfo &info, uint32_t& index) = 0;
 	};
 } // namespace Shit

@@ -27,6 +27,9 @@ using namespace Shit;
 #define ASSET_PATH SHIT_SOURCE_DIR "/examples/assets/"
 #define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders/"
 #define IMAGE_PATH SHIT_SOURCE_DIR "/examples/assets/images/"
+#define SCRRENSHOT_DIR SHIT_SOURCE_DIR "/build/screenshot/"
+
+
 
 #define MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT 0x100
 #define MAX_VERTX_LOCATION
@@ -82,6 +85,7 @@ using namespace Shit;
 extern Shit::RendererVersion rendererVersion;
 
 void *loadImage(const char *imagePath, int &width, int &height, int &components, int request_components);
+void saveImage(const char *imagePath, int width, int height, int component, const void *data);
 void freeImage(void *pData);
 
 struct Light
@@ -99,6 +103,7 @@ struct Light
 struct UBOFrame
 {
 	glm::mat4 PV;
+	alignas(16) glm::vec3 eyePosition;
 	Light light;
 	alignas(16) glm::vec3 ambientColor;
 };
@@ -400,3 +405,5 @@ float intToFloat(T value)
 {
 	return (std::max)(float(value) / std::numeric_limits<T>::max(), -1.f);
 }
+
+void takeScreenshot(Device *pDevice, Swapchain *pSwapchain, int swapchainImageIndex);

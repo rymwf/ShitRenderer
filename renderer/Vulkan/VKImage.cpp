@@ -67,7 +67,7 @@ namespace Shit
 			}
 		}
 	}
-	void VKImage::UpdateSubData(uint32_t mipLevel, const Rect3D rect, const void *pData)
+	void VKImage::UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData)
 	{
 		uint64_t size = rect.extent.width * rect.extent.height * rect.extent.depth * GetFormatSize(mCreateInfo.format);
 
@@ -80,9 +80,9 @@ namespace Shit
 
 		VKBuffer stagingbuffer{static_cast<VKDevice *>(mpDevice)->GetHandle(), static_cast<VKDevice *>(mpDevice)->GetPhysicalDevice(), stagingBufferCreateInfo};
 		void *data;
-		stagingbuffer.MapBuffer(0, size, &data);
+		stagingbuffer.MapMemory(0, size, &data);
 		memcpy(data, pData, static_cast<size_t>(size));
-		stagingbuffer.UnMapBuffer();
+		stagingbuffer.UnMapMemory();
 
 		static_cast<VKDevice *>(mpDevice)->ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
 			VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(mCreateInfo.format);
@@ -169,9 +169,9 @@ namespace Shit
 			//src
 			{
 				imageAspect,
-				0, //miplevel
-				0, //base array layer
-				mCreateInfo.arrayLayers  //layer count
+				0,						//miplevel
+				0,						//base array layer
+				mCreateInfo.arrayLayers //layer count
 			},
 			{{}, {}}, //offset
 			//dst
@@ -250,7 +250,14 @@ namespace Shit
 			}
 		});
 	}
-
+	void VKImage::MapMemory(uint64_t offset, uint64_t size, void **ppData)
+	{
+		vkMapMemory(static_cast<VKDevice *>(mpDevice)->GetHandle(), mMemory, offset, size, 0, ppData);
+	}
+	void VKImage::UnMapMemory()
+	{
+		vkUnmapMemory(static_cast<VKDevice *>(mpDevice)->GetHandle(), mMemory);
+	}
 	//=======================================================================================
 
 	VKImageView::VKImageView(VkDevice device, const ImageViewCreateInfo &createInfo)

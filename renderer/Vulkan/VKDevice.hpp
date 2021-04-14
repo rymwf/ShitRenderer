@@ -30,8 +30,6 @@ namespace Shit
 			return mDevice;
 		}
 
-		void ExecuteOneTimeCommands(const std::function<void(CommandBuffer *)> &func);
-
 		std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex(ShitWindow *pWindow) override;
 
 		constexpr VkPhysicalDevice GetPhysicalDevice() const

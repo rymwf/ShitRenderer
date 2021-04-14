@@ -123,6 +123,7 @@ renderer/Vulkan/*.cpp
 add_library(VKRenderer SHARED ${vkfile} )
 target_link_libraries(VKRenderer
 ${VULKAN_LIB_DIR}/vulkan-1.lib
+ShitRenderer
 )
 target_include_directories(VKRenderer PRIVATE	
 ${CMAKE_SOURCE_DIR}/
@@ -194,8 +195,8 @@ newexample(04-ubo)
 newexample(05-depth)
 newexample(06-mipmap)
 newexample(07-multisample)
-newexample(08-model)
-newexample(09-skeleton)
+newexample(08-screenshot)
+newexample(09-model)
 endif()
 
 

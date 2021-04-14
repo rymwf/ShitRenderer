@@ -30,8 +30,8 @@ namespace Shit
 		{
 			return mHandle;
 		}
-		void MapBuffer(uint64_t offset, uint64_t size, void **ppData) override;
-		void UnMapBuffer() override;
+		void MapMemory(uint64_t offset, uint64_t size, void **ppData) override;
+		void UnMapMemory() override;
 	};
 
 }

@@ -11,20 +11,23 @@ constexpr SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 int animationIndex = 0;
+glm::vec3 ambientColor = glm::vec3(0.0);
 
-const char *vertShaderName = "08.vert.spv";
-const char *fragShaderName = "08.frag.spv";
+const char *vertShaderName = "09.vert.spv";
+const char *fragShaderName = "09.frag.spv";
 
 const char *axisVertShaderName = "axis.vert.spv";
 const char *axisFragShaderName = "axis.frag.spv";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSkin/glTF/SimpleSkin.gltf";
-//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSparseAccessor/glTF/SimpleSparseAccessor.gltf";
 
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheresNoTextures/glTF/MetalRoughSpheresNoTextures.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
 
 class Hello
@@ -90,14 +93,16 @@ class Hello
 	std::unique_ptr<Model> testModel;
 	std::unique_ptr<Model> testModel2;
 
-	//camera
-	#if PERSPECTIVE
+//camera
+#if PERSPECTIVE
 	Frustum frustum{{0.1, 0., PerspectiveProjectionDescription{glm::radians(45.f), 1}}};
-	#else
+#else
 	Frustum frustum{{-10., 10., OrthogonalProjectionDescription{5., 5.}}};
-	#endif
+#endif
 	//Camera camera{glm::dvec3(0, -5, 0), glm::dvec3(0, 0, 1), glm::dvec3(0, 0, 1)};
-	Camera camera{glm::dvec3(0, 0, 5), glm::dvec3(0, 0, 0), glm::dvec3(0, 1, 0)};
+	Camera camera{glm::dvec3(0, 0, 3), glm::dvec3(0, 0, 0), glm::dvec3(0, 1, 0)};
+
+	bool startScreenshot{};
 
 public:
 	void initRenderSystem()
@@ -181,9 +186,11 @@ public:
 	{
 		static bool mouseFlagL;
 		std::visit(overloaded{
-					   [&ev](const KeyEvent &value) {
+					   [&](const KeyEvent &value) {
 						   if (value.keyCode == KeyCode::KEY_ESCAPE)
 							   ev.pWindow->Close();
+						   if (value.keyCode == KeyCode::KEY_P && value.action == PressAction::DOWN)
+							   startScreenshot = true;
 					   },
 					   [](auto &&) {},
 					   [&](const WindowResizeEvent &value) {
@@ -373,6 +380,11 @@ public:
 		{
 			THROW("failed to present swapchain image");
 		}
+		if (startScreenshot)
+		{
+			takeScreenshot(device, swapchain, imageIndex);
+			startScreenshot = false;
+		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
@@ -413,11 +425,12 @@ public:
 		auto presentMode = choosePresentMode({PresentMode::IMMEDIATE, PresentMode::FIFO}, device, window);
 
 		swapchainCreateInfo = SwapchainCreateInfo{
-			2,	//min image count
+			2, //min image count
 			swapchainFormat.format,
 			swapchainFormat.colorSpace,
 			{800, 600},
 			1,
+			ImageUsageFlagBits::COLOR_ATTACHMENT_BIT,
 			presentMode};
 		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 		while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)
@@ -726,8 +739,8 @@ public:
 		CommandBufferBeginInfo cmdBufferBeginInfo{};
 
 		std::vector<ClearValue> clearValues{
-			std::array<float, 4>{0.1f, 0.1f, .1f, 1.f},
-			std::array<float, 4>{0.1f, 0.1f, .1f, 1.f},
+			std::array<float, 4>{ambientColor.x, ambientColor.y, ambientColor.z, 1.f},
+			std::array<float, 4>{ambientColor.x, ambientColor.y, ambientColor.z, 1.f},
 			ClearDepthStencilValue{1.f, 0},
 		};
 
@@ -783,14 +796,16 @@ public:
 	}
 	void createUBOPVBuffers()
 	{
-		UBOFrame uboFrame{{}, {
-								  glm::vec3(10, 10, 10),
-								  glm::vec4(1),
-								  glm::vec4(1),
-								  glm::vec2(1, 100),
-								  glm::vec3(-1),
-							  },
-						  glm::vec3(0.2)};
+		UBOFrame uboFrame{{},
+						  glm::vec3(camera.eye),
+						  {
+							  glm::vec3(10, 10, 10),
+							  glm::vec4(1),
+							  glm::vec4(1),
+							  glm::vec2(1, 100),
+							  glm::vec3(-1),
+						  },
+						  ambientColor};
 		//move model to origin
 		BufferCreateInfo bufferCreateInfo{
 			.size = sizeof(UBOFrame),
@@ -806,7 +821,7 @@ public:
 		static UBOFrame uboFrame;
 		if (frustum.isUpdated || camera.isUpdated)
 		{
-			uboFrame = {frustum.projectionMatrix * camera.viewMatrix};
+			uboFrame = {frustum.projectionMatrix * camera.viewMatrix, camera.eye};
 			for (auto &&e : updated)
 				e = true;
 			frustum.isUpdated = false;
@@ -815,9 +830,10 @@ public:
 		if (updated[index])
 		{
 			void *pData;
-			uboFrameBuffers[index]->MapBuffer(0, sizeof(glm::mat4), &pData);
-			memcpy(pData, &uboFrame, sizeof(glm::mat4));
-			uboFrameBuffers[index]->UnMapBuffer();
+			auto size = sizeof(glm::mat4) + sizeof(glm::vec3);
+			uboFrameBuffers[index]->MapMemory(0, size, &pData);
+			memcpy(pData, &uboFrame, size);
+			uboFrameBuffers[index]->UnMapMemory();
 			updated[index] = false;
 		}
 	}
@@ -894,10 +910,8 @@ public:
 		pModel->CreateImageInstanceAttributeBuffers(device, {intanceAttribute}, true);
 
 		camera.center = trans;
-#if PERSPECTIVE != 1
 		camera.eye.x = camera.center.x;
 		camera.eye.y = camera.center.y;
-#endif
 		camera.Update();
 	}
 };

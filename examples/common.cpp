@@ -10,6 +10,7 @@
 
 #include "common.hpp"
 #include <stb_image.h>
+#include <stb_image_write.h>
 
 Shit::RendererVersion rendererVersion{Shit::RendererVersion::GL};
 
@@ -32,6 +33,11 @@ void *loadImage(const char *imagePath, int &width, int &height, int &components,
 	if (!ret)
 		THROW("failed to load texture image!")
 	return ret;
+}
+void saveImage(const char *imagePath, int width, int height, int component, const void *data)
+{
+	if (!stbi_write_jpg(imagePath, width, height, component, data, 90))
+		THROW("failed to save image");
 }
 void freeImage(void *pData)
 {
@@ -92,4 +98,202 @@ PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device
 		}
 	}
 	return modes[0];
+}
+
+void takeScreenshot(Device *pDevice, Swapchain *pSwapchain, int swapchainImageIndex)
+{
+	Image *srcImage = pSwapchain->GetImageByIndex(swapchainImageIndex);
+
+	auto width = pSwapchain->GetCreateInfoPtr()->imageExtent.width;
+	auto height = pSwapchain->GetCreateInfoPtr()->imageExtent.height;
+	auto component = 4;
+	auto size = width * height * component;
+
+//TODO: check if support blit to linear image
+//NOTE: opengl need to flip y
+#if 1
+	//copy to buffer
+	//		 cannot change format
+	Buffer *dst = pDevice->Create(
+		BufferCreateInfo{
+			{},
+			size,
+			BufferUsageFlagBits::TRANSFER_DST_BIT,
+			MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT},
+		nullptr);
+
+	BufferImageCopy copyRegion{
+		.imageSubresource = {0, 0, 1},
+		.imageExtent = {width, height, 1}};
+
+	pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
+		ImageMemoryBarrier imageBarrier0{
+			AccessFlagBits::MEMORY_READ_BIT,
+			AccessFlagBits::TRANSFER_READ_BIT,
+			ImageLayout::PRESENT_SRC,
+			ImageLayout::TRANSFER_SRC_OPTIMAL,
+			srcImage,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+			PipelineStageFlagBits::TRANSFER_BIT,
+			PipelineStageFlagBits::TRANSFER_BIT,
+			{},
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&imageBarrier0});
+		cmdBuffer->CopyImageToBuffer(CopyImageToBufferInfo{
+			srcImage,
+			dst,
+			1,
+			&copyRegion});
+
+		ImageMemoryBarrier imageBarrier1{
+			AccessFlagBits::TRANSFER_READ_BIT,
+			AccessFlagBits::MEMORY_READ_BIT,
+			ImageLayout::TRANSFER_SRC_OPTIMAL,
+			ImageLayout::PRESENT_SRC,
+			srcImage,
+			ImageSubresourceRange{0, 1, 0, 1}};
+
+		cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+			PipelineStageFlagBits::TRANSFER_BIT,
+			PipelineStageFlagBits::TRANSFER_BIT,
+			{},
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&imageBarrier1});
+	});
+
+#else
+	//copy to image
+
+	Image *dst = pDevice->Create(
+		ImageCreateInfo{
+			{},
+			ImageType::TYPE_2D,
+			ShitFormat::RGBA8_UNORM,
+			{width, height, 1},
+			1,
+			1,
+			SampleCountFlagBits::BIT_1,
+			ImageTiling::LINEAR,
+			ImageUsageFlagBits::TRANSFER_DST_BIT,
+			MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT,
+		},
+		nullptr);
+	ImageCopy copyRegion{
+		.srcSubresource = {0, 0, 1},
+		.dstSubresource = {0, 0, 1},
+		.extent = {width, height, 1}};
+	pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
+		ImageMemoryBarrier srcImageBarrier0{
+			AccessFlagBits::MEMORY_READ_BIT,
+			AccessFlagBits::TRANSFER_READ_BIT,
+			ImageLayout::PRESENT_SRC,
+			ImageLayout::TRANSFER_SRC_OPTIMAL,
+			srcImage,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		ImageMemoryBarrier dstImageBarrier0{
+			{},
+			AccessFlagBits::TRANSFER_WRITE_BIT,
+			ImageLayout::UNDEFINED,
+			ImageLayout::TRANSFER_DST_OPTIMAL,
+			dst,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+			PipelineStageFlagBits::TRANSFER_BIT,
+			PipelineStageFlagBits::TRANSFER_BIT,
+			{},
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&srcImageBarrier0});
+		cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+			PipelineStageFlagBits::TRANSFER_BIT,
+			PipelineStageFlagBits::TRANSFER_BIT,
+			{},
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&dstImageBarrier0});
+		cmdBuffer->CopyImage(CopyImageInfo{
+			srcImage,
+			dst,
+			1,
+			&copyRegion});
+		ImageMemoryBarrier srcImageBarrier1{
+			AccessFlagBits::TRANSFER_READ_BIT,
+			AccessFlagBits::MEMORY_READ_BIT,
+			ImageLayout::TRANSFER_SRC_OPTIMAL,
+			ImageLayout::PRESENT_SRC,
+			srcImage,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		ImageMemoryBarrier dstImageBarrier1{
+			AccessFlagBits::TRANSFER_WRITE_BIT,
+			AccessFlagBits::MEMORY_READ_BIT,
+			ImageLayout::TRANSFER_DST_OPTIMAL,
+			ImageLayout::GENERAL,
+			dst,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+			PipelineStageFlagBits::TRANSFER_BIT,
+			PipelineStageFlagBits::TRANSFER_BIT,
+			{},
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&srcImageBarrier1});
+		cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+			PipelineStageFlagBits::TRANSFER_BIT,
+			PipelineStageFlagBits::TRANSFER_BIT,
+			{},
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&dstImageBarrier1});
+	});
+#endif
+
+	std::time_t t = std::time(nullptr);
+	std::tm tm;
+	localtime_s(&tm, &t);
+	std::ostringstream ss;
+	ss << std::put_time(&tm, "%Y%m%d%H%M%S");
+
+	void *data;
+	dst->MapMemory(0, size, &data);
+
+	//swizzleColor
+	if (
+		pSwapchain->GetCreateInfoPtr()->format == ShitFormat::BGRA8_SRGB |
+		pSwapchain->GetCreateInfoPtr()->format == ShitFormat::BGRA8_UNORM)
+	{
+		unsigned char *p = reinterpret_cast<unsigned char *>(data);
+		unsigned char temp;
+		for (uint32_t i = 0; i < size; i += 4, p += 4)
+		{
+			temp = *p;
+			*(p) = *(p + 2);
+			*(p + 2) = temp;
+		}
+	}
+	auto screenshotPath = std::string(SCRRENSHOT_DIR) + ss.str() + ".jpg";
+	saveImage(screenshotPath.c_str(), width, height, component, data);
+	dst->UnMapMemory();
+
+	pDevice->Destroy(dst);
 }

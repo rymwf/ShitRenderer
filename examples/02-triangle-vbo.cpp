@@ -260,6 +260,7 @@ public:
 			swapchainFormat.colorSpace,
 			{800, 600},
 			1,
+			ImageUsageFlagBits::COLOR_ATTACHMENT_BIT,
 			presentMode};
 		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 		while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)

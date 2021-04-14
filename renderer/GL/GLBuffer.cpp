@@ -38,7 +38,7 @@ namespace Shit
 		}
 		mpStateManager->PopBuffer();
 	}
-	void GLBuffer::MapBuffer(uint64_t offset, uint64_t size, void **ppData)
+	void GLBuffer::MapMemory(uint64_t offset, uint64_t size, void **ppData)
 	{
 		//mpStateManager->PushBuffer(GL_ARRAY_BUFFER, mHandle);
 		GLbitfield access = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT;
@@ -49,7 +49,7 @@ namespace Shit
 		//*ppData = glMapBufferRange(GL_ARRAY_BUFFER, offset, size, access);
 		*ppData = glMapNamedBufferRange(mHandle, offset, size, access);
 	}
-	void GLBuffer::UnMapBuffer()
+	void GLBuffer::UnMapMemory()
 	{
 		glUnmapNamedBuffer(mHandle);
 		//glUnmapBuffer(GL_ARRAY_BUFFER);

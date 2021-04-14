@@ -81,17 +81,6 @@ namespace Shit
 			return false;
 		}
 
-#ifdef _WIN32
-		const char *queryWGLExtensionNames(HDC hdc)
-		{
-			if (wglIsExtensionSupported("WGL_ARB_extensions_string"))
-				return wglGetExtensionsStringARB(hdc);
-			else if (wglIsExtensionSupported("WGL_EXT_extensions_string"))
-				return wglGetExtensionsStringEXT();
-			THROW("failed to query instance extension names");
-		}
-#endif
-
 		void listGLInfo()
 		{
 			// check opengl informations

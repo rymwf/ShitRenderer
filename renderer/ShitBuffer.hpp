@@ -26,7 +26,7 @@ namespace Shit
 			return &mCreateInfo;
 		}
 		virtual ~Buffer() {}
-		virtual void MapBuffer(uint64_t offset, uint64_t size, void **ppData) = 0;
-		virtual void UnMapBuffer() = 0;
+		virtual void MapMemory(uint64_t offset, uint64_t size, void **ppData) = 0;
+		virtual void UnMapMemory() = 0;
 	};
 } // namespace Shit

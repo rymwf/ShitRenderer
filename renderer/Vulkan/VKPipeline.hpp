@@ -51,12 +51,10 @@ namespace Shit
 	{
 	public:
 		VKGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo &createInfo);
-		~VKGraphicsPipeline() override
-		{
-		}
-		VkPipeline GetHandle() const
-		{
-			return mHandle;
-		}
+	};
+	class VKComputePipeline final : public ComputePipeline, public VKPipeline
+	{
+	public:
+		VKComputePipeline(VkDevice device, const ComputePipelineCreateInfo &createInfo);
 	};
 }

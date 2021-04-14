@@ -25,6 +25,13 @@
 
 #ifdef _WIN32
 #include <renderer/ShitWindowWin32.hpp>
+#include <GL/wgl.h>
+#include <GL/wglext.h>
+
+PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
+PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
+PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
+
 #endif
 
 namespace Shit
@@ -149,6 +156,11 @@ namespace Shit
 		{
 			LOG("current context do not support debug output");
 		}
+	}
+	GLDevice::GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo)
+		: Device(createInfo), mRenderSystemCreateInfo(renderSystemCreateInfo)
+	{
+		CreateOneTimeCommandPool();
 	}
 	CommandPool *GLDevice::Create(const CommandPoolCreateInfo &createInfo)
 	{
@@ -371,6 +383,7 @@ namespace Shit
 		//wglCreateContextAttribsARB = wglGetProcAddress("wglCreateContextAttribsARB");
 		wglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
 		wglChoosePixelFormatARB = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress("wglChoosePixelFormatARB");
+		wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 
 		wglMakeCurrent(dummy_dc, 0);
 		wglDeleteContext(dummy_context);
@@ -450,8 +463,6 @@ namespace Shit
 
 		LOG_VAR(GLVersion.major);
 		LOG_VAR(GLVersion.minor);
-
-		LOG_VAR(GL::queryWGLExtensionNames(mHDC));
 	}
 
 	void GLDeviceWin32::SetPresentMode(PresentMode mode) const
@@ -478,18 +489,11 @@ namespace Shit
 	void GLDeviceWin32::GetWindowPixelFormats([[maybe_unused]] const ShitWindow *pWindow, std::vector<WindowPixelFormat> &formats)
 	{
 		formats.clear();
-		if (wglIsExtensionSupported("WGL_EXT_framebuffer_sRGB"))
-		{
-			formats.emplace_back(
-				WindowPixelFormat{ShitFormat::RGBA8_SRGB,
-								  ColorSpace::SRGB_NONLINEAR});
-		}
-		else if (wglIsExtensionSupported("WGL_ARB_framebuffer_sRGB"))
-		{
-			formats.emplace_back(
-				WindowPixelFormat{ShitFormat::RGBA8_SRGB,
-								  ColorSpace::SRGB_NONLINEAR});
-		}
+#if WGL_ARB_framebuffer_sRGB | WGL_EXT_framebuffer_sRGB
+		formats.emplace_back(
+			WindowPixelFormat{ShitFormat::RGBA8_SRGB,
+							  ColorSpace::SRGB_NONLINEAR});
+#endif
 		formats.emplace_back(
 			WindowPixelFormat{ShitFormat::RGBA8_UNORM,
 							  ColorSpace::SRGB_NONLINEAR});

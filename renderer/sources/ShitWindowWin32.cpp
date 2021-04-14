@@ -130,22 +130,14 @@ namespace Shit
 			pThis->mListener.notify(ev);
 			break;
 		case WM_KEYDOWN:
-			if ((lParam >> 24) & 0xff)
-			{
-				ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
-															 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
-															 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
-			}
+			if ((lParam >> 29) && 1)
+				ev.modifier = EventModifierBits::ALTR;
 			ev.value = Event::EventType{KeyEvent{MapKey(static_cast<uint32_t>(wParam)), PressAction::DOWN}};
 			pThis->mListener.notify(ev);
 			break;
 		case WM_KEYUP:
-			if ((lParam >> 24) & 0xff)
-			{
-				ev.modifier = static_cast<EventModifierBits>(((GetKeyState(VK_SHIFT) < 0) * static_cast<int>(EventModifierBits::SHIFT)) |
-															 ((GetKeyState(VK_CONTROL) < 0) * static_cast<int>(EventModifierBits::CTRL)) |
-															 ((GetKeyState(VK_MENU) < 0) * static_cast<int>(EventModifierBits::ALT)));
-			}
+			if ((lParam >> 29) && 1)
+				ev.modifier = EventModifierBits::ALTR;
 			ev.value = Event::EventType{KeyEvent{MapKey(static_cast<uint32_t>(wParam)), PressAction::UP}};
 			pThis->mListener.notify(ev);
 			break;

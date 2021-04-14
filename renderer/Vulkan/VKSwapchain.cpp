@@ -76,7 +76,7 @@ namespace Shit
 			{createInfo.imageExtent.width,
 			 createInfo.imageExtent.height},
 			1,
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			Map(createInfo.imageUsage),
 			VK_SHARING_MODE_EXCLUSIVE,
 			0,
 			nullptr,

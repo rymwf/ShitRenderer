@@ -299,6 +299,7 @@ public:
 			swapchainFormat.colorSpace,
 			{800, 600},
 			1,
+			ImageUsageFlagBits::COLOR_ATTACHMENT_BIT,
 			presentMode};
 		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 		while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)
@@ -762,9 +763,9 @@ public:
 				  glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0), glm::vec3(0, 1, 0)),
 		};
 		void *pData;
-		uboMVPBuffers[index]->MapBuffer(0, sizeof(UBO_MVP), &pData);
+		uboMVPBuffers[index]->MapMemory(0, sizeof(UBO_MVP), &pData);
 		memcpy(pData, &uboMVP, sizeof(UBO_MVP));
-		uboMVPBuffers[index]->UnMapBuffer();
+		uboMVPBuffers[index]->UnMapMemory();
 	}
 };
 
