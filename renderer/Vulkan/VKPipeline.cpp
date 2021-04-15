@@ -118,6 +118,7 @@ namespace Shit
 		VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{
 			VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
 			nullptr,
+			0,
 			createInfo.tessellationState.patchControlPoints};
 
 		VkPipelineViewportStateCreateInfo viewportStateCreateInfo{

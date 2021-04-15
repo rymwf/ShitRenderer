@@ -63,7 +63,7 @@ namespace Shit
 	{
 		std::vector<VkCommandBuffer> cmdBuffers;
 		for (uint32_t i = 0; i < secondaryCommandBufferInfo.count; ++i)
-			cmdBuffers.emplace_back(static_cast<VKCommandBuffer *>(&secondaryCommandBufferInfo.pCommandBuffers[i])->GetHandle());
+			cmdBuffers.emplace_back(static_cast<VKCommandBuffer *>(secondaryCommandBufferInfo.pCommandBuffers[i])->GetHandle());
 		vkCmdExecuteCommands(mHandle,
 							 static_cast<uint32_t>(cmdBuffers.size()),
 							 cmdBuffers.data());

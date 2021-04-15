@@ -109,6 +109,9 @@ namespace Shit
 					memcpy(viewportData.data(), pGraphicsPipelineCreateInfo->viewportState.viewports.data(), count * 6 * sizeof(float));
 					mpStateManager->SetViewports(0, count, viewportData.data());
 
+					//tessllation
+					mpStateManager->PatchInputVertexNum(static_cast<GLint>(pGraphicsPipelineCreateInfo->tessellationState.patchControlPoints));
+
 					//scissor
 					count = static_cast<GLuint>(pGraphicsPipelineCreateInfo->viewportState.scissors.size());
 					if (count == 0)
@@ -177,21 +180,21 @@ namespace Shit
 						mpStateManager->EnableCapability(GL_SAMPLE_SHADING);
 						mpStateManager->MinSampleShading(pGraphicsPipelineCreateInfo->multisampleState.minSampleShading);
 						//TODO: sample mask
+
+						if (pGraphicsPipelineCreateInfo->multisampleState.alphaToCoverageEnable)
+							mpStateManager->EnableCapability(GL_SAMPLE_ALPHA_TO_COVERAGE);
+						else
+							mpStateManager->DisableCapability(GL_SAMPLE_ALPHA_TO_COVERAGE);
+
+						if (pGraphicsPipelineCreateInfo->multisampleState.alphaToOneEnable)
+							mpStateManager->EnableCapability(GL_SAMPLE_ALPHA_TO_ONE);
+						else
+							mpStateManager->DisableCapability(GL_SAMPLE_ALPHA_TO_ONE);
 					}
 					else
 					{
 						mpStateManager->DisableCapability(GL_SAMPLE_SHADING);
 					}
-
-					if (pGraphicsPipelineCreateInfo->multisampleState.alphaToCoverageEnable)
-						mpStateManager->EnableCapability(GL_SAMPLE_ALPHA_TO_COVERAGE);
-					else
-						mpStateManager->DisableCapability(GL_SAMPLE_ALPHA_TO_COVERAGE);
-
-					if (pGraphicsPipelineCreateInfo->multisampleState.alphaToOneEnable)
-						mpStateManager->EnableCapability(GL_SAMPLE_ALPHA_TO_ONE);
-					else
-						mpStateManager->DisableCapability(GL_SAMPLE_ALPHA_TO_ONE);
 
 					//depth test
 					if (pGraphicsPipelineCreateInfo->depthStencilState.depthTestEnable)
@@ -689,11 +692,12 @@ namespace Shit
 		case GLCommandCode::SecondaryCommandBuffer:
 		{
 			auto cmd = reinterpret_cast<const ExecuteSecondaryCommandBufferInfo *>(pCur);
+			auto pCommandBuffers = reinterpret_cast<CommandBuffer *const *>(&cmd->count + 1);
 			for (uint32_t i = 0; i < cmd->count; ++i)
 			{
-				static_cast<GLCommandBuffer *>(&cmd->pCommandBuffers[i])->Execute();
+				static_cast<GLCommandBuffer *>(pCommandBuffers[i])->Execute();
 			}
-			return sizeof(*cmd);
+			return sizeof(uint32_t) + sizeof(ptrdiff_t) * cmd->count;
 		}
 		case GLCommandCode::NextSubpass:
 		{
@@ -742,7 +746,10 @@ namespace Shit
 	}
 	void GLCommandBuffer::ExecuteSecondaryCommandBuffer(const ExecuteSecondaryCommandBufferInfo &secondaryCommandBufferInfo)
 	{
-		memcpy(AllocateCommand<void>(GLCommandCode::SecondaryCommandBuffer), &secondaryCommandBufferInfo, sizeof(ExecuteSecondaryCommandBufferInfo));
+		auto p = AllocateCommand<ExecuteSecondaryCommandBufferInfo>(GLCommandCode::SecondaryCommandBuffer, sizeof(uint32_t) + sizeof(ptrdiff_t) * secondaryCommandBufferInfo.count);
+		p->count = secondaryCommandBufferInfo.count;
+		auto p2 = &p->count + 1;
+		memcpy(p2, secondaryCommandBufferInfo.pCommandBuffers, sizeof(ptrdiff_t) * secondaryCommandBufferInfo.count);
 	}
 	void GLCommandBuffer::Reset([[maybe_unused]] CommandBufferResetFlatBits flags)
 	{

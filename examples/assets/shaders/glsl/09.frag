@@ -123,8 +123,9 @@ float BRDF_G(float alpha,vec3 L,vec3 V,vec3 N){
 void main() 
 {
 	vec3 lightIntensity=light.intensity.rgb;
+	vec4 texColor=texture(texAlbedo,fs_in.texCoord);
 
-	vec3 albedo=pow(texture(texAlbedo,fs_in.texCoord).rgb,vec3(2.2))*uboMaterial.baseColorFactor.rgb*fs_in.colorFactor.rgb;
+	vec3 albedo=pow(texColor.rgb,vec3(2.2))*uboMaterial.baseColorFactor.rgb*fs_in.colorFactor.rgb;
 	vec3 emissiveColor=pow(texture(texEmission,fs_in.texCoord).rgb*uboMaterial.emissiveFactor,vec3(2.2));
 
 //	vec3 L=normalize(light.pos-fs_in.pos);
@@ -162,6 +163,6 @@ void main()
 	vec3 f_light=max(f_diff*(1-metallic)+f_spec+f_miss,0.);
 
 	vec3 Lo_brdf=PI*lightIntensity*NdotL*f_light+emissiveColor;
-	outColor=vec4(Lo_brdf,1);
+	outColor=vec4(Lo_brdf,texColor.a*uboMaterial.baseColorFactor.a);
 //	outColor=vec4(vec3(f_light),1);
 }

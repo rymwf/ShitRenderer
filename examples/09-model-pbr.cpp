@@ -24,6 +24,7 @@ const char *axisFragShaderName = "axis.frag.spv";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheresNoTextures/glTF/MetalRoughSpheresNoTextures.gltf";
 const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/AlphaBlendModeTest/glTF/AlphaBlendModeTest.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
@@ -610,7 +611,7 @@ public:
 			false,
 			false,
 			PolygonMode::FILL,
-			CullMode::NONE,
+			CullMode::BACK,
 			FrontFace::COUNTER_CLOCKWISE,
 			false,
 		};
@@ -630,11 +631,18 @@ public:
 			.depthCompareOp = CompareOp::LESS,
 		};
 
-		PipelineColorBlendAttachmentState colorBlendAttachmentstate{};
-		colorBlendAttachmentstate.colorWriteMask = ColorComponentFlagBits::R_BIT | ColorComponentFlagBits::G_BIT | ColorComponentFlagBits::B_BIT | ColorComponentFlagBits::A_BIT;
+		PipelineColorBlendAttachmentState colorBlendAttachmentstate{
+			true,
+			BlendFactor::SRC_ALPHA,
+			BlendFactor::ONE_MINUS_SRC_ALPHA,
+			BlendOp::ADD,
+			BlendFactor::SRC_ALPHA,
+			BlendFactor::ONE_MINUS_SRC_ALPHA,
+			BlendOp::ADD,
+			ColorComponentFlagBits::R_BIT | ColorComponentFlagBits::G_BIT | ColorComponentFlagBits::B_BIT | ColorComponentFlagBits::A_BIT};
 		PipelineColorBlendStateCreateInfo colorBlendState{
 			false,
-			{},
+			LogicOp::COPY,
 			{colorBlendAttachmentstate},
 		};
 

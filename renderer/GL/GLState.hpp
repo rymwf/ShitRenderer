@@ -283,6 +283,13 @@ namespace Shit
 			std::array<Entry, MAX_COMBINED_SHADER_STORAGE_BLOCKS> shaderStorageStates;
 		} mIndexedTargetBindingState;
 
+		struct PatchState
+		{
+			GLint inputPatchVertexNum{};
+			std::array<GLfloat, 4> outerLevels{};
+			std::array<GLfloat, 2> innerLevels{};
+		} mPatchState;
+
 	public:
 		GLStateManager() = default;
 		void Clear();
@@ -416,5 +423,9 @@ namespace Shit
 		void ClipControl(GLenum origin, GLenum depth);
 
 		void BindBufferRange(GLenum target, GLuint binding, GLuint buffer, GLintptr offset, GLintptr size);
+
+		void PatchInputVertexNum(GLint num);
+		void PatchInnerLevels(const std::array<GLfloat, 2> &levels);
+		void PatchOuterLevels(const std::array<GLfloat, 4> &levels);
 	};
 } // namespace Shit

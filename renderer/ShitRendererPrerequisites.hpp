@@ -710,7 +710,7 @@ namespace Shit
 	struct ExecuteSecondaryCommandBufferInfo
 	{
 		uint32_t count;
-		CommandBuffer *pCommandBuffers;
+		CommandBuffer **pCommandBuffers;
 	};
 	struct BindDescriptorSetsInfo
 	{

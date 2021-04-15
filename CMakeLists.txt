@@ -196,7 +196,8 @@ newexample(05-depth)
 newexample(06-mipmap)
 newexample(07-multisample)
 newexample(08-screenshot)
-newexample(09-model)
+newexample(09-model-pbr)
+newexample(10-tessllation)
 endif()
 
 

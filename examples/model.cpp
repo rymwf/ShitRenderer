@@ -774,7 +774,7 @@ void Model::LoadNode(int nodeIndex, std::vector<NodeTransformation> &nodeTransfo
 	if (!node.scale.empty())
 		nodeTransformations[nodeIndex].scale = glm::scale(glm::dmat4(1), glm::dvec3(node.scale[0], node.scale[1], node.scale[2]));
 	if (!node.translation.empty())
-		nodeTransformations[nodeIndex].translate= glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
+		nodeTransformations[nodeIndex].translate = glm::translate(glm::dmat4(1), glm::dvec3(node.translation[0], node.translation[1], node.translation[2]));
 	if (!node.matrix.empty())
 		memcpy(&nodeTransformations[nodeIndex].extra, node.matrix.data(), sizeof(double) * node.matrix.size());
 
@@ -925,7 +925,7 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 					{
 						//TODO:
 					}
-					mDefaultNodeTransformations[channel.target_node].rotate= glm::mat4_cast(interpolation);
+					mDefaultNodeTransformations[channel.target_node].rotate = glm::mat4_cast(interpolation);
 				}
 				else if (channel.target_path.compare("scale") == 0)
 				{
@@ -939,7 +939,7 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 						trans = glm::scale(glm::mat4(1), preVal);
 					else if (sampler.interpolation.compare("CUBICSPLINE") == 0)
 						trans = glm::scale(glm::mat4(1), glm::smoothstep(preVal, nextVal, glm::vec3(factor)));
-					mDefaultNodeTransformations[channel.target_node].scale= trans;
+					mDefaultNodeTransformations[channel.target_node].scale = trans;
 				}
 				else if (channel.target_path.compare("weights") == 0)
 				{
@@ -986,11 +986,11 @@ void Model::UpdateAnimation(uint32_t index, float time, uint32_t imageIndex)
 }
 void Model::UpdateNodeAnimation(int nodeIndex, std::vector<glm::mat4> &nodeMatrices, const glm::dmat4 &preMatrix)
 {
-	nodeMatrices[nodeIndex]= preMatrix *
-									 mDefaultNodeTransformations[nodeIndex].extra *
-									 mDefaultNodeTransformations[nodeIndex].translate *
-									 mDefaultNodeTransformations[nodeIndex].rotate *
-									 mDefaultNodeTransformations[nodeIndex].scale;
+	nodeMatrices[nodeIndex] = preMatrix *
+							  mDefaultNodeTransformations[nodeIndex].extra *
+							  mDefaultNodeTransformations[nodeIndex].translate *
+							  mDefaultNodeTransformations[nodeIndex].rotate *
+							  mDefaultNodeTransformations[nodeIndex].scale;
 	for (auto &&subNodeIndex : mpModel->nodes[nodeIndex].children)
 		UpdateNodeAnimation(subNodeIndex, nodeMatrices, nodeMatrices[nodeIndex]);
 }
@@ -1023,7 +1023,7 @@ void Model::LoadSkins()
 					std::vector<DescriptorBufferInfo>{
 						DescriptorBufferInfo{mModelAssets[mpCurDevice].buffers[0],
 											 0,
-											 sizeof(glm::mat4)}}});
+											 1}}});
 		}
 		else
 		{

@@ -703,4 +703,28 @@ namespace Shit
 			}
 		}
 	}
+	void GLStateManager::PatchInputVertexNum(GLint num)
+	{
+		if (mPatchState.inputPatchVertexNum != num)
+		{
+			glPatchParameteri(GL_PATCH_VERTICES, num);
+			mPatchState.inputPatchVertexNum = num;
+		}
+	}
+	void GLStateManager::PatchInnerLevels(const std::array<GLfloat, 2> &levels)
+	{
+		if (mPatchState.innerLevels != levels)
+		{
+			glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, levels.data());
+			mPatchState.innerLevels = levels;
+		}
+	}
+	void GLStateManager::PatchOuterLevels(const std::array<GLfloat, 4> &levels)
+	{
+		if (mPatchState.outerLevels != levels)
+		{
+			glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, levels.data());
+			mPatchState.outerLevels = levels;
+		}
+	}
 }
