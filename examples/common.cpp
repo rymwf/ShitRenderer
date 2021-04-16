@@ -113,7 +113,9 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 {
 	auto width = pImage->GetCreateInfoPtr()->extent.width;
 	auto height = pImage->GetCreateInfoPtr()->extent.height;
-	auto component = 4;
+
+	auto component = Shit::GetFormatComponentNum(pImage->GetCreateInfoPtr()->format);
+
 	auto size = width * height * component;
 
 	if (static_cast<bool>(pImage->GetCreateInfoPtr()->memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))

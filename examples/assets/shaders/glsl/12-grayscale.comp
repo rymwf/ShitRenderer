@@ -1,0 +1,18 @@
+#version 460
+layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+layout(local_size_y_id=1)in;
+layout(local_size_z_id=2)in;
+
+layout(rgba8,binding=0) uniform image2D inImage;
+layout(r8,binding=1) uniform image2D outImage;
+
+vec3 grayScaleFactor=vec3(0.2126,0.7152,0.0722);
+
+void main()
+{
+	ivec2 ij=ivec2(gl_LocalInvocationID.x,gl_WorkGroupID.x);
+	vec4 inColor=pow(imageLoad(inImage,ij),vec4(2.2));
+	float outColor=pow(dot(grayScaleFactor,inColor.rgb),0.4545);
+	imageStore(outImage,ij,vec4(outColor));
+}

@@ -198,6 +198,8 @@ newexample(07-multisample)
 newexample(08-screenshot)
 newexample(09-model-pbr)
 newexample(10-tessllation)
+newexample(11-compute-filter)
+newexample(12-compute-edgedetection)
 endif()
 
 

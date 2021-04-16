@@ -1,21 +1,26 @@
 #include "common.hpp"
 #include "model.hpp"
 
-#define MODEL_SIZE 1.
-#define PERSPECTIVE 1
-
-uint32_t WIDTH = 800, HEIGHT = 600;
-
-int animationIndex = 0;
-
-const char *compShaderNameGrayScale = "11-grayscale.comp.spv";
-const char *compShaderNameX = "11-x.comp.spv";
-const char *compShaderNameY = "11-y.comp.spv";
+const char *compShaderNameGrayScale = "12-grayscale.comp.spv";
+const char *compShaderName = "12.comp.spv";
+const char *compShaderNameFilter = "12-filter.comp.spv";
 
 const char *testImagePath = IMAGE_PATH "Lenna_test.jpg";
 
-std::vector<float> SobelOperator{1, 2, 1};
-//std::vector<float> SobelOperator{-1, 0, 1};
+//std::vector<float> filter_gaussian1{
+//	0.00013383022576488537,
+//	0.0044318484119380075,
+//	0.05399096651318806,
+//	0.24197072451914337,
+//	0.3989422804014327,
+//	0.24197072451914337,
+//	0.05399096651318806,
+//	0.0044318484119380075,
+//	0.00013383022576488537,
+//}; //1
+//std::vector<float> filter_gaussian05{0.10798, 0.79788, 0.10798}; //0.5
+std::vector<float> filter_binominal{0.0625, 0.25, 0.375, 0.25, 0.0625};
+std::vector<float> filter = filter_binominal;
 
 class Hello
 {
@@ -24,16 +29,17 @@ class Hello
 	Device *device;
 
 	Shader *compShaderGrayscale;
-	Shader *compShaderX;
-	Shader *compShaderY;
+	Shader *compShader;
+	Shader *compShaderFilter;
 
 	DescriptorPool *descriptorPool;
 
-	PipelineLayout *pipelineLayout0;
-	PipelineLayout *pipelineLayout1;
+	PipelineLayout *pipelineLayout;
+	PipelineLayout *pipelineLayoutFilter;
+
 	Pipeline *pipelineGrayScale;
-	Pipeline *pipelineX;
-	Pipeline *pipelineY;
+	Pipeline *pipeline;
+	Pipeline *pipelineFilter;
 
 	std::vector<DescriptorSetLayout *> descriptorSetLayouts;
 	std::vector<DescriptorSet *> descriptorSets;
@@ -43,8 +49,11 @@ class Hello
 	Image *testImage;
 	ImageView *testImageView;
 
-	Image *outputImage;
-	ImageView *outputImageView;
+	Image *outputImage0;
+	ImageView *outputImageView0;
+
+	Image *outputImage1;
+	ImageView *outputImageView1;
 
 	//==============
 	std::chrono::system_clock::time_point curTime;
@@ -101,11 +110,11 @@ public:
 		std::string compShaderPath = buildShaderPath(compShaderNameGrayScale, rendererVersion);
 		compShaderGrayscale = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
 
-		compShaderPath = buildShaderPath(compShaderNameX, rendererVersion);
-		compShaderX = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+		compShaderPath = buildShaderPath(compShaderName, rendererVersion);
+		compShader = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
 
-		compShaderPath = buildShaderPath(compShaderNameY, rendererVersion);
-		compShaderY = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+		compShaderPath = buildShaderPath(compShaderNameFilter, rendererVersion);
+		compShaderFilter = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
 	}
 
 	void createDescriptorSets()
@@ -116,7 +125,8 @@ public:
 		};
 		std::vector<DescriptorSetLayoutBinding> bindings1{
 			DescriptorSetLayoutBinding{0, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
-			DescriptorSetLayoutBinding{1, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::COMPUTE_BIT},
+			DescriptorSetLayoutBinding{1, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
+			DescriptorSetLayoutBinding{2, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::COMPUTE_BIT},
 		};
 
 		descriptorSetLayouts.resize(2);
@@ -124,15 +134,16 @@ public:
 		descriptorSetLayouts[1] = (device->Create(DescriptorSetLayoutCreateInfo{bindings1}));
 
 		//pipelineLayout
-		pipelineLayout0 = device->Create(PipelineLayoutCreateInfo{{1, descriptorSetLayouts[0]}});
-		pipelineLayout1 = device->Create(PipelineLayoutCreateInfo{{1, descriptorSetLayouts[1]}});
+		pipelineLayout = device->Create(PipelineLayoutCreateInfo{{1, descriptorSetLayouts[0]}});
+
+		pipelineLayoutFilter = device->Create(PipelineLayoutCreateInfo{{1, descriptorSetLayouts[1]}});
 
 		//frame binding descriptors
-		std::vector<DescriptorSetLayout *> setLayouts{descriptorSetLayouts};
+		std::vector<DescriptorSetLayout *> setLayouts{descriptorSetLayouts[0], descriptorSetLayouts[0], descriptorSetLayouts[1]};
 
 		std::vector<DescriptorPoolSize> poolSizes(2);
-		poolSizes[0] = DescriptorPoolSize{bindings1[0].descriptorType, 3};
-		poolSizes[1] = DescriptorPoolSize{bindings1[1].descriptorType, 1};
+		poolSizes[0] = DescriptorPoolSize{bindings0[0].descriptorType, 6};
+		poolSizes[1] = DescriptorPoolSize{bindings1[2].descriptorType, 1};
 
 		DescriptorPoolCreateInfo descriptorPoolCreateInfo{
 			.maxSets = static_cast<uint32_t>(setLayouts.size()),
@@ -162,7 +173,7 @@ public:
 				0,
 				DescriptorType::STORAGE_IMAGE,
 				std::vector<DescriptorImageInfo>{{nullptr,
-												  outputImageView,
+												  outputImageView0,
 												  ImageLayout::GENERAL}}});
 		//set 1
 		writes.emplace_back(
@@ -172,23 +183,51 @@ public:
 				0,
 				DescriptorType::STORAGE_IMAGE,
 				std::vector<DescriptorImageInfo>{{nullptr,
-												  outputImageView,
+												  outputImageView0,
 												  ImageLayout::GENERAL}}});
 		writes.emplace_back(
 			WriteDescriptorSet{
 				descriptorSets[1],
 				1,
 				0,
+				DescriptorType::STORAGE_IMAGE,
+				std::vector<DescriptorImageInfo>{{nullptr,
+												  outputImageView1,
+												  ImageLayout::GENERAL}}});
+		//filter descriptor
+		writes.emplace_back(
+			WriteDescriptorSet{
+				descriptorSets[2],
+				0,
+				0,
+				DescriptorType::STORAGE_IMAGE,
+				std::vector<DescriptorImageInfo>{{nullptr,
+												  outputImageView0,
+												  ImageLayout::GENERAL}}});
+		writes.emplace_back(
+			WriteDescriptorSet{
+				descriptorSets[2],
+				1,
+				0,
+				DescriptorType::STORAGE_IMAGE,
+				std::vector<DescriptorImageInfo>{{nullptr,
+												  outputImageView0,
+												  ImageLayout::GENERAL}}});
+		writes.emplace_back(
+			WriteDescriptorSet{
+				descriptorSets[2],
+				2,
+				0,
 				DescriptorType::UNIFORM_BUFFER,
 				std::vector<DescriptorBufferInfo>{{filterBuffer,
 												   0,
-												   sizeof(float) * SobelOperator.size()}}});
+												   sizeof(float) * filter.size() * 4}}});
 		device->UpdateDescriptorSets(writes, {});
 	}
 	void createPipeline()
 	{
 		//pipeline grayscale
-		std::vector<uint32_t> constantIDs{COSTANT_ID_COMPUTE_LOCAL_SIZE_X };
+		std::vector<uint32_t> constantIDs{COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
 		std::vector<uint32_t> constantValues{testImage->GetCreateInfoPtr()->extent.width};
 
 		pipelineGrayScale = device->Create(ComputePipelineCreateInfo{
@@ -200,38 +239,47 @@ public:
 					{constantIDs,
 					 constantValues}},
 			},
-			pipelineLayout0});
-		//pipeline x
+			pipelineLayout});
+		// filter pipelin
 		constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X, COSTANT_ID_COMPUTE_OPERATOR_DIM};
-		constantValues = {testImage->GetCreateInfoPtr()->extent.width, static_cast<uint32_t>(SobelOperator.size())};
+		constantValues = {testImage->GetCreateInfoPtr()->extent.width, static_cast<uint32_t>(filter.size())};
 
-		pipelineX = device->Create(ComputePipelineCreateInfo{
+		pipelineFilter = device->Create(ComputePipelineCreateInfo{
 			PipelineShaderStageCreateInfo{
 				PipelineShaderStageCreateInfo{
 					ShaderStageFlagBits::COMPUTE_BIT,
-					compShaderX,
+					compShaderFilter,
 					"main",
 					{constantIDs,
 					 constantValues}},
 			},
-			pipelineLayout1});
-		//pipeline y
-		constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X, COSTANT_ID_COMPUTE_OPERATOR_DIM};
-		constantValues = {testImage->GetCreateInfoPtr()->extent.height, static_cast<uint32_t>(SobelOperator.size())};
+			pipelineLayoutFilter});
 
-		pipelineY = device->Create(ComputePipelineCreateInfo{
+		//pipeline edge detection
+		constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
+		constantValues = {testImage->GetCreateInfoPtr()->extent.width};
+
+		pipeline = device->Create(ComputePipelineCreateInfo{
 			PipelineShaderStageCreateInfo{
 				PipelineShaderStageCreateInfo{
 					ShaderStageFlagBits::COMPUTE_BIT,
-					compShaderY,
+					compShader,
 					"main",
 					{constantIDs,
 					 constantValues}},
 			},
-			pipelineLayout1});
+			pipelineLayout});
 	}
 	void processImage()
 	{
+		ImageMemoryBarrier barrier{
+			AccessFlagBits::SHADER_WRITE_BIT,
+			AccessFlagBits::SHADER_READ_BIT,
+			ImageLayout::GENERAL,
+			ImageLayout::GENERAL,
+			outputImage0,
+			ImageSubresourceRange{0, 1, 0, 1}};
+
 		device->ExecuteOneTimeCommands([&](CommandBuffer *commandBuffer) {
 			//gray scale
 			commandBuffer->BindPipeline(BindPipelineInfo{
@@ -239,21 +287,13 @@ public:
 				pipelineGrayScale});
 			commandBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
 				PipelineBindPoint::COMPUTE,
-				pipelineLayout0,
+				pipelineLayout,
 				0,
 				1,
 				&descriptorSets[0],
 			});
 			commandBuffer->Dispatch(DispatchInfo{testImage->GetCreateInfoPtr()->extent.height, 1u, 1u});
-
-			ImageMemoryBarrier barrier{
-				AccessFlagBits::SHADER_WRITE_BIT,
-				AccessFlagBits::SHADER_READ_BIT,
-				ImageLayout::GENERAL,
-				ImageLayout::GENERAL,
-				outputImage,
-				ImageSubresourceRange{0, 1, 0, 1}};
-
+			//smooth
 			commandBuffer->PipeplineBarrier(PipelineBarrierInfo{
 				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
 				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
@@ -264,42 +304,20 @@ public:
 				nullptr,
 				1,
 				&barrier});
-
-			//x convolution
-			commandBuffer->BindPipeline(BindPipelineInfo{
-				PipelineBindPoint::COMPUTE,
-				pipelineX});
 			commandBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
 				PipelineBindPoint::COMPUTE,
-				pipelineLayout1,
-				0,
-				1,
-				&descriptorSets[1],
-			});
-			commandBuffer->Dispatch(DispatchInfo{testImage->GetCreateInfoPtr()->extent.height, 1u, 1u});
-
-			commandBuffer->PipeplineBarrier(PipelineBarrierInfo{
-				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
-				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
-				{},
-				0,
-				nullptr,
-				0,
-				nullptr,
-				1,
-				&barrier});
-			//y convolution
-			commandBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
-				PipelineBindPoint::COMPUTE,
-				pipelineLayout1,
+				pipelineLayoutFilter,
 				0,
 				1,
 				&descriptorSets[2],
 			});
 			commandBuffer->BindPipeline(BindPipelineInfo{
 				PipelineBindPoint::COMPUTE,
-				pipelineY});
+				pipelineFilter});
+
 			commandBuffer->Dispatch(DispatchInfo{testImage->GetCreateInfoPtr()->extent.height, 1u, 1u});
+
+			//edge detection
 			commandBuffer->PipeplineBarrier(PipelineBarrierInfo{
 				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
 				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
@@ -310,6 +328,17 @@ public:
 				nullptr,
 				1,
 				&barrier});
+			commandBuffer->BindPipeline(BindPipelineInfo{
+				PipelineBindPoint::COMPUTE,
+				pipeline});
+			commandBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
+				PipelineBindPoint::COMPUTE,
+				pipelineLayout,
+				0,
+				1,
+				&descriptorSets[1],
+			});
+			commandBuffer->Dispatch(DispatchInfo{testImage->GetCreateInfoPtr()->extent.height, 1u, 1u});
 		});
 	}
 	void createImages()
@@ -345,22 +374,37 @@ public:
 		freeImage(pixels);
 
 		//=======
-		outputImage = device->Create(imageCreateInfo, nullptr);
-		imageViewCreateInfo.pImage = outputImage;
-		outputImageView = device->Create(imageViewCreateInfo);
+		imageCreateInfo.format = ShitFormat::R8_UNORM;
+		outputImage0 = device->Create(imageCreateInfo, nullptr);
+
+		imageViewCreateInfo.format = ShitFormat::R8_UNORM;
+		imageViewCreateInfo.pImage = outputImage0;
+		outputImageView0 = device->Create(imageViewCreateInfo);
+
+		outputImage1 = device->Create(imageCreateInfo, nullptr);
+
+		imageViewCreateInfo.pImage = outputImage1;
+		outputImageView1 = device->Create(imageViewCreateInfo);
 	}
 	void saveImages()
 	{
-		takeScreenshot(device, outputImage);
+		takeScreenshot(device, outputImage0);
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		takeScreenshot(device, outputImage1);
 	}
 	void createUBOBuffers()
 	{
+		std::vector<float> ubodata(4 * filter.size());
+		for (size_t i = 0; i < filter.size(); ++i)
+		{
+			ubodata[i * 4] = filter[i];
+		}
 		filterBuffer = device->Create(BufferCreateInfo{
-											 {},
-											 sizeof(float) * SobelOperator.size(),
-											 BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
-											 MemoryPropertyFlagBits::DEVICE_LOCAL_BIT},
-										 SobelOperator.data());
+										  {},
+										  sizeof(float) * filter.size() * 4,
+										  BufferUsageFlagBits::UNIFORM_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
+										  MemoryPropertyFlagBits::DEVICE_LOCAL_BIT},
+									  ubodata.data());
 	}
 };
 

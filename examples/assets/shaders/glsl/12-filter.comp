@@ -12,31 +12,25 @@ layout(local_size_x_id=0)in;
 layout(local_size_y_id=1)in;
 layout(local_size_z_id=2)in;
 
-layout(binding=0 SET(0)) uniform sampler2D inTexture;
-layout(rgba8,binding=1 SET(0)) uniform image2D outImage;
+layout(r8,binding=0 SET(0)) uniform image2D inImage;
+layout(r8,binding=1 SET(0)) uniform image2D outImage;
 
 layout(constant_id=3) const int OPERATOR_DIM=3;
 
 layout(binding=2 SET(0)) uniform UBOFilter
 {
-	float radius;
 	float factor[OPERATOR_DIM];
 };
 void main()
 {
 	ivec2 ij=ivec2(gl_LocalInvocationID.x,gl_WorkGroupID.x);
-	vec2 texSize=vec2(gl_WorkGroupSize.x,gl_NumWorkGroups.x);
-
-	float a=radius/(OPERATOR_DIM/2);
-	float lod=max(log2(a),0);
-	vec4 col=vec4(0);
+	float col=0.;
 	for(int i=0;i<OPERATOR_DIM;++i)
 	{
 		for(int j=0;j<OPERATOR_DIM;++j)
 		{
-			vec2 uv=(ij+a*vec2(i-OPERATOR_DIM/2,j-OPERATOR_DIM/2)+0.5)/texSize;
-			col=col+factor[i]*factor[j]*pow(textureLod(inTexture,uv,lod),vec4(2.2));
+			col=col+factor[i]*factor[j]*pow(imageLoad(inImage,ivec2(ij+vec2(i-OPERATOR_DIM/2,j-OPERATOR_DIM/2))).r,2.2);
 		}
 	}
-	imageStore(outImage,ij,pow(col,vec4(0.4545)));	
+	imageStore(outImage,ij,vec4(pow(col,0.4545),0,0,0));	
 }

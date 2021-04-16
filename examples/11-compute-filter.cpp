@@ -1,11 +1,6 @@
 #include "common.hpp"
 #include "model.hpp"
 
-#define MODEL_SIZE 1.
-#define PERSPECTIVE 1
-
-uint32_t WIDTH = 800, HEIGHT = 600;
-
 const char *compShaderName = "11.comp.spv";
 
 const char *testImagePath = IMAGE_PATH "Lenna_test.jpg";
