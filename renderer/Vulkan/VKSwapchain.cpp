@@ -48,6 +48,7 @@ namespace Shit
 				surfaceFormat = e;
 				break;
 			}
+			LOG("swapchain format do not support,use format: " + std::to_string(surfaceFormat.format));
 		}
 		LOG_VAR(surfaceFormat.format);
 		LOG_VAR(surfaceFormat.colorSpace);
@@ -94,12 +95,27 @@ namespace Shit
 		std::vector<VkImage> swapchainImages;
 		swapchainImages.resize(swapchainImageCount);
 		vkGetSwapchainImagesKHR(mpDevice->GetHandle(), mHandle, &swapchainImageCount, swapchainImages.data());
+
+		ImageCreateInfo imageCreateInfo{
+			{},
+			ImageType::TYPE_2D,
+			createInfo.format,
+			{createInfo.imageExtent.width,
+			 createInfo.imageExtent.height, 1},
+			1,
+			1,
+			SampleCountFlagBits::BIT_1,
+			ImageTiling::OPTIMAL,
+			createInfo.imageUsage,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+			{},
+			ImageLayout::PRESENT_SRC};
 		for (auto e : swapchainImages)
 		{
-			mImages.emplace_back(std::make_unique<VKImage>(mpDevice, e, true));
+			mImages.emplace_back(std::make_unique<VKImage>(mpDevice, imageCreateInfo, e, true));
 		}
 	}
-	Result VKSwapchain::GetNextImage(const GetNextImageInfo &info, uint32_t& index)
+	Result VKSwapchain::GetNextImage(const GetNextImageInfo &info, uint32_t &index)
 	{
 		auto res = vkAcquireNextImageKHR(mpDevice->GetHandle(), mHandle, info.timeout,
 										 info.pSemaphore ? static_cast<VKSemaphore *>(info.pSemaphore)->GetHandle() : VK_NULL_HANDLE,

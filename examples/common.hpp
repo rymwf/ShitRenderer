@@ -70,6 +70,12 @@ using namespace Shit;
 
 #define CONSTANT_ID_JOINTNUM 0
 
+#define COSTANT_ID_COMPUTE_LOCAL_SIZE_X 0
+#define COSTANT_ID_COMPUTE_LOCAL_SIZE_Y 1
+#define COSTANT_ID_COMPUTE_LOCAL_SIZE_Z 2
+#define COSTANT_ID_COMPUTE_OPERATOR_DIM 3
+#define COSTANT_ID_COMPUTE_VERTICAL 4
+
 /*
 ///#ifdef NDEBUG
 ///#define LOG(str)
@@ -406,4 +412,5 @@ float intToFloat(T value)
 	return (std::max)(float(value) / std::numeric_limits<T>::max(), -1.f);
 }
 
-void takeScreenshot(Device *pDevice, Swapchain *pSwapchain, int swapchainImageIndex);
+void takeScreenshot(Device *pDevice, Image *pImage);
+void saveImage(const char *dstPath, Device *pDevice, Image *pImage);

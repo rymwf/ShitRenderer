@@ -34,7 +34,7 @@ namespace Shit
 			glEnableVertexAttribArray(attrib.location);
 		}
 	}
-	GLuint GLGraphicsPipeline::CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo)
+	GLuint GLPipeline::CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo)
 	{
 		auto shader = glCreateShader(Map(shaderStageCreateInfo.stage));
 		if (shader)
@@ -178,6 +178,14 @@ namespace Shit
 	GLComputePipeline::GLComputePipeline(GLStateManager *pStateManager, const ComputePipelineCreateInfo &createInfo)
 		: ComputePipeline(createInfo), GLPipeline(pStateManager)
 	{
+		mShaders.emplace_back(CreateShader(createInfo.stage));
+		mProgram = CreateProgram(mShaders, true, false);
+
+		glGenProgramPipelines(1, &mHandle);
+
+		mpStateManager->BindPipeline(mHandle);
+
+		glUseProgramStages(mHandle, MapShaderStageFlags(createInfo.stage.stage), mProgram);
 	}
 
 } // namespace Shit

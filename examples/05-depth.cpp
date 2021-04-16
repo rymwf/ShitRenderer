@@ -106,6 +106,7 @@ public:
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
 		WindowCreateInfo windowCreateInfo{
+			{},
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
@@ -691,7 +692,8 @@ public:
 			.samples = SampleCountFlagBits::BIT_1,
 			.tiling = ImageTiling::OPTIMAL,
 			.usageFlags = ImageUsageFlagBits::TRANSFER_DST_BIT | ImageUsageFlagBits::SAMPLED_BIT,
-			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
+			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 		testImage = device->Create(imageCreateInfo, pixels);
 

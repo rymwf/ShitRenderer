@@ -106,6 +106,12 @@ namespace Shit
 		lhs = lhs << offset;
 		return lhs;
 	}
+	enum class WindowCreateFlagBits
+	{
+		INVISIBLE = 0x1,
+
+	};
+	ENABLE_BITMASK_OPERATORS(WindowCreateFlagBits);
 
 	enum class EventType
 	{

@@ -356,8 +356,8 @@ void Model::LoadImages()
 		ImageTiling::OPTIMAL,
 		ImageUsageFlagBits::SAMPLED_BIT,
 		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-		true,
-		Filter::LINEAR};
+		Filter::LINEAR,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 	ImageViewCreateInfo imageViewCreateInfo{
 		nullptr,

@@ -90,6 +90,7 @@ namespace Shit
 
 		virtual Shader *Create(const ShaderCreateInfo &createInfo) = 0;
 		virtual Pipeline *Create(const GraphicsPipelineCreateInfo &createInfo) = 0;
+		virtual Pipeline *Create(const ComputePipelineCreateInfo &createInfo) = 0;
 
 		virtual CommandPool *Create(const CommandPoolCreateInfo &createInfo) = 0;
 

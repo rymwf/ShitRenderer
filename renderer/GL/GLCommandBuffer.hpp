@@ -24,6 +24,8 @@ namespace Shit
 		CopyBufferToImage,
 		CopyImage,
 		CopyImageToBuffer,
+		Dispatch,
+		DispatchIndirect,
 		Draw,
 		DrawIndirect,
 		DrawIndirectCount,
@@ -46,10 +48,10 @@ namespace Shit
 		Pipeline *mCurPipeline{};
 		IndexType mCurIndexType{};
 		uint64_t mCurIndexOffset{};
-		GLFramebuffer* mpCurFramebuffer{};
+		GLFramebuffer *mpCurFramebuffer{};
 
 		template <class T>
-		T *AllocateCommand(GLCommandCode commandCode, size_t realSize= 0);
+		T *AllocateCommand(GLCommandCode commandCode, size_t realSize = 0);
 
 		size_t ExecuteCommand(GLCommandCode commandCode, const void *pCur);
 
@@ -80,7 +82,6 @@ namespace Shit
 		void BindIndexBuffer(const BindIndexBufferInfo &info) override;
 		void BindDescriptorSets(const BindDescriptorSetsInfo &info) override;
 
-
 		void Draw(const DrawIndirectCommand &info) override;
 		void DrawIndirect(const DrawIndirectInfo &info) override;
 		void DrawIndirectCount(const DrawIndirectCountInfo &info) override;
@@ -90,5 +91,8 @@ namespace Shit
 
 		void PipeplineBarrier(const PipelineBarrierInfo &info) override;
 		void PushConstants(const PushConstantUpdateInfo &info) override;
+
+		void Dispatch(const DispatchInfo &info) override;
+		void DispatchIndirect(const DispatchIndirectInfo &info) override;
 	};
 } // namespace Shit

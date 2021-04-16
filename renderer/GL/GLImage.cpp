@@ -27,65 +27,72 @@ namespace Shit
 	GLImage::GLImage(GLStateManager *pStateManager, const ImageCreateInfo &createInfo, const void *pData)
 		: Image(createInfo), mpStateManager(pStateManager)
 	{
-		if (!static_cast<bool>(createInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT) &&
-			static_cast<bool>(createInfo.usageFlags & (ImageUsageFlagBits::COLOR_ATTACHMENT_BIT | ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-			!static_cast<bool>(createInfo.usageFlags & ImageUsageFlagBits::INPUT_ATTACHMENT_BIT) &&
-			createInfo.mipLevels == 1 &&
-			createInfo.extent.depth == 1 &&
-			createInfo.arrayLayers == 1)
+		if (createInfo.mipLevels == 0)
+			mCreateInfo.mipLevels = static_cast<uint32_t>(
+				std::floor(
+					std::log2((std::max)(
+						(std::max)(mCreateInfo.extent.width, mCreateInfo.extent.height),
+						mCreateInfo.extent.depth))) +
+				1);
+		if (!static_cast<bool>(mCreateInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT) &&
+			static_cast<bool>(mCreateInfo.usageFlags & (ImageUsageFlagBits::COLOR_ATTACHMENT_BIT | ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+			!static_cast<bool>(mCreateInfo.usageFlags & ImageUsageFlagBits::INPUT_ATTACHMENT_BIT) &&
+			mCreateInfo.mipLevels == 1 &&
+			mCreateInfo.extent.depth == 1 &&
+			mCreateInfo.arrayLayers == 1)
 		{
 			mIsRenderbuffer = true;
 			glGenRenderbuffers(1, &mHandle);
 			mpStateManager->PushRenderbuffer(mHandle);
-			if (createInfo.samples > SampleCountFlagBits::BIT_1)
+			if (mCreateInfo.samples > SampleCountFlagBits::BIT_1)
 			{
 				glRenderbufferStorageMultisample(
 					GL_RENDERBUFFER,
-					static_cast<GLsizei>(createInfo.samples),
-					MapInternalFormat(createInfo.format),
-					createInfo.extent.width,
-					createInfo.extent.height);
+					static_cast<GLsizei>(mCreateInfo.samples),
+					MapInternalFormat(mCreateInfo.format),
+					mCreateInfo.extent.width,
+					mCreateInfo.extent.height);
 			}
 			else
 			{
 				glRenderbufferStorage(
 					GL_RENDERBUFFER,
-					MapInternalFormat(createInfo.format),
-					createInfo.extent.width,
-					createInfo.extent.height);
+					MapInternalFormat(mCreateInfo.format),
+					mCreateInfo.extent.width,
+					mCreateInfo.extent.height);
 			}
 			mpStateManager->PopRenderbuffer();
 		}
 		else
 		{
 			glGenTextures(1, &mHandle);
-			GLenum target = Map(createInfo.imageType, createInfo.samples);
+			GLenum target = Map(mCreateInfo.imageType, mCreateInfo.samples);
 			mpStateManager->PushTextureUnit(0, target, mHandle);
-			//if (static_cast<bool>(createInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT))
+			//if (static_cast<bool>(mCreateInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT))
 			if constexpr (0)
 			{
-				if (createInfo.samples > SampleCountFlagBits::BIT_1)
+				if (mCreateInfo.samples > SampleCountFlagBits::BIT_1)
 				{
 					glTexImage3DMultisample(
 						target,
-						static_cast<GLsizei>(createInfo.samples),
-						MapInternalFormat(createInfo.format),
-						createInfo.extent.width,
-						createInfo.extent.height,
-						createInfo.extent.depth,
+						static_cast<GLsizei>(mCreateInfo.samples),
+						MapInternalFormat(mCreateInfo.format),
+						mCreateInfo.extent.width,
+						mCreateInfo.extent.height,
+						mCreateInfo.extent.depth,
 						GL_FALSE);
 				}
 				else
 				{
-					switch (createInfo.imageType)
+					switch (mCreateInfo.imageType)
 					{
 					case ImageType::TYPE_1D:
 						glTexImage2D(
 							target,
 							0,
-							MapInternalFormat(createInfo.format),
-							createInfo.extent.width,
-							createInfo.extent.height,
+							MapInternalFormat(mCreateInfo.format),
+							mCreateInfo.extent.width,
+							mCreateInfo.extent.height,
 							0,
 							GL_RGBA,
 							GL_UNSIGNED_BYTE,
@@ -96,10 +103,10 @@ namespace Shit
 						glTexImage3D(
 							target,
 							0,
-							MapInternalFormat(createInfo.format),
-							createInfo.extent.width,
-							createInfo.extent.height,
-							createInfo.extent.depth,
+							MapInternalFormat(mCreateInfo.format),
+							mCreateInfo.extent.width,
+							mCreateInfo.extent.height,
+							mCreateInfo.extent.depth,
 							0,
 							GL_RGBA,
 							GL_UNSIGNED_BYTE,
@@ -110,38 +117,38 @@ namespace Shit
 			}
 			else
 			{
-				if (createInfo.samples > SampleCountFlagBits::BIT_1)
+				if (mCreateInfo.samples > SampleCountFlagBits::BIT_1)
 				{
 					glTexStorage3DMultisample(
 						target,
-						static_cast<GLsizei>(createInfo.samples),
-						MapInternalFormat(createInfo.format),
-						createInfo.extent.width,
-						createInfo.extent.height,
-						createInfo.extent.depth,
+						static_cast<GLsizei>(mCreateInfo.samples),
+						MapInternalFormat(mCreateInfo.format),
+						mCreateInfo.extent.width,
+						mCreateInfo.extent.height,
+						mCreateInfo.extent.depth,
 						GL_FALSE);
 				}
 				else
 				{
-					switch (createInfo.imageType)
+					switch (mCreateInfo.imageType)
 					{
 					case ImageType::TYPE_1D:
 						glTexStorage2D(
 							target,
-							createInfo.mipLevels,
-							MapInternalFormat(createInfo.format),
-							createInfo.extent.width,
-							createInfo.extent.height);
+							mCreateInfo.mipLevels,
+							MapInternalFormat(mCreateInfo.format),
+							mCreateInfo.extent.width,
+							mCreateInfo.extent.height);
 						break;
 					case ImageType::TYPE_2D:
 					case ImageType::TYPE_3D:
 						glTexStorage3D(
 							target,
-							createInfo.mipLevels,
-							MapInternalFormat(createInfo.format),
-							createInfo.extent.width,
-							createInfo.extent.height,
-							createInfo.extent.depth);
+							mCreateInfo.mipLevels,
+							MapInternalFormat(mCreateInfo.format),
+							mCreateInfo.extent.width,
+							mCreateInfo.extent.height,
+							mCreateInfo.extent.depth);
 						break;
 					}
 				}
@@ -150,7 +157,7 @@ namespace Shit
 			{
 				UpdateSubData(0, {{}, mCreateInfo.extent}, pData);
 				//TODO: generate mipmap using different filter
-				if (mCreateInfo.generateMipmap)
+				if (mCreateInfo.mipLevels != 1)
 					glGenerateMipmap(target);
 				mpStateManager->PopTextureUnit();
 			}
@@ -204,6 +211,9 @@ namespace Shit
 	void GLImage::UnMapMemory()
 	{
 		UpdateSubData(0, Rect3D{{}, mCreateInfo.extent}, mTempData.data());
+	}
+	void GLImage::FlushMappedMemoryRange([[maybe_unused]] uint64_t offset, [[maybe_unused]] uint64_t size)
+	{
 	}
 
 	//===================================================================

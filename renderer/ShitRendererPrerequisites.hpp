@@ -59,7 +59,56 @@
 
 namespace Shit
 {
+	inline uint32_t GetFormatComponentNum(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::R8_UNORM:
+		case ShitFormat::R8_SRGB:
+		case ShitFormat::D16_UNORM:
+		case ShitFormat::D24_UNORM:
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D24_UNORM_S8_UINT:
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+		case ShitFormat::S8_UINT:
+		default:
+			return 1;
 
+		case ShitFormat::RG8_UNORM:
+		case ShitFormat::RG8_SRGB:
+			return 2;
+
+		case ShitFormat::RGB8_UNORM:
+		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::BGR8_UNORM:
+		case ShitFormat::BGR8_SRGB:
+			return 3;
+
+		case ShitFormat::RGBA8_UNORM:
+		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::BGRA8_UNORM:
+		case ShitFormat::BGRA8_SRGB:
+			return 4;
+		}
+	}
+	inline uint32_t GetFormatComponentSize(ShitFormat format)
+	{
+		switch (format)
+		{
+		case ShitFormat::D16_UNORM:
+			return 2;
+		case ShitFormat::D24_UNORM:
+			return 3;
+		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::D24_UNORM_S8_UINT:
+			return 4;
+		case ShitFormat::D32_SFLOAT_S8_UINT:
+			return 5;
+		case ShitFormat::S8_UINT:
+		default:
+			return 1;
+		}
+	}
 	inline uint32_t GetIndexTypeSize(IndexType type)
 	{
 		switch (type)
@@ -148,6 +197,7 @@ namespace Shit
 
 	struct WindowCreateInfo
 	{
+		WindowCreateFlagBits flags;
 		const char *name;
 		Rect2D rect;
 		std::shared_ptr<std::function<void(const Event &)>> eventListener;
@@ -373,14 +423,14 @@ namespace Shit
 		ImageType imageType;
 		ShitFormat format;
 		Extent3D extent;
-		uint32_t mipLevels;
+		uint32_t mipLevels; //if 1 means no mipmap, 0 means generate all mipmap, otherwise generate specified mipmap levels
 		uint32_t arrayLayers;
 		SampleCountFlagBits samples;
 		ImageTiling tiling; //no use for opengl
 		ImageUsageFlagBits usageFlags;
 		MemoryPropertyFlagBits memoryPropertyFlags;
-		bool generateMipmap; //if generate mipmap
 		Filter mipmapFilter;
+		ImageLayout initialLayout;
 	};
 
 	using ClearColorValue = std::variant<std::array<float, 4>, std::array<int32_t, 4>, std::array<uint32_t, 4>>;
@@ -772,54 +822,22 @@ namespace Shit
 		uint32_t size;
 		const void *pValues; //an array of size bytes
 	};
-	inline uint32_t GetFormatComponentNum(ShitFormat format)
+	struct DispatchInfo
 	{
-		switch (format)
-		{
-		case ShitFormat::R8_UNORM:
-		case ShitFormat::R8_SRGB:
-		case ShitFormat::D16_UNORM:
-		case ShitFormat::D24_UNORM:
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D24_UNORM_S8_UINT:
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-		case ShitFormat::S8_UINT:
-		default:
-			return 1;
-
-		case ShitFormat::RG8_UNORM:
-		case ShitFormat::RG8_SRGB:
-			return 2;
-
-		case ShitFormat::RGB8_UNORM:
-		case ShitFormat::RGB8_SRGB:
-		case ShitFormat::BGR8_UNORM:
-		case ShitFormat::BGR8_SRGB:
-			return 3;
-
-		case ShitFormat::RGBA8_UNORM:
-		case ShitFormat::RGBA8_SRGB:
-		case ShitFormat::BGRA8_UNORM:
-		case ShitFormat::BGRA8_SRGB:
-			return 4;
-		}
-	}
-	inline uint32_t GetFormatComponentSize(ShitFormat format)
+		uint32_t groupCountX;
+		uint32_t groupCountY;
+		uint32_t groupCountZ;
+	};
+	struct DispatchIndirectCommand
 	{
-		switch (format)
-		{
-		case ShitFormat::D16_UNORM:
-			return 2;
-		case ShitFormat::D24_UNORM:
-			return 3;
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D24_UNORM_S8_UINT:
-			return 4;
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-			return 5;
-		case ShitFormat::S8_UINT:
-		default:
-			return 1;
-		}
-	}
+		//num of local workgroups
+		uint32_t x;
+		uint32_t y;
+		uint32_t z;
+	};
+	struct DispatchIndirectInfo
+	{
+		Buffer *pBuffer;
+		uint64_t offset;
+	};
 } // namespace Shit

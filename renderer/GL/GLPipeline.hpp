@@ -39,7 +39,9 @@ namespace Shit
 			glDeleteProgram(mProgram);
 			glDeleteProgramPipelines(1, &mHandle);
 		}
-		GLuint CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable);
+		static GLuint CreateProgram(const std::vector<GLuint> &shaders, bool separable, bool retrievable);
+
+		static GLuint CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo);
 
 		constexpr GLuint GetHandle() const
 		{
@@ -52,8 +54,6 @@ namespace Shit
 		GLuint mVAO{};
 
 		void CreateVertexArray(const VertexInputStateCreateInfo &vertexInputStateCreateInfo);
-
-		GLuint CreateShader(const PipelineShaderStageCreateInfo &shaderStageCreateInfo);
 
 	public:
 		GLGraphicsPipeline(GLStateManager *stateManager, const GraphicsPipelineCreateInfo &createInfo);

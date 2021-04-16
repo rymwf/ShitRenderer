@@ -55,4 +55,10 @@ namespace Shit
 		//glUnmapBuffer(GL_ARRAY_BUFFER);
 		//mpStateManager->PopBuffer();
 	}
+	void GLBuffer::FlushMappedMemoryRange(uint64_t offset, uint64_t size)
+	{
+		mpStateManager->PushBuffer(GL_ARRAY_BUFFER, mHandle);
+		glFlushMappedBufferRange(GL_ARRAY_BUFFER, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size));
+		mpStateManager->PopBuffer();
+	}
 }

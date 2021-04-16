@@ -28,5 +28,6 @@ namespace Shit
 		virtual ~Buffer() {}
 		virtual void MapMemory(uint64_t offset, uint64_t size, void **ppData) = 0;
 		virtual void UnMapMemory() = 0;
+		virtual void FlushMappedMemoryRange(uint64_t offset, uint64_t size) = 0;
 	};
 } // namespace Shit

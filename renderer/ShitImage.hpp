@@ -28,6 +28,7 @@ namespace Shit
 		virtual void UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData) = 0;
 		virtual void MapMemory(uint64_t offset, uint64_t size, void **ppData) = 0;
 		virtual void UnMapMemory() = 0;
+		virtual void FlushMappedMemoryRange(uint64_t offset, uint64_t size) = 0;
 	};
 
 	class ImageView

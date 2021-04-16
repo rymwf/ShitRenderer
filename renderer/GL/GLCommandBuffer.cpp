@@ -468,7 +468,7 @@ namespace Shit
 		{
 			auto cmd = reinterpret_cast<const CopyImageToBufferInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_PIXEL_PACK_BUFFER, static_cast<GLBuffer *>(cmd->pDstBuffer)->GetHandle());
-			auto internalformat = MapInternalFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
+			//auto internalformat = MapInternalFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
 			auto externalformat = MapExternalFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
 			auto type = MapDataTypeFromFormat(cmd->pSrcImage->GetCreateInfoPtr()->format);
 			if (static_cast<GLImage *>(cmd->pSrcImage)->IsRenderbuffer())
@@ -509,16 +509,16 @@ namespace Shit
 				for (uint32_t i = 0; i < cmd->regionCount; ++i)
 				{
 #if 0
-				glGetTexImage(target,
-							  regions[i].imageSubresource.mipLevel,
-							  internalformat,
-							  type,
-							  &regions[i].bufferOffset);
+					glGetTexImage(target,
+								  regions[i].imageSubresource.mipLevel,
+								  externalformat,
+								  type,
+								  0);
 #endif
 #if 1
 					//opengl 4.5
 					glGetTextureSubImage(
-						target,
+						static_cast<GLImage *>(cmd->pSrcImage)->GetHandle(),
 						regions[i].imageSubresource.mipLevel,
 						regions[i].imageOffset.x,
 						cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_1D ? regions[i].imageSubresource.baseArrayLayer : regions[i].imageOffset.y,
@@ -526,14 +526,27 @@ namespace Shit
 						static_cast<GLsizei>(regions[i].imageExtent.width),
 						static_cast<GLsizei>(cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_1D ? regions[i].imageSubresource.layerCount : regions[i].imageExtent.height),
 						static_cast<GLsizei>(cmd->pSrcImage->GetCreateInfoPtr()->imageType == ImageType::TYPE_2D ? regions[i].imageSubresource.layerCount : regions[i].imageExtent.depth),
-						internalformat,
+						externalformat,
 						type,
 						static_cast<GLsizei>(cmd->pDstBuffer->GetCreateInfoPtr()->size),
-						(void *)&regions[i].bufferOffset);
+						0);
 #endif
 				}
 			}
 			return sizeof(Buffer *) + sizeof(Image *) + sizeof(uint32_t) + sizeof(BufferImageCopy) * cmd->regionCount;
+		}
+		case GLCommandCode::Dispatch:
+		{
+			auto cmd = reinterpret_cast<const DispatchInfo *>(pCur);
+			glDispatchCompute(cmd->groupCountX, cmd->groupCountY, cmd->groupCountZ);
+			return sizeof(*cmd);
+		}
+		case GLCommandCode::DispatchIndirect:
+		{
+			auto cmd = reinterpret_cast<const DispatchIndirectInfo *>(pCur);
+			mpStateManager->BindBuffer(GL_DISPATCH_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
+			glDispatchComputeIndirect(static_cast<GLintptr>(cmd->offset));
+			return sizeof(*cmd);
 		}
 		case GLCommandCode::Draw:
 		{
@@ -936,5 +949,13 @@ namespace Shit
 	void GLCommandBuffer::PushConstants([[maybe_unused]] const PushConstantUpdateInfo &info)
 	{
 		LOG_VAR("PushConstants not implemented yet");
+	}
+	void GLCommandBuffer::Dispatch(const DispatchInfo &info)
+	{
+		memcpy(AllocateCommand<DispatchInfo>(GLCommandCode::Dispatch), &info, sizeof(info));
+	}
+	void GLCommandBuffer::DispatchIndirect(const DispatchIndirectInfo &info)
+	{
+		memcpy(AllocateCommand<DispatchIndirectInfo>(GLCommandCode::DispatchIndirect), &info, sizeof(info));
 	}
 } // namespace Shit

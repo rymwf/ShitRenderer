@@ -143,6 +143,11 @@ namespace Shit
 		mPipelines.emplace_back(std::make_unique<VKGraphicsPipeline>(mDevice, createInfo));
 		return mPipelines.back().get();
 	}
+	Pipeline *VKDevice::Create(const ComputePipelineCreateInfo &createInfo)
+	{
+		mPipelines.emplace_back(std::make_unique<VKComputePipeline>(mDevice, createInfo));
+		return mPipelines.back().get();
+	}
 	CommandPool *VKDevice::Create(const CommandPoolCreateInfo &createInfo)
 	{
 		mCommandPools.emplace_back(std::make_unique<VKCommandPool>(mDevice, createInfo));
@@ -258,7 +263,7 @@ namespace Shit
 		std::vector<VkWriteDescriptorSet> writes(count);
 		std::vector<Temp> temp(count);
 		std::transform(std::execution::par, descriptorWrites.begin(), descriptorWrites.end(), temp.begin(), [&](auto &&e) {
-			Temp a;			
+			Temp a;
 			std::visit(
 				overloaded{
 					[&a](const std::vector<DescriptorImageInfo> &val) {

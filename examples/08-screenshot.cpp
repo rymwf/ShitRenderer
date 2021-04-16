@@ -94,6 +94,7 @@ public:
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
 		WindowCreateInfo windowCreateInfo{
+			{},
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
@@ -264,7 +265,7 @@ public:
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchain, imageIndex);
+			takeScreenshot(device, swapchainImages[imageIndex]);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -736,8 +737,8 @@ public:
 			.tiling = ImageTiling::OPTIMAL,
 			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT,
 			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-			.generateMipmap = true,
-			.mipmapFilter = Filter::LINEAR};
+			.mipmapFilter = Filter::LINEAR,
+			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 		testImage = device->Create(imageCreateInfo, pixels);
 

@@ -63,7 +63,6 @@ namespace Shit
 		rect.bottom = rect.top + static_cast<int>(mCreateInfo.rect.extent.height);
 		AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_ACCEPTFILES);
 		SetWindowPos(mHwnd, HWND_NOTOPMOST, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_SHOWWINDOW);
-		ShowWindow(mHwnd, SW_SHOW);
 	}
 
 	LRESULT CALLBACK WindowWin32::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

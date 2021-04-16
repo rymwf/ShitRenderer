@@ -78,6 +78,7 @@ public:
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
 		WindowCreateInfo windowCreateInfo{
+			{},
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
@@ -666,8 +667,8 @@ public:
 			.tiling = ImageTiling::OPTIMAL,
 			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT,
 			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-			.generateMipmap = true,
-			.mipmapFilter = Filter::LINEAR};
+			.mipmapFilter = Filter::LINEAR,
+			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 		testImage = device->Create(imageCreateInfo, pixels);
 

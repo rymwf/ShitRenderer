@@ -56,6 +56,7 @@ public:
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
 		WindowCreateInfo windowCreateInfo{
+			{},
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},

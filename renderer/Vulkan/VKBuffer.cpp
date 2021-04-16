@@ -49,4 +49,14 @@ namespace Shit
 	{
 		vkUnmapMemory(mDevice, mMemory);
 	}
+	void VKBuffer::FlushMappedMemoryRange(uint64_t offset, uint64_t size)
+	{
+		auto range = VkMappedMemoryRange{
+			VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+			nullptr,
+			mMemory,
+			offset,
+			size};
+		vkFlushMappedMemoryRanges(mDevice, 1, &range);
+	}
 } // namespace Shit

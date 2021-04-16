@@ -49,6 +49,8 @@ namespace Shit
 
 		Pipeline *Create(const GraphicsPipelineCreateInfo &createInfo) override;
 
+		Pipeline *Create(const ComputePipelineCreateInfo &createInfo) override;
+
 		CommandPool *Create(const CommandPoolCreateInfo &createInfo) override;
 
 		Queue *Create(const QueueCreateInfo &createInfo) override;

@@ -40,7 +40,7 @@ namespace Shit
 		void BeginRenderPass(const RenderPassBeginInfo &beginInfo) override;
 		void EndRenderPass() override;
 		void NextSubpass(SubpassContents subpassContents) override;
-		void BindPipeline(const BindPipelineInfo& info) override;
+		void BindPipeline(const BindPipelineInfo &info) override;
 
 		void CopyBuffer(const CopyBufferInfo &copyInfo) override;
 		void CopyImage(const CopyImageInfo &copyInfo) override;
@@ -48,8 +48,8 @@ namespace Shit
 		void CopyImageToBuffer(const CopyImageToBufferInfo &copyInfo) override;
 		void BlitImage(const BlitImageInfo &blitInfo) override;
 
-		void BindVertexBuffer(const BindVertexBufferInfo& info)override;
-		void BindIndexBuffer(const BindIndexBufferInfo& info)override;
+		void BindVertexBuffer(const BindVertexBufferInfo &info) override;
+		void BindIndexBuffer(const BindIndexBufferInfo &info) override;
 		void BindDescriptorSets(const BindDescriptorSetsInfo &info) override;
 
 		void Draw(const DrawIndirectCommand &info) override;
@@ -61,5 +61,8 @@ namespace Shit
 
 		void PipeplineBarrier(const PipelineBarrierInfo &info) override;
 		void PushConstants(const PushConstantUpdateInfo &info) override;
+
+		void Dispatch(const DispatchInfo &info) override;
+		void DispatchIndirect(const DispatchIndirectInfo &info) override;
 	};
 }

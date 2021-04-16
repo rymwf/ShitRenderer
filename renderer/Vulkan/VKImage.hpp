@@ -22,7 +22,8 @@ namespace Shit
 
 	public:
 		VKImage(Device *pDevice, const ImageCreateInfo &createInfo, const void *pData);
-		VKImage(Device *pDevice, VkImage image, bool isSwapchainimage) : mpDevice(pDevice), mHandle(image)
+		VKImage(Device *pDevice, const ImageCreateInfo &createInfo, VkImage image, bool isSwapchainimage)
+			: mpDevice(pDevice), Image(createInfo), mHandle(image)
 		{
 			mIsSwapchainImage = isSwapchainimage;
 		}
@@ -37,6 +38,7 @@ namespace Shit
 
 		void MapMemory(uint64_t offset, uint64_t size, void **ppData) override;
 		void UnMapMemory() override;
+		void FlushMappedMemoryRange(uint64_t offset, uint64_t size) override;
 	};
 
 	class VKImageView final : public ImageView

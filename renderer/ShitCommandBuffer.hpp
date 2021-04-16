@@ -55,5 +55,8 @@ namespace Shit
 
 		virtual void PipeplineBarrier(const PipelineBarrierInfo& info)=0;
 		virtual void PushConstants(const PushConstantUpdateInfo& info)=0;
+
+		virtual void Dispatch(const DispatchInfo &info) = 0;
+		virtual void DispatchIndirect(const DispatchIndirectInfo &info) = 0;
 	};
 }

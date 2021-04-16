@@ -179,7 +179,11 @@ namespace Shit
 		mPipelines.emplace_back(std::make_unique<GLGraphicsPipeline>(&mStateManager, createInfo));
 		return mPipelines.back().get();
 	}
-
+	Pipeline *GLDevice::Create(const ComputePipelineCreateInfo &createInfo)
+	{
+		mPipelines.emplace_back(std::make_unique<GLComputePipeline>(&mStateManager, createInfo));
+		return mPipelines.back().get();
+	}
 	Queue *GLDevice::Create(const QueueCreateInfo &createInfo)
 	{
 		mQueues.emplace_back(std::make_unique<GLQueue>(this, &mStateManager, createInfo));
@@ -262,7 +266,8 @@ namespace Shit
 					[&](const std::vector<DescriptorImageInfo> &imagesInfo) {
 						std::vector<ImageView *> imageViews(imagesInfo.size() - write.dstArrayElement);
 						std::transform(std::execution::par, imagesInfo.begin() + write.dstArrayElement, imagesInfo.end(), imageViews.begin(), [](auto &&e) {
-							static_cast<GLImageView *>(e.pImageView)->SetSampler(e.pSampler);
+							if (e.pSampler != nullptr)
+								static_cast<GLImageView *>(e.pImageView)->SetSampler(e.pSampler);
 							return e.pImageView;
 						});
 						static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, imageViews);

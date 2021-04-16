@@ -39,6 +39,7 @@ namespace Shit
 		}
 		void MapMemory(uint64_t offset, uint64_t size, void **ppData) override;
 		void UnMapMemory() override;
+		void FlushMappedMemoryRange(uint64_t offset, uint64_t size) override;
 	};
 
 	class GLImageView final : public ImageView

@@ -316,7 +316,7 @@ namespace Shit
 
 		vkCmdBindDescriptorSets(mHandle,
 								Map(info.pipelineBindPoint),
-								static_cast<VKPipelineLayout *>(info.pPipelineLayout)->GetHandle(),	//cannot be null handle
+								static_cast<VKPipelineLayout *>(info.pPipelineLayout)->GetHandle(), //cannot be null handle
 								info.firstset,
 								info.descriptorSetCount,
 								descriptorSets.data(),
@@ -459,5 +459,13 @@ namespace Shit
 			info.offset,
 			info.size,
 			info.pValues);
+	}
+	void VKCommandBuffer::Dispatch(const DispatchInfo &info)
+	{
+		vkCmdDispatch(mHandle, info.groupCountX, info.groupCountY, info.groupCountZ);
+	}
+	void VKCommandBuffer::DispatchIndirect(const DispatchIndirectInfo &info)
+	{
+		vkCmdDispatchIndirect(mHandle, static_cast<VKBuffer *>(info.pBuffer)->GetHandle(), info.offset);
 	}
 } // namespace Shi

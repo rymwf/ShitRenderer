@@ -117,6 +117,7 @@ public:
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 		//1. create window
 		WindowCreateInfo windowCreateInfo{
+			{},
 			__FILE__,
 			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
 			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
@@ -383,7 +384,7 @@ public:
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchain, imageIndex);
+			takeScreenshot(device, swapchainImages[imageIndex]);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
