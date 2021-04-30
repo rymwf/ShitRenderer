@@ -147,7 +147,12 @@ find_package(RapidJSON CONFIG REQUIRED)
 function(newexample examplename)
 message(${examplename})
 
-add_executable(${examplename} examples/${examplename}.cpp examples/common.cpp examples/model.cpp)
+add_executable(${examplename} 
+examples/${examplename}.cpp 
+examples/common.cpp 
+examples/model.cpp
+examples/appbase.cpp
+)
 
 set_target_properties(${examplename} PROPERTIES FOLDER examples
 #DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX}
@@ -200,6 +205,7 @@ newexample(09-model-pbr)
 newexample(10-tessllation)
 newexample(11-compute-filter)
 newexample(12-compute-edgedetection)
+newexample(13-cubemap)
 endif()
 
 

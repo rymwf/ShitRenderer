@@ -73,8 +73,8 @@ public:
 		WindowCreateInfo windowCreateInfo{
 			{WindowCreateFlagBits::INVISIBLE},
 			__FILE__,
-			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}}};
+			{{DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y},
+			 {DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT}}};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
 		//2. create device of a physical device

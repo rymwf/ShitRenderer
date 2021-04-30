@@ -12,6 +12,48 @@ const char *testImagePath = IMAGE_PATH "Lenna_test.jpg";
 std::string vertShaderPath;
 std::string fragShaderPath;
 
+struct Vertex
+{
+	glm::vec3 pos;
+	glm::vec3 color;
+	glm::vec2 texCoord;
+	static VertexBindingDescription getVertexBindingDescription(uint32_t binding)
+	{
+		return {
+			binding,
+			sizeof(Vertex),
+			0,
+		};
+	}
+	static std::vector<VertexAttributeDescription> getVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
+	{
+		return {
+			{startLocation + 0,
+			 binding,
+			 3,
+			 DataType::FLOAT,
+			 false,
+			 offsetof(Vertex, pos)},
+			{startLocation + 1,
+			 binding,
+			 3,
+			 DataType::FLOAT,
+			 false,
+			 offsetof(Vertex, color)},
+			{startLocation + 2,
+			 binding,
+			 2,
+			 DataType::FLOAT,
+			 false,
+			 offsetof(Vertex, texCoord)},
+		};
+	}
+	static uint32_t getLocationCount()
+	{
+		return 3;
+	}
+};
+
 std::vector<Vertex> vertices{
 	{{-0.5, -0.5, 0}, {1, 0, 0}, {0, 0}},
 	{{-0.5, 0.5, 0}, {0, 0, 1}, {0, 1}},
@@ -80,8 +122,8 @@ public:
 		WindowCreateInfo windowCreateInfo{
 			{},
 			__FILE__,
-			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
+			{{DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y},
+			 {DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT}},
 			std::make_shared<std::function<void(const Event &)>>(std::bind(&Hello::ProcessEvent, this, std::placeholders::_1))};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
@@ -120,13 +162,13 @@ public:
 		createRenderPasses();
 		createPipeline();
 		createFramebuffers();
+		createSyncObjects();
 
 		createDrawCommandBuffers();
 		createIndexBuffer();
 		createVertexBuffer();
 		createImages();
 		createSamplers();
-		createSyncObjects();
 		updateDescriptorSets();
 
 		createCommandBuffers();

@@ -25,11 +25,6 @@
 #define LIBPREFIX ""
 #endif
 
-#define SHIT_DEFAULT_WINDOW_X 100
-#define SHIT_DEFAULT_WINDOW_Y 60
-#define SHIT_DEFAULT_WINDOW_WIDTH 800
-#define SHIT_DEFAULT_WINDOW_HEIGHT 600
-
 #define SHIT_RENDERER_LOAD_FUNC "ShitLoadRenderSystem"
 #define SHIT_RENDERER_DELETE_FUNC "ShitDeleteRenderSystem"
 
@@ -396,10 +391,16 @@ namespace Shit
 		CommandBufferLevel level;
 		uint32_t count;
 	};
+	struct CommandBufferInheritanceInfo
+	{
+		RenderPass *pRenderPass;
+		uint32_t subpass;
+		Framebuffer *pFramebuffer; //optional, when use secondary cmdbuffer, this can be set
+	};
 	struct CommandBufferBeginInfo
 	{
 		CommandBufferUsageFlagBits usage;
-		Framebuffer *pFramebuffer; //optional, when use secondary cmdbuffer, this can be set
+		CommandBufferInheritanceInfo inheritanceInfo;
 	};
 	struct QueueCreateInfo
 	{
@@ -429,7 +430,6 @@ namespace Shit
 		ImageTiling tiling; //no use for opengl
 		ImageUsageFlagBits usageFlags;
 		MemoryPropertyFlagBits memoryPropertyFlags;
-		Filter mipmapFilter;
 		ImageLayout initialLayout;
 	};
 
@@ -774,8 +774,11 @@ namespace Shit
 	};
 	struct BufferViewCreateInfo
 	{
+		Buffer *pBuffer;
+		ShitFormat format;
+		uint64_t offset;
+		uint64_t range;
 	};
-
 	struct MemoryBarrier
 	{
 		AccessFlagBits srcAccessMask;

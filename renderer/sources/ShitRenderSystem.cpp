@@ -38,7 +38,7 @@ namespace Shit
 	void DeleteRenderSystem(RenderSystem *pRenderSystem)
 	{
 		using RENDERER_DELETE_FUNC = void (*)(const RenderSystem *);
-		auto module = ModuleManager::Get()->GetModule(GetRendererName(pRenderSystem->GetCreateInfo()->version));
+		auto module = ModuleManager::Get()->GetModule(GetRendererName(pRenderSystem->GetCreateInfo()->version & RendererVersion::TypeBitmask));
 		auto f = (RENDERER_DELETE_FUNC)(module->LoadProc(SHIT_RENDERER_DELETE_FUNC));
 		if (!f)
 			THROW("failed to find rendersystem delele function");

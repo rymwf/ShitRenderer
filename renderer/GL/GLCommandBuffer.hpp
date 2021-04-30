@@ -14,6 +14,7 @@ namespace Shit
 {
 	enum class GLCommandCode : uint8_t
 	{
+		Begin,
 		BeginRenderPass,
 		BindIndexBuffer,
 		BindPipeline,

@@ -1,4 +1,5 @@
-#version 460
+#version 450
+//#extension all: warn
 
 #ifdef VULKAN
 #define SET(x) ,set=x
@@ -49,7 +50,10 @@ layout(binding=13 SET(1)) uniform UBONode{
 	mat4 M;
 };
 
-layout(constant_id=0) const int jointNum=0;
+//NOTE: in opengl ,uniform block have a static layout, changing specialized size will not re-layout the block
+// the block will based on the default size of the array
+//TODO: may not work in opengl
+layout(constant_id=1) const int jointNum=32;	
 layout(binding=15 SET(3)) uniform UBOJointMatrix
 {
 	mat4 jointMatrices[jointNum+1];
@@ -58,7 +62,7 @@ layout(binding=15 SET(3)) uniform UBOJointMatrix
 void main() 
 {
 	mat4 tempMat=inInstanceMatrix*M;
-	if(bool(jointNum))
+	if(jointNum>0)
 	{
 		mat4 skinMatrix=
 			inWeights0[0]*jointMatrices[int(inJoints0[0])]+ 
@@ -70,7 +74,11 @@ void main()
 
 	vec4 vertexPos=tempMat*vec4(inPos, 1);
 	gl_Position = PV*vertexPos;
-	vs_out.colorFactor = inInstanceColorFactor;//*mix(vec4(1),inColor0,step(0.001,inColor0.r+inColor0.g+inColor0.b));
+
+	//const float a=float(jointNum)/5.;
+	vs_out.colorFactor = inInstanceColorFactor;
+	//vs_out.colorFactor = vec4(vec3(a),1);//inInstanceColorFactor;//*mix(vec4(1),inColor0,step(0.001,inColor0.r+inColor0.g+inColor0.b));
+	//vs_out.colorFactor = vec4(vec3(float(jointNum)/5),1);//inInstanceColorFactor;//*mix(vec4(1),inColor0,step(0.001,inColor0.r+inColor0.g+inColor0.b));
 	vs_out.texCoord= inTexCoord0;
 	vs_out.pos= vertexPos.xyz;
 	vs_out.normal= normalize(mat3(tempMat)*inNormal);

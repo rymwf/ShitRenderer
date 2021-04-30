@@ -92,7 +92,7 @@ namespace Shit
 							0,
 							MapInternalFormat(mCreateInfo.format),
 							mCreateInfo.extent.width,
-							mCreateInfo.extent.height,
+							(std::max)(mCreateInfo.arrayLayers, mCreateInfo.extent.height),
 							0,
 							GL_RGBA,
 							GL_UNSIGNED_BYTE,
@@ -106,7 +106,7 @@ namespace Shit
 							MapInternalFormat(mCreateInfo.format),
 							mCreateInfo.extent.width,
 							mCreateInfo.extent.height,
-							mCreateInfo.extent.depth,
+							(std::max)(mCreateInfo.arrayLayers, mCreateInfo.extent.depth),
 							0,
 							GL_RGBA,
 							GL_UNSIGNED_BYTE,
@@ -125,7 +125,7 @@ namespace Shit
 						MapInternalFormat(mCreateInfo.format),
 						mCreateInfo.extent.width,
 						mCreateInfo.extent.height,
-						mCreateInfo.extent.depth,
+						(std::max)(mCreateInfo.arrayLayers, mCreateInfo.extent.depth),
 						GL_FALSE);
 				}
 				else
@@ -138,7 +138,7 @@ namespace Shit
 							mCreateInfo.mipLevels,
 							MapInternalFormat(mCreateInfo.format),
 							mCreateInfo.extent.width,
-							mCreateInfo.extent.height);
+							(std::max)(mCreateInfo.arrayLayers, mCreateInfo.extent.height));
 						break;
 					case ImageType::TYPE_2D:
 					case ImageType::TYPE_3D:
@@ -148,7 +148,7 @@ namespace Shit
 							MapInternalFormat(mCreateInfo.format),
 							mCreateInfo.extent.width,
 							mCreateInfo.extent.height,
-							mCreateInfo.extent.depth);
+							(std::max)(mCreateInfo.arrayLayers, mCreateInfo.extent.depth));
 						break;
 					}
 				}
@@ -156,9 +156,6 @@ namespace Shit
 			if (pData)
 			{
 				UpdateSubData(0, {{}, mCreateInfo.extent}, pData);
-				//TODO: generate mipmap using different filter
-				if (mCreateInfo.mipLevels != 1)
-					glGenerateMipmap(target);
 				mpStateManager->PopTextureUnit();
 			}
 		}
@@ -215,7 +212,14 @@ namespace Shit
 	void GLImage::FlushMappedMemoryRange([[maybe_unused]] uint64_t offset, [[maybe_unused]] uint64_t size)
 	{
 	}
-
+	void GLImage::GenerateMipmaps([[maybe_unused]] Filter filter)
+	{
+		//TODO: generate mipmap using different filter
+		auto target = Map(mCreateInfo.imageType, mCreateInfo.samples);
+		mpStateManager->PushTextureUnit(0, target, mHandle);
+		glGenerateMipmap(target);
+		mpStateManager->PopTextureUnit();
+	}
 	//===================================================================
 
 	GLImageView::GLImageView(GLStateManager *pStateManger, const ImageViewCreateInfo &createInfo)

@@ -165,4 +165,5 @@ void main()
 	vec3 Lo_brdf=PI*lightIntensity*NdotL*f_light+emissiveColor;
 	outColor=vec4(Lo_brdf,texColor.a*uboMaterial.baseColorFactor.a);
 //	outColor=vec4(vec3(f_light),1);
+//outColor=fs_in.colorFactor;
 }

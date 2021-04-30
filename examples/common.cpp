@@ -113,10 +113,12 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 {
 	auto width = pImage->GetCreateInfoPtr()->extent.width;
 	auto height = pImage->GetCreateInfoPtr()->extent.height;
+	auto depth = pImage->GetCreateInfoPtr()->extent.depth;
+	auto layers = pImage->GetCreateInfoPtr()->arrayLayers;
 
 	auto component = Shit::GetFormatComponentNum(pImage->GetCreateInfoPtr()->format);
 
-	auto size = width * height * component;
+	auto size = width * height * depth * component * layers;
 
 	if (static_cast<bool>(pImage->GetCreateInfoPtr()->memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))
 	{
@@ -136,7 +138,7 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				*(p + 2) = temp;
 			}
 		}
-		saveImage(dstPath, width, height, component, data);
+		saveImage(dstPath, width, height * depth * layers, component, data);
 		pImage->UnMapMemory();
 		if (!static_cast<bool>(pImage->GetCreateInfoPtr()->memoryPropertyFlags & MemoryPropertyFlagBits::HOST_COHERENT_BIT))
 		{
@@ -159,8 +161,8 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 			nullptr);
 
 		BufferImageCopy copyRegion{
-			.imageSubresource = {0, 0, 1},
-			.imageExtent = {width, height, 1}};
+			.imageSubresource = {0, 0, layers},
+			.imageExtent = {width, height, depth}};
 
 		pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
 			ImageMemoryBarrier imageBarrier0{
@@ -169,7 +171,7 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				pImage->GetCreateInfoPtr()->initialLayout,
 				ImageLayout::TRANSFER_SRC_OPTIMAL,
 				pImage,
-				ImageSubresourceRange{0, 1, 0, 1}};
+				ImageSubresourceRange{0, 1, 0, layers}};
 			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
 				PipelineStageFlagBits::TRANSFER_BIT,
 				PipelineStageFlagBits::TRANSFER_BIT,
@@ -192,7 +194,7 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				ImageLayout::TRANSFER_SRC_OPTIMAL,
 				pImage->GetCreateInfoPtr()->initialLayout,
 				pImage,
-				ImageSubresourceRange{0, 1, 0, 1}};
+				ImageSubresourceRange{0, 1, 0, layers}};
 
 			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
 				PipelineStageFlagBits::TRANSFER_BIT,
@@ -214,9 +216,9 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				{},
 				ImageType::TYPE_2D,
 				ShitFormat::RGBA8_UNORM,
-				{width, height, 1},
+				{width, height, depth},
 				1,
-				1,
+				layers,
 				SampleCountFlagBits::BIT_1,
 				ImageTiling::LINEAR,
 				ImageUsageFlagBits::TRANSFER_DST_BIT,
@@ -224,9 +226,9 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 			},
 			nullptr);
 		ImageCopy copyRegion{
-			.srcSubresource = {0, 0, 1},
-			.dstSubresource = {0, 0, 1},
-			.extent = {width, height, 1}};
+			.srcSubresource = {0, 0, layers},
+			.dstSubresource = {0, 0, layers},
+			.extent = {width, height, depth}};
 		pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
 			ImageMemoryBarrier pImageBarrier0{
 				AccessFlagBits::MEMORY_READ_BIT,
@@ -234,14 +236,14 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				pImage->GetCreateInfoPtr()->initialLayout,
 				ImageLayout::TRANSFER_SRC_OPTIMAL,
 				pImage,
-				ImageSubresourceRange{0, 1, 0, 1}};
+				ImageSubresourceRange{0, 1, 0, layers}};
 			ImageMemoryBarrier dstImageBarrier0{
 				{},
 				AccessFlagBits::TRANSFER_WRITE_BIT,
 				ImageLayout::UNDEFINED,
 				ImageLayout::TRANSFER_DST_OPTIMAL,
 				dst,
-				ImageSubresourceRange{0, 1, 0, 1}};
+				ImageSubresourceRange{0, 1, 0, layers}};
 			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
 				PipelineStageFlagBits::TRANSFER_BIT,
 				PipelineStageFlagBits::TRANSFER_BIT,
@@ -273,14 +275,14 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				ImageLayout::TRANSFER_SRC_OPTIMAL,
 				pImage->GetCreateInfoPtr()->initialLayout,
 				pImage,
-				ImageSubresourceRange{0, 1, 0, 1}};
+				ImageSubresourceRange{0, 1, 0, layers}};
 			ImageMemoryBarrier dstImageBarrier1{
 				AccessFlagBits::TRANSFER_WRITE_BIT,
 				AccessFlagBits::MEMORY_READ_BIT,
 				ImageLayout::TRANSFER_DST_OPTIMAL,
 				ImageLayout::GENERAL,
 				dst,
-				ImageSubresourceRange{0, 1, 0, 1}};
+				ImageSubresourceRange{0, 1, 0, layersj}};
 			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
 				PipelineStageFlagBits::TRANSFER_BIT,
 				PipelineStageFlagBits::TRANSFER_BIT,
@@ -319,7 +321,180 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage)
 				*(p + 2) = temp;
 			}
 		}
-		saveImage(dstPath, width, height, component, data);
+		saveImage(dstPath, width, height * depth * layers, component, data);
 		dst->UnMapMemory();
 	}
+}
+//void parseArgument(int ac, char **av)
+//{
+//
+//	namespace po = boost::program_options;
+//	po::options_description desc("Allowed options");
+//	desc.add_options()("help", "produce help message")("T", po::value<std::string>()->default_value("GL"), "set renderer version\n"
+//																										   "option values:\n"
+//																										   "GL:\t opengl rendereer"
+//																										   "VK:\t vulkan renderer");
+//
+//	// Declare an options description instance which will include
+//	// all the options
+//	po::options_description all("Allowed options");
+//	all.add(desc);
+//
+//	po::variables_map vm;
+//	po::store(po::parse_command_line(ac, av, all), vm);
+//
+//	if (vm.count("help"))
+//	{
+//		std::cout << desc << "\n";
+//		exit(0);
+//	}
+//
+//	if (vm.count("T"))
+//	{
+//		const std::string &s = vm["T"].as<std::string>();
+//		if (s == "GL")
+//		{
+//			rendererVersion = RendererVersion::GL;
+//		}
+//		else if (s == "VK")
+//		{
+//			rendererVersion = RendererVersion::VULKAN;
+//		}
+//		else
+//		{
+//			std::cout << "invalid renderer version value";
+//			exit(0);
+//		}
+//	}
+//}
+void parseArgument(int ac, char **av)
+{
+	for (int i = 0; i < ac; ++i)
+	{
+		LOG(av[i]);
+	}
+	if (ac > 1)
+	{
+		if (strcmp(av[1], "GL") == 0)
+		{
+			rendererVersion = Shit::RendererVersion::GL;
+		}
+		else if (strcmp(av[1], "VK") == 0)
+		{
+			rendererVersion = Shit::RendererVersion::VULKAN;
+		}
+	}
+}
+
+void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube, uint32_t width)
+{
+	//==
+	//create sampler
+	Sampler *linearSampler = pDevice->Create(SamplerCreateInfo{
+		Filter::LINEAR,
+		Filter::LINEAR,
+		SamplerMipmapMode::LINEAR,
+		SamplerWrapMode::CLAMP_TO_EDGE,
+		SamplerWrapMode::CLAMP_TO_EDGE,
+		SamplerWrapMode::CLAMP_TO_EDGE,
+		0,
+		false,
+		false,
+		{},
+		0.f,
+		30.f,
+	});
+
+	//============
+	std::vector<DescriptorSetLayoutBinding> cubemapComputeBindings{
+		DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::COMPUTE_BIT},
+		DescriptorSetLayoutBinding{1, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
+	};
+	//cubemap rendering descriptors
+	//descriptor sets
+	std::vector<DescriptorSetLayoutBinding> texBindings{
+		DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //
+	};
+
+	std::vector<DescriptorSetLayout *> setLayouts = {
+		pDevice->Create(DescriptorSetLayoutCreateInfo{cubemapComputeBindings}),
+		pDevice->Create(DescriptorSetLayoutCreateInfo{texBindings}),
+	};
+	//create pipeline layout
+	PipelineLayout *pipelineLayoutGenerateCubemap = pDevice->Create(PipelineLayoutCreateInfo{{setLayouts[0]}});
+
+	//setup descriptor pool
+	std::vector<DescriptorPoolSize> poolSizes{
+		{cubemapComputeBindings[0].descriptorType, cubemapComputeBindings[0].descriptorCount},
+		{cubemapComputeBindings[1].descriptorType, cubemapComputeBindings[1].descriptorCount},
+		{texBindings[0].descriptorType, texBindings[0].descriptorCount},
+	};
+	DescriptorPoolCreateInfo descriptorPoolCreateInfo{
+		2u,
+		poolSizes};
+	DescriptorPool *descriptorPool = pDevice->Create(descriptorPoolCreateInfo);
+
+	//allocate compute descriptor set
+	DescriptorSetAllocateInfo allocInfo{{setLayouts[0]}};
+	std::vector<DescriptorSet *> compDescriptorSets;
+	descriptorPool->Allocate(allocInfo, compDescriptorSets);
+
+	//update descriptor set
+	std::vector<WriteDescriptorSet> writes;
+	writes.emplace_back(
+		WriteDescriptorSet{
+			compDescriptorSets[0],
+			0,
+			0,
+			DescriptorType::COMBINED_IMAGE_SAMPLER,
+			std::vector<DescriptorImageInfo>{{linearSampler,
+											  pImageView2D,
+											  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+	writes.emplace_back(
+		WriteDescriptorSet{
+			compDescriptorSets[0],
+			1,
+			0,
+			DescriptorType::STORAGE_IMAGE,
+			std::vector<DescriptorImageInfo>{{nullptr,
+											  pImageViewCube,
+											  ImageLayout::GENERAL}}});
+	pDevice->UpdateDescriptorSets(writes, {});
+
+	//=======================================================
+	//equirectangular2cube shader
+	const char *compShaderNameGenerateCubemap = "equirectangular2cube.comp.spv";
+	std::string compShaderPath = buildShaderPath(compShaderNameGenerateCubemap, rendererVersion);
+	Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+
+	//generate cubemap pipeline
+	std::vector<uint32_t> constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
+	std::vector<uint32_t> constantValues = {width};
+
+	Pipeline *pipelineGenerateCubemap = pDevice->Create(ComputePipelineCreateInfo{
+		PipelineShaderStageCreateInfo{
+			PipelineShaderStageCreateInfo{
+				ShaderStageFlagBits::COMPUTE_BIT,
+				compShaderGenerateCubemap,
+				"main",
+				{constantIDs,
+				 constantValues}},
+		},
+		pipelineLayoutGenerateCubemap});
+
+	//commandbuffer
+	pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
+		cmdBuffer->BindPipeline(BindPipelineInfo{
+			PipelineBindPoint::COMPUTE,
+			pipelineGenerateCubemap});
+		cmdBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
+			PipelineBindPoint::COMPUTE,
+			pipelineLayoutGenerateCubemap,
+			0,
+			1,
+			&compDescriptorSets[0],
+		});
+		cmdBuffer->Dispatch({width, 6, 1});
+	});
+	//takeScreenshot(device, cubemapImage);
 }

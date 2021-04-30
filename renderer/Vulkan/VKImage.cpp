@@ -68,10 +68,6 @@ namespace Shit
 		if (pData)
 		{
 			UpdateSubData(0, {{}, mCreateInfo.extent}, pData);
-			if (mCreateInfo.mipLevels != 1)
-			{
-				GenerateMipmaps(mCreateInfo.mipmapFilter);
-			}
 		}
 		else if (mCreateInfo.initialLayout != ImageLayout::UNDEFINED && mCreateInfo.initialLayout != ImageLayout::PREINITIALIZED)
 		{
@@ -155,22 +151,19 @@ namespace Shit
 											   this,
 											   1,
 											   &bufferImageCopy});
-			if (mCreateInfo.mipLevels == 1)
-			{
-				////3. transfer layout from trander destiation to shader reading
-				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				barrier.newLayout = Map(mCreateInfo.initialLayout);
+			////3. transfer layout 
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.newLayout = Map(mCreateInfo.initialLayout);
 
-				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-									 0,
-									 0, nullptr,
-									 0, nullptr,
-									 1, &barrier);
-			}
+			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
+								 VK_PIPELINE_STAGE_TRANSFER_BIT,
+								 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+								 0,
+								 0, nullptr,
+								 0, nullptr,
+								 1, &barrier);
 		});
 	}
 	void VKImage::GenerateMipmaps(Filter filter)
@@ -185,14 +178,14 @@ namespace Shit
 			nullptr,
 			0,
 			VK_ACCESS_TRANSFER_WRITE_BIT,
+			Map(mCreateInfo.initialLayout),
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			VK_QUEUE_FAMILY_IGNORED,
 			VK_QUEUE_FAMILY_IGNORED,
 			mHandle,
 			{imageAspect,
 			 0,
-			 1,
+			 mCreateInfo.mipLevels,
 			 0,
 			 mCreateInfo.arrayLayers}};
 
@@ -214,6 +207,14 @@ namespace Shit
 		};
 
 		static_cast<VKDevice *>(mpDevice)->ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
+			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
+								 VK_PIPELINE_STAGE_TRANSFER_BIT,
+								 VK_PIPELINE_STAGE_TRANSFER_BIT,
+								 0,
+								 0, nullptr,
+								 0, nullptr,
+								 1, &barrier);
+			barrier.subresourceRange.levelCount = 1;
 			for (uint32_t i = 1; i < mipLevels; ++i)
 			{
 				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;

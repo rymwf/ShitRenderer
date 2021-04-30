@@ -109,7 +109,7 @@ namespace Shit
 	enum class WindowCreateFlagBits
 	{
 		INVISIBLE = 0x1,
-
+		FIXED_SIZE = 0x2,
 	};
 	ENABLE_BITMASK_OPERATORS(WindowCreateFlagBits);
 
@@ -389,37 +389,37 @@ namespace Shit
 	enum class RendererVersion
 	{
 		GL = (0x10000),			  //!< OpenGL lastest.
-		GL_110 = (0x10000 | 110), //!< OpenGL 1.1.	1997
-		GL_120 = (0x10000 | 120), //!< OpenGL 1.2.	1998
-		GL_121 = (0x10000 | 121), //!< OpenGL 1.2.1	1998
-		GL_130 = (0x10000 | 130), //!< OpenGL 1.3.	2001
-		GL_140 = (0x10000 | 140), //!< OpenGL 1.4.	2002
-		GL_150 = (0x10000 | 150), //!< OpenGL 1.5.	2003
-		GL_200 = (0x10000 | 200), //!< OpenGL 2.0.	2004
-		GL_210 = (0x10000 | 210), //!< OpenGL 2.1.	2006
-		GL_300 = (0x10000 | 300), //!< OpenGL 3.0.	2008
-		GL_310 = (0x10000 | 310), //!< OpenGL 3.1.	2009
-		GL_320 = (0x10000 | 320), //!< OpenGL 3.2.	2009
-		GL_330 = (0x10000 | 330), //!< OpenGL 3.3.	2010
-		GL_400 = (0x10000 | 400), //!< OpenGL 4.0.	2010
-		GL_410 = (0x10000 | 410), //!< OpenGL 4.1.	2010
-		GL_420 = (0x10000 | 420), //!< OpenGL 4.2.	2011
-		GL_430 = (0x10000 | 430), //!< OpenGL 4.3.	2012
-		GL_440 = (0x10000 | 440), //!< OpenGL 4.4.	2013
-		GL_450 = (0x10000 | 450), //!< OpenGL 4.5.	2014
-		GL_460 = (0x10000 | 460), //!< OpenGL 4.6.	2017
+		GL_110 = (0x10000 | 0x110), //!< OpenGL 1.1.	1997
+		GL_120 = (0x10000 | 0x120), //!< OpenGL 1.2.	1998
+		GL_121 = (0x10000 | 0x121), //!< OpenGL 1.2.1	1998
+		GL_130 = (0x10000 | 0x130), //!< OpenGL 1.3.	2001
+		GL_140 = (0x10000 | 0x140), //!< OpenGL 1.4.	2002
+		GL_150 = (0x10000 | 0x150), //!< OpenGL 1.5.	2003
+		GL_200 = (0x10000 | 0x200), //!< OpenGL 2.0.	2004
+		GL_210 = (0x10000 | 0x210), //!< OpenGL 2.1.	2006
+		GL_300 = (0x10000 | 0x300), //!< OpenGL 3.0.	2008
+		GL_310 = (0x10000 | 0x310), //!< OpenGL 3.1.	2009
+		GL_320 = (0x10000 | 0x320), //!< OpenGL 3.2.	2009
+		GL_330 = (0x10000 | 0x330), //!< OpenGL 3.3.	2010
+		GL_400 = (0x10000 | 0x400), //!< OpenGL 4.0.	2010
+		GL_410 = (0x10000 | 0x410), //!< OpenGL 4.1.	2010
+		GL_420 = (0x10000 | 0x420), //!< OpenGL 4.2.	2011
+		GL_430 = (0x10000 | 0x430), //!< OpenGL 4.3.	2012
+		GL_440 = (0x10000 | 0x440), //!< OpenGL 4.4.	2013
+		GL_450 = (0x10000 | 0x450), //!< OpenGL 4.5.	2014
+		GL_460 = (0x10000 | 0x460), //!< OpenGL 4.6.	2017
 
 		GLES = (0x20000),			//!< OpenGL ES lastest
-		GLES_100 = (0x20000 | 100), //!< OpenGL ES 1.0.
-		GLES_120 = (0x20000 | 200), //!< OpenGL ES 2.0.
-		GLES_300 = (0x20000 | 300), //!< OpenGL ES 3.0.
-		GLES_310 = (0x20000 | 310), //!< OpenGL ES 3.1.
-		GLES_320 = (0x20000 | 320), //!< OpenGL ES 3.2.
+		GLES_100 = (0x20000 | 0x100), //!< OpenGL ES 1.0.
+		GLES_120 = (0x20000 | 0x200), //!< OpenGL ES 2.0.
+		GLES_300 = (0x20000 | 0x300), //!< OpenGL ES 3.0.
+		GLES_310 = (0x20000 | 0x310), //!< OpenGL ES 3.1.
+		GLES_320 = (0x20000 | 0x320), //!< OpenGL ES 3.2.
 
 		VULKAN = (0x30000),			  //!< Vulkan lastest
-		VULKAN_100 = (0x30000 | 100), //!< Vulkan 1.0
-		VULKAN_110 = (0x30000 | 110), //!< Vulkan 1.1
-		VULKAN_120 = (0x30000 | 120), //!< Vulkan 1.2
+		VULKAN_100 = (0x30000 | 0x100), //!< Vulkan 1.0
+		VULKAN_110 = (0x30000 | 0x110), //!< Vulkan 1.1
+		VULKAN_120 = (0x30000 | 0x120), //!< Vulkan 1.2
 
 		METAL = (0x40000),
 		D3D11 = (0x50000),
@@ -801,6 +801,8 @@ namespace Shit
 	enum class CommandBufferUsageFlagBits
 	{
 		ONE_TIME_SUBMIT_BIT = 0x1,
+		//RENDER_PASS_CONTINUE_BIT = 0x2,
+		//SIMULTANEOUS_USE_BIT = 0x4,
 	};
 	ENABLE_BITMASK_OPERATORS(CommandBufferUsageFlagBits);
 

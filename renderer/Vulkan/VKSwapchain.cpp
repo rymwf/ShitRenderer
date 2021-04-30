@@ -108,7 +108,6 @@ namespace Shit
 			ImageTiling::OPTIMAL,
 			createInfo.imageUsage,
 			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-			{},
 			ImageLayout::PRESENT_SRC};
 		for (auto e : swapchainImages)
 		{

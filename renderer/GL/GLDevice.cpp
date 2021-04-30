@@ -420,8 +420,8 @@ namespace Shit
 		}
 		LOG_VAR(pixelFormat);
 
-		int majorversion = (std::max)((static_cast<int>(mRenderSystemCreateInfo.version) >> 2) & 1, 1);
-		int minorversion = (static_cast<int>(mRenderSystemCreateInfo.version) >> 1) & 1;
+		int majorversion = (std::max)((static_cast<int>(mRenderSystemCreateInfo.version >> 8) & 0xf), 1);
+		int minorversion = (static_cast<int>(mRenderSystemCreateInfo.version) >> 4) & 0xf;
 
 		int contexFlag{};
 		if (static_cast<bool>(mRenderSystemCreateInfo.flags & RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT))

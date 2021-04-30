@@ -60,6 +60,17 @@ namespace Shit
 	{
 		switch (commandCode)
 		{
+		case GLCommandCode::Begin:
+		{
+			auto cmd = reinterpret_cast<const CommandBufferBeginInfo *>(pCur);
+			if (cmd->inheritanceInfo.pRenderPass)
+			{
+				mCurRenderPass = cmd->inheritanceInfo.pRenderPass;
+				mCurSubpass = cmd->inheritanceInfo.subpass;
+				mpCurFramebuffer = static_cast<GLFramebuffer *>(cmd->inheritanceInfo.pFramebuffer);
+			}
+			return sizeof(*cmd);
+		}
 		case GLCommandCode::BeginRenderPass:
 		{
 			auto cmd = reinterpret_cast<const RenderPassBeginInfo *>(pCur);
@@ -339,11 +350,17 @@ namespace Shit
 								}
 								else if (descriptorType == DescriptorType::STORAGE_IMAGE)
 								{
+									GLboolean layered=GL_TRUE;
+									if (
+										pImageView->GetCreateInfoPtr()->viewType == ImageViewType::TYPE_1D ||
+										pImageView->GetCreateInfoPtr()->viewType == ImageViewType::TYPE_2D ||
+										pImageView->GetCreateInfoPtr()->viewType == ImageViewType::TYPE_3D)
+										layered = GL_FALSE;
 									mpStateManager->BindImageTexture(k,
 																	 static_cast<const GLImageView *>(pImageView)->GetHandle(),
-																	 0,
-																	 GL_FALSE,
-																	 0,
+																	 pImageView->GetCreateInfoPtr()->subresourceRange.baseMipLevel,
+																	 layered,
+																	 pImageView->GetCreateInfoPtr()->subresourceRange.baseArrayLayer,
 																	 GL_READ_WRITE,
 																	 MapInternalFormat(pImageView->GetCreateInfoPtr()->format));
 								}
@@ -658,8 +675,11 @@ namespace Shit
 			return sizeof(*cmd);
 		}
 		case GLCommandCode::EndRenderPass:
-			mpCurFramebuffer->SetResolveFBOAttachment(mCurSubpass);
-			mpCurFramebuffer->Resolve(Filter::LINEAR);
+			if (mpCurFramebuffer)
+			{
+				mpCurFramebuffer->SetResolveFBOAttachment(mCurSubpass);
+				mpCurFramebuffer->Resolve(Filter::LINEAR);
+			}
 			mpCurFramebuffer = nullptr;
 			mCurRenderPass = nullptr;
 			mCurSubpass = 0;
@@ -768,7 +788,10 @@ namespace Shit
 	{
 		mBuffer.clear();
 	}
-	void GLCommandBuffer::Begin([[maybe_unused]] const CommandBufferBeginInfo &beginInfo) {}
+	void GLCommandBuffer::Begin(const CommandBufferBeginInfo &beginInfo)
+	{
+		memcpy(AllocateCommand<CommandBufferBeginInfo>(GLCommandCode::Begin), &beginInfo, sizeof(beginInfo));
+	}
 	void GLCommandBuffer::End() {}
 	void GLCommandBuffer::BeginRenderPass(const RenderPassBeginInfo &beginInfo)
 	{

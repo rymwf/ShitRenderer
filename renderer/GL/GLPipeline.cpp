@@ -43,12 +43,11 @@ namespace Shit
 						   static_cast<GLsizei>(shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.size()));
 		else
 			THROW("failed to create shader");
-
 		//equal to compilation
-		glSpecializeShader(
+		glSpecializeShaderARB(
 			shader,
 			shaderStageCreateInfo.entryName,
-			static_cast<GLsizei>(shaderStageCreateInfo.specializationInfo.constantIDs.size()),
+			static_cast<GLuint>(shaderStageCreateInfo.specializationInfo.constantIDs.size()),
 			shaderStageCreateInfo.specializationInfo.constantIDs.data(),
 			shaderStageCreateInfo.specializationInfo.constantValues.data());
 

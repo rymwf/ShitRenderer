@@ -18,10 +18,7 @@ namespace Shit
 		GLStateManager *mpStateManager;
 
 	public:
-		GLBufferView(GLStateManager *pStateManager, const BufferViewCreateInfo &createInfo)
-			: BufferView(createInfo), mpStateManager(pStateManager)
-		{
-		}
+		GLBufferView(GLStateManager *pStateManager, const BufferViewCreateInfo &createInfo);
 		virtual ~GLBufferView() {}
 		constexpr GLuint GetHandle() const
 		{

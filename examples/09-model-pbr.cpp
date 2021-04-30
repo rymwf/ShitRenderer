@@ -11,25 +11,67 @@ constexpr SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 int animationIndex = 0;
-glm::vec3 ambientColor = glm::vec3(0.0);
+static glm::vec3 ambientColor = glm::vec3(0.0);
 
-const char *vertShaderName = "09.vert.spv";
-const char *fragShaderName = "09.frag.spv";
+static const char *vertShaderName = "09.vert.spv";
+static const char *fragShaderName = "09.frag.spv";
 
-const char *axisVertShaderName = "axis.vert.spv";
-const char *axisFragShaderName = "axis.frag.spv";
+static const char *axisVertShaderName = "axis.vert.spv";
+static const char *axisFragShaderName = "axis.frag.spv";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSkin/glTF/SimpleSkin.gltf";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheresNoTextures/glTF/MetalRoughSpheresNoTextures.gltf";
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/AlphaBlendModeTest/glTF/AlphaBlendModeTest.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
-//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
+
+struct Light
+{
+	alignas(16) glm::vec3 pos;
+	alignas(16) glm::vec4 color;
+	alignas(16) glm::vec4 intensity;
+	alignas(8) glm::vec2 lim_r; //the attenuation distance limit,r.x: min dist(sphere light radius), r.y: max dist
+	alignas(16) glm::vec3 direction;
+	alignas(16) glm::vec3 tube_p0;
+	alignas(16) glm::vec3 tube_p1;
+};
+
+struct Camera
+{
+	glm::dvec3 eye;
+	glm::dvec3 center;
+	glm::dvec3 up;
+	glm::dmat4 viewMatrix;
+	bool isUpdated{true};
+
+	Camera() = default;
+	Camera(
+		glm::dvec3 eye_,
+		glm::dvec3 center_,
+		glm::dvec3 up_) : eye(eye_), center(center_), up(up_)
+	{
+		Update();
+	}
+	void Update()
+	{
+		viewMatrix = glm::lookAt(eye, center, up);
+		isUpdated = true;
+	}
+};
+
+struct UBOFrame
+{
+	glm::mat4 PV;
+	alignas(16) glm::vec3 eyePosition;
+	Light light;
+	alignas(16) glm::vec3 ambientColor;
+};
 
 class Hello
 {
@@ -119,8 +161,8 @@ public:
 		WindowCreateInfo windowCreateInfo{
 			{},
 			__FILE__,
-			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
+			{{DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y},
+			 {DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT}},
 			std::make_shared<std::function<void(const Event &)>>(std::bind(&Hello::ProcessEvent, this, std::placeholders::_1))};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
@@ -155,18 +197,18 @@ public:
 		createSwapchains();
 		createDepthResources();
 		createColorResources();
-
-		createShaders();
-		createDescriptorSets();
 		createRenderPasses();
 		createFramebuffers();
 		createSyncObjects();
+
+		createShaders();
+		createDescriptorSets();
 		createUBOPVBuffers();
 		updateDescriptorSets();
 
 		testModel = std::make_unique<Model>(testModelPath);
 		if (testModel->LoadSucceed())
-			DownloadModel(testModel.get());
+			downloadModel(testModel.get());
 		else
 			testModel.reset();
 
@@ -342,7 +384,7 @@ public:
 			//download new model
 			testModel = std::move(testModel2);
 
-			DownloadModel(testModel.get());
+			downloadModel(testModel.get());
 
 			createPipeline();
 			createCommandBuffers();
@@ -633,7 +675,7 @@ public:
 		};
 
 		PipelineColorBlendAttachmentState colorBlendAttachmentstate{
-			true,
+			false,
 			BlendFactor::SRC_ALPHA,
 			BlendFactor::ONE_MINUS_SRC_ALPHA,
 			BlendOp::ADD,
@@ -646,35 +688,6 @@ public:
 			LogicOp::COPY,
 			{colorBlendAttachmentstate},
 		};
-
-		VertexInputStateCreateInfo vertexInputStateCreateInfo{
-			{
-				{LOCATION_POSITION},
-				{LOCATION_NORMAL},
-				{LOCATION_TANGENT},
-				{LOCATION_TEXCOORD0},
-				{LOCATION_TEXCOORD1},
-				{LOCATION_COLOR0},
-				{LOCATION_JOINTS0},
-				{LOCATION_WEIGHTS0},
-				{LOCATION_INSTANCE_COLOR_FACTOR, sizeof(InstanceAttribute), 1},
-			},
-			{
-
-				{LOCATION_POSITION, LOCATION_POSITION, 3, DataType::FLOAT, false, 0},
-				{LOCATION_NORMAL, LOCATION_NORMAL, 3, DataType::FLOAT, false, 0},
-				{LOCATION_TANGENT, LOCATION_TANGENT, 4, DataType::FLOAT, false, 0},
-				{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
-				{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, 2, DataType::FLOAT, false, 0},
-				{LOCATION_COLOR0, LOCATION_COLOR0, 4, DataType::FLOAT, false, 0},
-				{LOCATION_JOINTS0, LOCATION_JOINTS0, 4, DataType::FLOAT, false, 0},
-				{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, 4, DataType::FLOAT, false, 0},
-				{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 0},
-				{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 16},
-				{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 32},
-				{LOCATION_INSTANCE_MATRIX + 2, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 48},
-				{LOCATION_INSTANCE_MATRIX + 3, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 64},
-			}};
 
 		GraphicsPipelineCreateInfo pipelineCreateInfo{
 			shaderStageCreateInfos,
@@ -775,7 +788,7 @@ public:
 					pipelineLayout,
 					DESCRIPTORSET_ID_FRAME,
 					1,
-					&descriptorSets[DESCRIPTORSET_ID_FRAME]});
+					&descriptorSets[i]});
 
 			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, axisPipeline});
 			DrawIndirectInfo drawCmdInfo{
@@ -905,19 +918,18 @@ public:
 			{0, 1, 0, 1}};
 		colorImageView = device->Create(imageViewCreateInfo);
 	}
-	void DownloadModel(Model *pModel)
+	void downloadModel(Model *pModel)
 	{
 		pModel->DownloadModel(device, pipelineLayout, swapchainImages.size());
 
 		auto &&modelCenter = pModel->GetModelBoundingVolumePtr()->box.aabb.center;
 		auto a = pModel->GetModelBoundingVolumePtr()->box.aabb.maxValue - modelCenter;
 		auto scaleFactor = MODEL_SIZE / (std::max)((std::max)(a.x, a.y), a.z);
-		auto intanceAttribute = InstanceAttribute{glm::vec4(1)};
+		auto instanceAttribute = InstanceAttribute{glm::vec4(1)};
 		auto trans = glm::dvec3(modelCenter.x, a.y, modelCenter.z) * scaleFactor;
 		//auto trans = glm::dvec3(0, 0, 0);
-		intanceAttribute.matrix = glm::translate(glm::scale(glm::translate(glm::dmat4(1), trans), glm::dvec3(scaleFactor)), -modelCenter);
-		pModel->CreateImageInstanceAttributeBuffers(device, {intanceAttribute}, true);
-
+		instanceAttribute.matrix = glm::translate(glm::scale(glm::translate(glm::dmat4(1), trans), glm::dvec3(scaleFactor)), -modelCenter);
+		pModel->AssignInstances(device, {instanceAttribute});
 		camera.center = trans;
 		camera.eye.x = camera.center.x;
 		camera.eye.y = camera.center.y;

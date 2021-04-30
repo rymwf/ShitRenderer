@@ -37,14 +37,31 @@ namespace Shit
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
 		RegisterClass(&wc);
 
+		DWORD dwStyle{WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU |  WS_CLIPCHILDREN | WS_CLIPSIBLINGS};
+		if (!static_cast<bool>(mCreateInfo.flags & WindowCreateFlagBits::INVISIBLE))
+		{
+			dwStyle |= WS_VISIBLE;
+		}
+		if (!static_cast<bool>(mCreateInfo.flags & WindowCreateFlagBits::FIXED_SIZE))
+		{
+			dwStyle |= WS_MINIMIZEBOX;
+			dwStyle |= WS_MAXIMIZEBOX;
+			dwStyle |= WS_THICKFRAME;
+		}
+
 		mHwnd = CreateWindowEx(
-			WS_EX_ACCEPTFILES,										 // Optional window styles.
-			CLASS_NAME,												 // Window class
-			mCreateInfo.name,										 // Window text
-			WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, // Window style
+			WS_EX_ACCEPTFILES, // Optional window styles.
+			CLASS_NAME,		   // Window class
+			mCreateInfo.name,  // Window text
+			dwStyle,
+			//WS_OVERLAPPED |WS_CAPTION | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, // Window style
 
 			// Size and position
-			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			//CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			mCreateInfo.rect.offset.x,
+			mCreateInfo.rect.offset.y,
+			mCreateInfo.rect.extent.width,
+			mCreateInfo.rect.extent.height,
 
 			NULL,		  // Parent window
 			NULL,		  // Menu
@@ -55,14 +72,15 @@ namespace Shit
 		if (mHwnd == NULL)
 			THROW("failed to create win32 window");
 		//		sWindowMap[mHwnd] = this;
-
-		RECT rect;
-		rect.left = mCreateInfo.rect.offset.x;
-		rect.top = mCreateInfo.rect.offset.y;
-		rect.right = rect.left + static_cast<int>(mCreateInfo.rect.extent.width);
-		rect.bottom = rect.top + static_cast<int>(mCreateInfo.rect.extent.height);
-		AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_ACCEPTFILES);
-		SetWindowPos(mHwnd, HWND_NOTOPMOST, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_SHOWWINDOW);
+//		if (!static_cast<bool>(mCreateInfo.flags & WindowCreateFlagBits::INVISIBLE))
+//			ShowWindow(mHwnd, SW_SHOWNORMAL);
+		//RECT rect;
+		//rect.left = mCreateInfo.rect.offset.x;
+		//rect.top = mCreateInfo.rect.offset.y;
+		//rect.right = rect.left + static_cast<int>(mCreateInfo.rect.extent.width);
+		//rect.bottom = rect.top + static_cast<int>(mCreateInfo.rect.extent.height);
+		//AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_ACCEPTFILES);
+		//SetWindowPos(mHwnd, HWND_NOTOPMOST, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_SHOWWINDOW);
 	}
 
 	LRESULT CALLBACK WindowWin32::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

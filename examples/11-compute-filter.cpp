@@ -75,8 +75,8 @@ public:
 		WindowCreateInfo windowCreateInfo{
 			{WindowCreateFlagBits::INVISIBLE},
 			__FILE__,
-			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}}};
+			{{DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y},
+			 {DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT}}};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
@@ -208,13 +208,13 @@ public:
 			});
 			commandBuffer->Dispatch(DispatchInfo{testImage->GetCreateInfoPtr()->extent.height, 1u, 1u});
 
-			ImageMemoryBarrier barrier{
-				AccessFlagBits::SHADER_WRITE_BIT,
-				AccessFlagBits::SHADER_READ_BIT,
-				ImageLayout::GENERAL,
-				ImageLayout::GENERAL,
-				outputImage,
-				ImageSubresourceRange{0, 1, 0, 1}};
+//			ImageMemoryBarrier barrier{
+//				AccessFlagBits::SHADER_WRITE_BIT,
+//				AccessFlagBits::SHADER_READ_BIT,
+//				ImageLayout::GENERAL,
+//				ImageLayout::GENERAL,
+//				outputImage,
+//				ImageSubresourceRange{0, 1, 0, 1}};
 		});
 	}
 	void createImages()
@@ -251,11 +251,11 @@ public:
 			.tiling = ImageTiling::OPTIMAL,
 			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
 			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-			.mipmapFilter = Filter::LINEAR,
 			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 		};
 
 		testImage = device->Create(imageCreateInfo, pixels);
+		testImage->GenerateMipmaps(Filter::LINEAR);
 
 		ImageViewCreateInfo imageViewCreateInfo{
 			.pImage = testImage,

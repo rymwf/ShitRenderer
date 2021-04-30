@@ -30,9 +30,9 @@ def compileShader(srcfileFullName, target):
 def processSrcFiles(filelist, target):
 	subpath = "glsl/"
 	if filelist == None:
-		shaders = os.listdir(PATH_SHADER)
+		shaders = os.listdir(PATH_SHADER+"/"+subpath)
 		for f in shaders:
-			compileShader(PATH_SHADER+"/" + subpath + f, target)
+			compileShader(PATH_SHADER+"/" +subpath+ f, target)
 	else:
 		for f in filelist:
 			a = PATH_SHADER+"/"+subpath+os.path.basename(f)

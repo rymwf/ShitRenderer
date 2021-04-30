@@ -21,8 +21,8 @@ public:
 		WindowCreateInfo windowCreateInfo{
 			{},
 			__FILE__,
-			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
+			{{DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y},
+			 {DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT}},
 			std::make_shared<std::function<void(const Event&)>>(std::bind(&Hello::ProcessEvent, this, std::placeholders::_1)) };
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 	}

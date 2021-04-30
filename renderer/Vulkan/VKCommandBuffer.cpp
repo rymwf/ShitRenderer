@@ -45,9 +45,11 @@ namespace Shit
 
 		VkCommandBufferInheritanceInfo inheritancInfo{
 			VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+			nullptr,
+			beginInfo.inheritanceInfo.pRenderPass ? static_cast<VKRenderPass *>(beginInfo.inheritanceInfo.pRenderPass)->GetHandle() : VK_NULL_HANDLE,
+			beginInfo.inheritanceInfo.subpass,
+			beginInfo.inheritanceInfo.pFramebuffer ? static_cast<VKFramebuffer *>(beginInfo.inheritanceInfo.pFramebuffer)->GetHandle() : VK_NULL_HANDLE,
 		};
-		if (beginInfo.pFramebuffer)
-			inheritancInfo.framebuffer = static_cast<VKFramebuffer *>(beginInfo.pFramebuffer)->GetHandle();
 		VkCommandBufferBeginInfo info{
 			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			nullptr,

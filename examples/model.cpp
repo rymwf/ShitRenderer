@@ -240,6 +240,7 @@ void Model::DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, uint3
 {
 	mpCurPipelineLayout = pipelineLayout;
 	mpCurDevice = pDevice;
+	mImageCount = imageCount;
 
 	//scene buffers
 	for (auto &&buffer : mpModel->buffers)
@@ -350,13 +351,12 @@ void Model::LoadImages()
 		ImageType::TYPE_2D,
 		ShitFormat::RGBA8_UNORM,
 		{},
-		1,
+		0,
 		1,
 		SampleCountFlagBits::BIT_1,
 		ImageTiling::OPTIMAL,
 		ImageUsageFlagBits::SAMPLED_BIT,
 		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-		Filter::LINEAR,
 		ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 	ImageViewCreateInfo imageViewCreateInfo{
@@ -370,13 +370,14 @@ void Model::LoadImages()
 		auto imagePath = curDir.string() + mpModel->images[tex.source].uri;
 		int width, height, components;
 		auto pixels = loadImage(imagePath.c_str(), width, height, components, 4);
-		imageCreateInfo.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height))) + 1);
+		//imageCreateInfo.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height))) + 1);
 		imageCreateInfo.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
 		mModelAssets[mpCurDevice].images.emplace_back(mpCurDevice->Create(imageCreateInfo, pixels));
+		mModelAssets[mpCurDevice].images.back()->GenerateMipmaps(Filter::LINEAR);
 
 		//imageview
 		imageViewCreateInfo.pImage = mModelAssets[mpCurDevice].images.back();
-		imageViewCreateInfo.subresourceRange.levelCount = imageCreateInfo.mipLevels;
+		imageViewCreateInfo.subresourceRange.levelCount = imageViewCreateInfo.pImage->GetCreateInfoPtr()->mipLevels;
 		mModelAssets[mpCurDevice].imageViews.emplace_back(mpCurDevice->Create(imageViewCreateInfo));
 		freeImage(pixels);
 	}
@@ -420,40 +421,71 @@ void Model::LoadImages()
 	if (mModelAssets[mpCurDevice].samplers.empty())
 		mModelAssets[mpCurDevice].samplers.emplace_back(mpCurDevice->Create(samplerCreateInfo));
 }
-void Model::CreateImageInstanceAttributeBuffers(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes, bool immutable)
+void Model::AllocateFrameInstanceAttributeBuffers(Device *pDevice, uint32_t size, void *pData)
 {
-	mModelAssets[pDevice].instanceCount = (std::max)(instanceAttributes.size(), size_t(1));
 	//create Instance Attribute buffer
 	BufferCreateInfo instanceAttributeCreateInfo{
 		{},
-		mModelAssets[pDevice].instanceCount * sizeof(InstanceAttribute),
+		sizeof(InstanceAttribute) * size,
 		BufferUsageFlagBits::VERTEX_BUFFER_BIT | BufferUsageFlagBits::TRANSFER_DST_BIT,
-		immutable ? MemoryPropertyFlagBits::DEVICE_LOCAL_BIT : MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT};
-	if (instanceAttributes.size() == 0)
+		MemoryPropertyFlagBits::HOST_COHERENT_BIT | MemoryPropertyFlagBits::HOST_VISIBLE_BIT};
+
+	mModelAssets[pDevice].frameInstanceAttributeBuffers.resize(mImageCount);
+
+	for (size_t i = 0; i < mImageCount; ++i)
+		mModelAssets[pDevice].frameInstanceAttributeBuffers[i] = pDevice->Create(instanceAttributeCreateInfo, pData);
+}
+void Model::SetFrameInstanceAttribute(Device *pDevice, uint32_t imageIndex, uint32_t index, const InstanceAttribute &instanceAttribute)
+{
+	mInstanceAttributes[index] = instanceAttribute;
+	void *data;
+	auto size = sizeof(InstanceAttribute);
+	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->MapMemory(sizeof(InstanceAttribute) * index, size, &data);
+	memcpy(data, &instanceAttribute, size);
+	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->UnMapMemory();
+}
+void Model::AddInstances(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes)
+{
+	mInstanceAttributes.insert(mInstanceAttributes.end(), instanceAttributes.begin(), instanceAttributes.end());
+	if (mInstanceAttributes.size() > mInstanceAttributeBufferCapacity)
 	{
-		InstanceAttribute attribute{glm::vec4{1}, glm::mat4{1}};
-		//image count
-		for (size_t i = 0, len = mModelAssets[pDevice].frameNodeDescriptorSets.size(); i < len; ++i)
-			mModelAssets[pDevice].frameInstanceAttributeBuffers.emplace_back(pDevice->Create(instanceAttributeCreateInfo, &attribute));
+		for (auto buffer : mModelAssets[pDevice].frameInstanceAttributeBuffers)
+		{
+			pDevice->Destroy(buffer);
+		}
+		mInstanceAttributeBufferCapacity = 1.3f * mInstanceAttributes.size();
+		AllocateFrameInstanceAttributeBuffers(pDevice, mInstanceAttributeBufferCapacity, mInstanceAttributes.data());
 	}
 	else
 	{
-		for (size_t i = 0, len = mModelAssets[pDevice].frameNodeDescriptorSets.size(); i < len; ++i)
-			mModelAssets[pDevice].frameInstanceAttributeBuffers.emplace_back(pDevice->Create(instanceAttributeCreateInfo, reinterpret_cast<const void *>(instanceAttributes.data())));
+		for (size_t i = 0; i < mImageCount; ++i)
+		{
+			void *data;
+			auto size = sizeof(InstanceAttribute) * instanceAttributes.size();
+			mModelAssets[pDevice].frameInstanceAttributeBuffers[i]->MapMemory(
+				sizeof(InstanceAttribute) * mInstanceAttributeBufferSize, size, &data);
+			memcpy(data, instanceAttributes.data(), size);
+			mModelAssets[pDevice].frameInstanceAttributeBuffers[i]->UnMapMemory();
+		}
 	}
+	mInstanceAttributeBufferSize = mInstanceAttributes.size();
 }
-void Model::UpdateImageInstanceAttributes(Device *pDevice, uint32_t imageIndex, const std::vector<InstanceAttribute> &instanceAttributes)
+void Model::AssignInstances(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes)
 {
-	void *data;
-	auto size = sizeof(InstanceAttribute) * mModelAssets[pDevice].instanceCount;
-	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->MapMemory(0, size, &data);
-	memcpy(data, instanceAttributes.data(), size);
-	mModelAssets[pDevice].frameInstanceAttributeBuffers[imageIndex]->UnMapMemory();
+	mInstanceAttributes.assign(instanceAttributes.begin(), instanceAttributes.end());
+	if (mInstanceAttributeBufferCapacity < mInstanceAttributes.size())
+	{
+		for (auto buffer : mModelAssets[pDevice].frameInstanceAttributeBuffers)
+		{
+			pDevice->Destroy(buffer);
+		}
+		mInstanceAttributeBufferCapacity = mInstanceAttributes.size();
+		AllocateFrameInstanceAttributeBuffers(pDevice, mInstanceAttributeBufferCapacity, mInstanceAttributes.data());
+	}
+	mInstanceAttributeBufferSize = mInstanceAttributes.size();
 }
 void Model::CreateDrawCommandInfo()
 {
-	if (mModelAssets[mpCurDevice].frameInstanceAttributeBuffers.empty())
-		CreateImageInstanceAttributeBuffers(mpCurDevice, {}, true);
 	//primitive draw indexed indiect command info
 	mModelAssets[mpCurDevice].primitivesDrawIndirectInfo.resize(mpModel->accessors.size(), {});
 	for (auto &&mesh : mpModel->meshes)
@@ -466,7 +498,7 @@ void Model::CreateDrawCommandInfo()
 				auto &&positionAccessor = mpModel->accessors[positionAccessorIndex];
 				DrawIndirectCommand cmd{
 					positionAccessor.count,
-					mModelAssets[mpCurDevice].instanceCount,
+					mInstanceAttributes.size(),
 				};
 				BufferCreateInfo createInfo{
 					{},
@@ -484,7 +516,7 @@ void Model::CreateDrawCommandInfo()
 				auto &&indexAccessor = mpModel->accessors[primitive.indices];
 				DrawIndexedIndirectCommand cmd{
 					indexAccessor.count,
-					mModelAssets[mpCurDevice].instanceCount,
+					mInstanceAttributes.size(),
 				};
 				BufferCreateInfo createInfo{
 					{},

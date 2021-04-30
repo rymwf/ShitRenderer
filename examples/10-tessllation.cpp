@@ -24,6 +24,47 @@ const char *axisFragShaderName = "axis.frag.spv";
 const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Triangle/glTF/Triangle.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/TwoSidedPlane/glTF/TwoSidedPlane.gltf";
 
+struct Light
+{
+	alignas(16) glm::vec3 pos;
+	alignas(16) glm::vec4 color;
+	alignas(16) glm::vec4 intensity;
+	alignas(8) glm::vec2 lim_r; //the attenuation distance limit,r.x: min dist(sphere light radius), r.y: max dist
+	alignas(16) glm::vec3 direction;
+	alignas(16) glm::vec3 tube_p0;
+	alignas(16) glm::vec3 tube_p1;
+};
+
+struct Camera
+{
+	glm::dvec3 eye;
+	glm::dvec3 center;
+	glm::dvec3 up;
+	glm::dmat4 viewMatrix;
+	bool isUpdated{true};
+
+	Camera() = default;
+	Camera(
+		glm::dvec3 eye_,
+		glm::dvec3 center_,
+		glm::dvec3 up_) : eye(eye_), center(center_), up(up_)
+	{
+		Update();
+	}
+	void Update()
+	{
+		viewMatrix = glm::lookAt(eye, center, up);
+		isUpdated = true;
+	}
+};
+
+struct UBOFrame
+{
+	glm::mat4 PV;
+	alignas(16) glm::vec3 eyePosition;
+	Light light;
+	alignas(16) glm::vec3 ambientColor;
+};
 class Hello
 {
 	RenderSystem *renderSystem;
@@ -114,8 +155,8 @@ public:
 		WindowCreateInfo windowCreateInfo{
 			{},
 			__FILE__,
-			{{SHIT_DEFAULT_WINDOW_X, SHIT_DEFAULT_WINDOW_Y},
-			 {SHIT_DEFAULT_WINDOW_WIDTH, SHIT_DEFAULT_WINDOW_HEIGHT}},
+			{{DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y},
+			 {DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT}},
 			std::make_shared<std::function<void(const Event &)>>(std::bind(&Hello::ProcessEvent, this, std::placeholders::_1))};
 		window = renderSystem->CreateRenderWindow(windowCreateInfo);
 		//1.5 choose phyiscal device
@@ -150,18 +191,18 @@ public:
 		createSwapchains();
 		createDepthResources();
 		createColorResources();
-
-		createShaders();
-		createDescriptorSets();
 		createRenderPasses();
 		createFramebuffers();
 		createSyncObjects();
+
+		createShaders();
+		createDescriptorSets();
 		createUBOPVBuffers();
 		updateDescriptorSets();
 
 		testModel = std::make_unique<Model>(testModelPath);
 		if (testModel->LoadSucceed())
-			DownloadModel(testModel.get());
+			downloadModel(testModel.get());
 		else
 			testModel.reset();
 
@@ -337,7 +378,7 @@ public:
 			//download new model
 			testModel = std::move(testModel2);
 
-			DownloadModel(testModel.get());
+			downloadModel(testModel.get());
 
 			createPipeline();
 			createCommandBuffers();
@@ -774,7 +815,7 @@ public:
 					pipelineLayout,
 					DESCRIPTORSET_ID_FRAME,
 					1,
-					&descriptorSets[DESCRIPTORSET_ID_FRAME]});
+					&descriptorSets[i]});
 
 			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, axisPipeline});
 			DrawIndirectInfo drawCmdInfo{
@@ -904,7 +945,7 @@ public:
 			{0, 1, 0, 1}};
 		colorImageView = device->Create(imageViewCreateInfo);
 	}
-	void DownloadModel(Model *pModel)
+	void downloadModel(Model *pModel)
 	{
 		pModel->DownloadModel(device, pipelineLayout, swapchainImages.size());
 

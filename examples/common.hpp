@@ -24,18 +24,22 @@
 
 using namespace Shit;
 
+#define DEFAULT_WINDOW_X 80
+#define DEFAULT_WINDOW_Y 40
+#define DEFAULT_WINDOW_WIDTH 1280
+#define DEFAULT_WINDOW_HEIGHT 720
+
 #define ASSET_PATH SHIT_SOURCE_DIR "/examples/assets/"
 #define SHADER_PATH SHIT_SOURCE_DIR "/examples/runtime/shaders/"
 #define IMAGE_PATH SHIT_SOURCE_DIR "/examples/assets/images/"
 #define SCRRENSHOT_DIR SHIT_SOURCE_DIR "/build/screenshot/"
-
-
 
 #define MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT 0x100
 #define MAX_VERTX_LOCATION
 
 #define VERTEX_LOCATION_NUM_MAX 16
 
+//vertex locations 
 #define LOCATION_POSITION 0
 #define LOCATION_NORMAL 1
 #define LOCATION_TANGENT 2
@@ -44,12 +48,10 @@ using namespace Shit;
 #define LOCATION_COLOR0 5
 #define LOCATION_JOINTS0 6
 #define LOCATION_WEIGHTS0 7
-
 #define LOCATION_INSTANCE_COLOR_FACTOR 11
 #define LOCATION_INSTANCE_MATRIX 12
 
-//#define TEXTURE_MAX_BINDING_COUNT 12
-
+//uniform bindings
 #define TEXTURE_BINDING_ALBEDO 0
 #define TEXTURE_BINDING_NORMAL 1
 #define TEXTURE_BINDING_METALLIC_ROUGHNESS 2
@@ -57,18 +59,28 @@ using namespace Shit;
 #define TEXTURE_BINDING_EMISSION 4
 #define TEXTURE_BINDING_TRANSPARENCY 5
 
+#define TEXTURE_BINDING_PREFILTERD_CUBEMAP 6
+#define TEXTURE_BINDING_IRRADIANCE_CUBEMAP 7
+
 #define UNIFORM_BINDING_FRAME 12
 #define UNIFORM_BINDING_NODE 13
 #define UNIFORM_BINDING_MATERIAL 14
 #define UNIFORM_BINDING_JOINTMATRIX 15
 //#define UNIFORM_BINDING_PUSH_CONSTANT 15
 
+//descriptor sets
 #define DESCRIPTORSET_ID_FRAME 0
 #define DESCRIPTORSET_ID_NODE 1
 #define DESCRIPTORSET_ID_MATERIAL 2
 #define DESCRIPTORSET_ID_JOINTMATRIX 3
+#define DESCRIPTORSET_ID_OTHER 4
 
-#define CONSTANT_ID_JOINTNUM 0
+#define DESCRIPTORSET_ID_COMPUTE_IMAGE_IN 0
+#define DESCRIPTORSET_ID_COMPUTE_IMAGE_OUT 1
+
+
+//constant id
+#define CONSTANT_ID_JOINTNUM 1
 
 #define COSTANT_ID_COMPUTE_LOCAL_SIZE_X 0
 #define COSTANT_ID_COMPUTE_LOCAL_SIZE_Y 1
@@ -94,67 +106,30 @@ void *loadImage(const char *imagePath, int &width, int &height, int &components,
 void saveImage(const char *imagePath, int width, int height, int component, const void *data);
 void freeImage(void *pData);
 
-struct Light
+template <typename T>
+float intToFloat(T value)
 {
-	alignas(16) glm::vec3 pos;
-	alignas(16) glm::vec4 color;
-	alignas(16) glm::vec4 intensity;
-	alignas(8) glm::vec2 lim_r; //the attenuation distance limit,r.x: min dist(sphere light radius), r.y: max dist
-	alignas(16) glm::vec3 direction;
-	alignas(16) glm::vec3 tube_p0;
-	alignas(16) glm::vec3 tube_p1;
-};
+	return (std::max)(float(value) / std::numeric_limits<T>::max(), -1.f);
+}
 
-//update max once per frame
-struct UBOFrame
-{
-	glm::mat4 PV;
-	alignas(16) glm::vec3 eyePosition;
-	Light light;
-	alignas(16) glm::vec3 ambientColor;
-};
+void takeScreenshot(Device *pDevice, Image *pImage);
+void saveImage(const char *dstPath, Device *pDevice, Image *pImage);
 
-struct Vertex
-{
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-	static VertexBindingDescription getVertexBindingDescription(uint32_t binding)
-	{
-		return {
-			binding,
-			sizeof(Vertex),
-			0,
-		};
-	}
-	static std::vector<VertexAttributeDescription> getVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
-	{
-		return {
-			{startLocation + 0,
-			 binding,
-			 3,
-			 DataType::FLOAT,
-			 false,
-			 offsetof(Vertex, pos)},
-			{startLocation + 1,
-			 binding,
-			 3,
-			 DataType::FLOAT,
-			 false,
-			 offsetof(Vertex, color)},
-			{startLocation + 2,
-			 binding,
-			 2,
-			 DataType::FLOAT,
-			 false,
-			 offsetof(Vertex, texCoord)},
-		};
-	}
-	static uint32_t getLocationCount()
-	{
-		return 3;
-	}
-};
+std::string readFile(const char *filename);
+std::string buildShaderPath(const char *shaderName, RendererVersion renderVersion);
+WindowPixelFormat chooseSwapchainFormat(const std::vector<WindowPixelFormat> &candidates, Device *pDevice, ShitWindow *pWindow);
+PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device *pDevice, ShitWindow *window);
+
+/**
+ * @brief 
+ * 
+ * @param pImageView2D  layout must be shader read only
+ * @param pImageViewCube  layout must be General
+ * @param width cubemap width
+ */
+void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube, uint32_t width);
+
+void parseArgument(int ac, char **av);
 
 struct InstanceAttribute
 {
@@ -167,36 +142,11 @@ struct InstanceAttribute
 	static std::vector<VertexAttributeDescription> getVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
 	{
 		return {
-			{startLocation + 0,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 0},
-			{startLocation + 1,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 16},
-			{startLocation + 2,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 32},
-			{startLocation + 3,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 48},
-			{startLocation + 4,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 64},
+			{startLocation + 0, binding, 4, DataType::FLOAT, false, 0},
+			{startLocation + 1, binding, 4, DataType::FLOAT, false, 16},
+			{startLocation + 2, binding, 4, DataType::FLOAT, false, 32},
+			{startLocation + 3, binding, 4, DataType::FLOAT, false, 48},
+			{startLocation + 4, binding, 4, DataType::FLOAT, false, 64},
 		};
 	}
 	static uint32_t getLocationCount()
@@ -204,73 +154,6 @@ struct InstanceAttribute
 		return 5;
 	}
 };
-
-std::string readFile(const char *filename);
-std::string buildShaderPath(const char *shaderName, RendererVersion renderVersion);
-WindowPixelFormat chooseSwapchainFormat(const std::vector<WindowPixelFormat> &candidates, Device *pDevice, ShitWindow *pWindow);
-PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device *pDevice, ShitWindow *window);
-
-//inline void parseArgument(int ac, char **av)
-//{
-//
-//	namespace po = boost::program_options;
-//	po::options_description desc("Allowed options");
-//	desc.add_options()("help", "produce help message")("T", po::value<std::string>()->default_value("GL"), "set renderer version\n"
-//																										   "option values:\n"
-//																										   "GL:\t opengl rendereer"
-//																										   "VK:\t vulkan renderer");
-//
-//	// Declare an options description instance which will include
-//	// all the options
-//	po::options_description all("Allowed options");
-//	all.add(desc);
-//
-//	po::variables_map vm;
-//	po::store(po::parse_command_line(ac, av, all), vm);
-//
-//	if (vm.count("help"))
-//	{
-//		std::cout << desc << "\n";
-//		exit(0);
-//	}
-//
-//	if (vm.count("T"))
-//	{
-//		const std::string &s = vm["T"].as<std::string>();
-//		if (s == "GL")
-//		{
-//			rendererVersion = RendererVersion::GL;
-//		}
-//		else if (s == "VK")
-//		{
-//			rendererVersion = RendererVersion::VULKAN;
-//		}
-//		else
-//		{
-//			std::cout << "invalid renderer version value";
-//			exit(0);
-//		}
-//	}
-//}
-
-inline void parseArgument(int ac, char **av)
-{
-	for (int i = 0; i < ac; ++i)
-	{
-		LOG(av[i]);
-	}
-	if (ac > 1)
-	{
-		if (strcmp(av[1], "GL") == 0)
-		{
-			rendererVersion = Shit::RendererVersion::GL;
-		}
-		else if (strcmp(av[1], "VK") == 0)
-		{
-			rendererVersion = Shit::RendererVersion::VULKAN;
-		}
-	}
-}
 
 struct PerspectiveProjectionDescription
 {
@@ -282,7 +165,7 @@ struct OrthogonalProjectionDescription
 	double xmag;
 	double ymag;
 };
-struct ProjectionDescription
+struct FrustumDescription
 {
 	double near;
 	double far; //if far==0, means infinite perspective, orthogonal cannot be 0
@@ -291,12 +174,12 @@ struct ProjectionDescription
 
 struct Frustum
 {
-	ProjectionDescription projectionDescription;
+	FrustumDescription projectionDescription;
 	glm::dmat4 projectionMatrix;
 	bool isUpdated{true};
 
 	Frustum() = default;
-	Frustum(const ProjectionDescription &projDesc) : projectionDescription(projDesc)
+	Frustum(const FrustumDescription &projDesc) : projectionDescription(projDesc)
 	{
 		Update();
 	}
@@ -322,95 +205,3 @@ struct Frustum
 		isUpdated = true;
 	}
 };
-
-struct Camera
-{
-	glm::dvec3 eye;
-	glm::dvec3 center;
-	glm::dvec3 up;
-	glm::dmat4 viewMatrix;
-	bool isUpdated{true};
-
-	Camera() = default;
-	Camera(
-		glm::dvec3 eye_,
-		glm::dvec3 center_,
-		glm::dvec3 up_) : eye(eye_), center(center_), up(up_)
-	{
-		Update();
-	}
-	void Update()
-	{
-		viewMatrix = glm::lookAt(eye, center, up);
-		isUpdated = true;
-	}
-};
-
-//vector
-template <typename T>
-struct VertexAttribute
-{
-	static VertexBindingDescription GetVertexBindingDescription()
-	{
-		return {sizeof(T)};
-	}
-	static std::vector<VertexAttributeDescription> GetVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
-	{
-		return {
-			{
-				startLocation + 0,
-				binding,				   //buffer index
-				sizeof(T) / sizeof(float), //components
-				DataType::FLOAT,		   //data type
-				false,					   //normalized
-				0						   //offset
-			},
-		};
-	}
-};
-template <>
-struct VertexAttribute<glm::mat4>
-{
-	static VertexBindingDescription GetVertexBindingDescription()
-	{
-		return {sizeof(glm::mat4)};
-	}
-	static std::vector<VertexAttributeDescription> GetVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
-	{
-		return {
-			{startLocation + 0,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 0},
-			{startLocation + 1,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 16},
-			{startLocation + 2,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 32},
-			{startLocation + 3,
-			 binding,
-			 4,
-			 DataType::FLOAT,
-			 false,
-			 48},
-		};
-	}
-};
-
-template<typename T>
-float intToFloat(T value)
-{
-	return (std::max)(float(value) / std::numeric_limits<T>::max(), -1.f);
-}
-
-void takeScreenshot(Device *pDevice, Image *pImage);
-void saveImage(const char *dstPath, Device *pDevice, Image *pImage);

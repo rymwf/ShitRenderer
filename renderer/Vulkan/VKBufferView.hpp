@@ -18,10 +18,7 @@ namespace Shit
 		VkBufferView mHandle;
 
 	public:
-		VKBufferView(VkDevice device, const BufferViewCreateInfo &createInfo)
-			: BufferView(createInfo), mDevice(device)
-		{
-		}
+		VKBufferView(VkDevice device, const BufferViewCreateInfo &createInfo);
 		~VKBufferView() override
 		{
 			vkDestroyBufferView(mDevice, mHandle, nullptr);

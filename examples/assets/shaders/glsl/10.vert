@@ -32,7 +32,7 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 layout(binding=13 SET(1)) uniform UBONode{
 	mat4 M;
 };
-layout(constant_id=0) const int jointNum=0;
+layout(constant_id=0) const int jointNum=30;
 layout(binding=15 SET(3)) uniform UBOJointMatrix
 {
 	mat4 jointMatrices[jointNum+1];

@@ -79,14 +79,10 @@ public:
 
 	void DownloadModel(Device *pDevice, PipelineLayout *pipelineLayout, uint32_t imageCount);
 
-	/**
-	 * @brief should be placed after downloading model to gpu
-	 * 
-	 * @param instanceAttributes 
-	 * @param immutable 
-	 */
-	void CreateImageInstanceAttributeBuffers(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes, bool immutable);
-	void UpdateImageInstanceAttributes(Device *pDevice, uint32_t imageIndex, const std::vector<InstanceAttribute> &instanceAttributes);
+	void SetFrameInstanceAttribute(Device *pDevice, uint32_t imageIndex, uint32_t index, const InstanceAttribute &instanceAttribute);
+
+	void AddInstances(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes);
+	void AssignInstances(Device *pDevice, const std::vector<InstanceAttribute> &instanceAttributes);
 
 	void FreeModel(Device *pDevice);
 
@@ -133,7 +129,9 @@ public:
 
 private:
 	std::unique_ptr<tinygltf::Model> mpModel;
+	std::filesystem::path mModelPath;
 	bool mLoadSucceed{};
+	uint32_t mImageCount; //device?
 
 	//TODO: changing with animation
 	BoundingVolume mBoundingVolume;
@@ -144,7 +142,8 @@ private:
 	PipelineLayout *mpCurPipelineLayout;
 	uint32_t mCurImageIndex;
 
-	std::vector<int> mNodeToJointIndex;	//only skin 0
+	std::vector<int> mNodeToJointIndex; //only skin 0
+	std::vector<InstanceAttribute> mInstanceAttributes;
 
 	struct NodeTransformation
 	{
@@ -165,20 +164,20 @@ private:
 	struct ModelAsset
 	{
 		std::vector<Buffer *> buffers;
-		std::vector<std::vector<Buffer*>>  framePrimitiveBuffers;
 
 		std::vector<DrawIndirectInfo> primitivesDrawIndirectInfo;
 		std::vector<Image *> images;
 		std::vector<ImageView *> imageViews;
 		std::vector<Sampler *> samplers;
-		std::vector<Buffer *> frameInstanceAttributeBuffers;
-		uint32_t instanceCount;
 
-		std::vector<Buffer *> frameNodeAttributeBuffers;
-		std::vector<std::vector<DescriptorSet *>> frameNodeDescriptorSets;
+		std::vector<Buffer *> frameInstanceAttributeBuffers;
 
 		Buffer *materialBuffer; //
 		std::vector<DescriptorSet *> materialDescriptorSets;
+
+		//TODO: use texture buffer to include attributes of different instances
+		std::vector<Buffer *> frameNodeAttributeBuffers;
+		std::vector<std::vector<DescriptorSet *>> frameNodeDescriptorSets;
 
 		std::vector<std::vector<Buffer *>> frameSkinJointMatrixBuffers;
 		std::vector<std::vector<DescriptorSet *>> frameSkinJointMatrixDescriptorSets;
@@ -189,7 +188,9 @@ private:
 
 	VertexInputStateCreateInfo mVertexInputStateCreateInfo;
 
-	std::filesystem::path mModelPath;
+	uint32_t mInstanceAttributeBufferCapacity{};
+	uint32_t mInstanceAttributeBufferSize{};
+	void AllocateFrameInstanceAttributeBuffers(Device *pDevice, uint32_t size, void *pData);
 
 	void DrawNode(uint32_t nodeIndex);
 	void DrawMesh(const tinygltf::Mesh &mesh);
