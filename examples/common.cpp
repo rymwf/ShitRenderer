@@ -484,6 +484,49 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 
 	//commandbuffer
 	pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
+		//store image layout
+		ImageLayout srcImageLayout = pImageView2D->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->initialLayout;
+		ImageLayout dstImageLayout = pImageViewCube->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->initialLayout;
+		bool srcImageLayoutNeedChange = srcImageLayout == ImageLayout::SHADER_READ_ONLY_OPTIMAL ? false : true;
+		bool dstImageLayoutNeedChange = dstImageLayout == ImageLayout::GENERAL ? false : true;
+		ImageMemoryBarrier imageBarrier0{
+			AccessFlagBits::MEMORY_READ_BIT,
+			AccessFlagBits::SHADER_READ_BIT,
+			srcImageLayout,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			pImageView2D->GetCreateInfoPtr()->pImage,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		if (srcImageLayoutNeedChange)
+		{
+			//change image layout to shader read only
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
+		if (dstImageLayoutNeedChange)
+		{
+			imageBarrier0.oldImageLayout = dstImageLayout;
+			imageBarrier0.newImageLayout = ImageLayout::GENERAL;
+			imageBarrier0.pImage = pImageViewCube->GetCreateInfoPtr()->pImage;
+			//change image layout to general
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
 		cmdBuffer->BindPipeline(BindPipelineInfo{
 			PipelineBindPoint::COMPUTE,
 			pipelineGenerateCubemap});
@@ -495,6 +538,48 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 			&compDescriptorSets[0],
 		});
 		cmdBuffer->Dispatch({width, 6, 1});
+
+		//restore image layout
+		if (srcImageLayoutNeedChange)
+		{
+			imageBarrier0.srcAccessMask = AccessFlagBits::SHADER_WRITE_BIT;
+			imageBarrier0.dstAccessMask = AccessFlagBits::SHADER_READ_BIT;
+			imageBarrier0.oldImageLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL;
+			imageBarrier0.newImageLayout = srcImageLayout;
+			imageBarrier0.pImage = pImageView2D->GetCreateInfoPtr()->pImage;
+			//change image layout to general
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
+		if (dstImageLayoutNeedChange)
+		{
+			imageBarrier0.srcAccessMask = AccessFlagBits::SHADER_WRITE_BIT;
+			imageBarrier0.dstAccessMask = AccessFlagBits::SHADER_READ_BIT;
+			imageBarrier0.oldImageLayout = ImageLayout::GENERAL;
+			imageBarrier0.newImageLayout = dstImageLayout;
+			imageBarrier0.pImage = pImageViewCube->GetCreateInfoPtr()->pImage;
+			//change image layout to general
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
 	});
 	//takeScreenshot(device, cubemapImage);
+
+	pDevice->Destroy(linearSampler);
 }

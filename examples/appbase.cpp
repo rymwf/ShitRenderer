@@ -797,11 +797,6 @@ void AppBase::prepareAxis()
 }
 void AppBase::prepareCubemap()
 {
-	//setup descriptor
-	std::vector<DescriptorSetLayoutBinding> cubemapComputeBindings{
-		DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::COMPUTE_BIT},
-		DescriptorSetLayoutBinding{1, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
-	};
 	//cubemap rendering descriptors
 	//descriptor sets
 	std::vector<DescriptorSetLayoutBinding> texBindings{
@@ -809,31 +804,22 @@ void AppBase::prepareCubemap()
 	};
 
 	std::vector<DescriptorSetLayout *> setLayouts = {
-		device->Create(DescriptorSetLayoutCreateInfo{cubemapComputeBindings}),
 		device->Create(DescriptorSetLayoutCreateInfo{texBindings}),
 	};
 	//create pipeline layout
-	PipelineLayout *pipelineLayoutGenerateCubemap = device->Create(PipelineLayoutCreateInfo{{setLayouts[0]}});
-	cubemapPipelineLayout = device->Create(PipelineLayoutCreateInfo{{defaultDescriptorSetLayouts[0], setLayouts[1]}});
+	cubemapPipelineLayout = device->Create(PipelineLayoutCreateInfo{{defaultDescriptorSetLayouts[0], setLayouts[0]}});
 
 	//setup descriptor pool
 	std::vector<DescriptorPoolSize> poolSizes{
-		{cubemapComputeBindings[0].descriptorType, cubemapComputeBindings[0].descriptorCount},
-		{cubemapComputeBindings[1].descriptorType, cubemapComputeBindings[1].descriptorCount},
 		{texBindings[0].descriptorType, texBindings[0].descriptorCount},
 	};
 	DescriptorPoolCreateInfo descriptorPoolCreateInfo{
-		2u,
+		1u,
 		poolSizes};
 	DescriptorPool *descriptorPool = device->Create(descriptorPoolCreateInfo);
 
-	//allocate compute descriptor set
-	DescriptorSetAllocateInfo allocInfo{{setLayouts[0]}};
-	std::vector<DescriptorSet *> compDescriptorSets;
-	descriptorPool->Allocate(allocInfo, compDescriptorSets);
-
 	//allocate cubmap descriptor sets
-	allocInfo = {{setLayouts[1]}};
+	DescriptorSetAllocateInfo allocInfo = {{setLayouts[0]}};
 	descriptorPool->Allocate(allocInfo, cubemapDescriptorSets);
 
 	//===================================================
@@ -868,7 +854,7 @@ void AppBase::prepareCubemap()
 		.format = ShitFormat::RGBA8_UNORM,
 		.subresourceRange = {0, 1, 0, 1},
 	};
-	cubmapImageView2D = device->Create(imageViewCreateInfo);
+	cubemapImageView2D = device->Create(imageViewCreateInfo);
 
 	//cubmap
 	imageCreateInfo.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT;
@@ -887,24 +873,6 @@ void AppBase::prepareCubemap()
 	std::vector<WriteDescriptorSet> writes;
 	writes.emplace_back(
 		WriteDescriptorSet{
-			compDescriptorSets[0],
-			0,
-			0,
-			DescriptorType::COMBINED_IMAGE_SAMPLER,
-			std::vector<DescriptorImageInfo>{{linearSampler,
-											  cubmapImageView2D,
-											  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
-	writes.emplace_back(
-		WriteDescriptorSet{
-			compDescriptorSets[0],
-			1,
-			0,
-			DescriptorType::STORAGE_IMAGE,
-			std::vector<DescriptorImageInfo>{{nullptr,
-											  cubemapImageView,
-											  ImageLayout::GENERAL}}});
-	writes.emplace_back(
-		WriteDescriptorSet{
 			cubemapDescriptorSets[0],
 			0,
 			0,
@@ -915,39 +883,8 @@ void AppBase::prepareCubemap()
 	device->UpdateDescriptorSets(writes, {});
 	//=======================================================
 	//equirectangular2cube shader
-	std::string compShaderPath = buildShaderPath(compShaderNameGenerateCubemap, rendererVersion);
-	Shader *compShaderGenerateCubemap = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
-
-	//generate cubemap pipeline
-	std::vector<uint32_t> constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
-	std::vector<uint32_t> constantValues = {CUBEMAP_WIDTH};
-
-	Pipeline *pipelineGenerateCubemap = device->Create(ComputePipelineCreateInfo{
-		PipelineShaderStageCreateInfo{
-			PipelineShaderStageCreateInfo{
-				ShaderStageFlagBits::COMPUTE_BIT,
-				compShaderGenerateCubemap,
-				"main",
-				{constantIDs,
-				 constantValues}},
-		},
-		pipelineLayoutGenerateCubemap});
-
-	//commandbuffer
-	device->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
-		cmdBuffer->BindPipeline(BindPipelineInfo{
-			PipelineBindPoint::COMPUTE,
-			pipelineGenerateCubemap});
-		cmdBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
-			PipelineBindPoint::COMPUTE,
-			pipelineLayoutGenerateCubemap,
-			0,
-			1,
-			&compDescriptorSets[0],
-		});
-		cmdBuffer->Dispatch({CUBEMAP_WIDTH, 6, 1});
-	});
-//	takeScreenshot(device, cubemapImage);
+	convert2DToCubemap(device, cubemapImageView2D, cubemapImageView, CUBEMAP_WIDTH);
+	//	takeScreenshot(device, cubemapImage);
 	//=========================================================
 	//create shaders
 

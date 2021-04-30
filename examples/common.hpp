@@ -123,8 +123,8 @@ PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device
 /**
  * @brief 
  * 
- * @param pImageView2D  layout must be shader read only
- * @param pImageViewCube  layout must be General
+ * @param pImageView2D  
+ * @param pImageViewCube 
  * @param width cubemap width
  */
 void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube, uint32_t width);

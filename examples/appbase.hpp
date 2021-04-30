@@ -196,7 +196,7 @@ protected:
 
 	//cubemap
 	Image *cubmapImage2D;
-	ImageView *cubmapImageView2D;
+	ImageView *cubemapImageView2D;
 
 	Image *cubemapImage;
 	ImageView *cubemapImageView;
