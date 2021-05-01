@@ -206,6 +206,7 @@ newexample(10-tessllation)
 newexample(11-compute-filter)
 newexample(12-compute-edgedetection)
 newexample(13-cubemap)
+newexample(14-irradiance)
 endif()
 
 

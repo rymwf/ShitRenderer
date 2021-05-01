@@ -15,11 +15,11 @@
 static const char *axisVertShaderName = "axis.vert.spv";
 static const char *axisFragShaderName = "axis.frag.spv";
 
-static const char *compShaderNameGenerateCubemap = "equirectangular2cube.comp.spv";
 static const char *cubemapVertShaderName = "cubemap.vert.spv";
 static const char *cubemapFragShaderName = "cubemap.frag.spv";
 
-static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
+//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
+static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
 
 static glm::vec3 ambientColor = glm::vec3(0.0);
 
@@ -548,19 +548,19 @@ void AppBase::prepareBackground()
 		backgroundSecondaryCommandBuffers[i]->BindDescriptorSets(
 			BindDescriptorSetsInfo{
 				PipelineBindPoint::GRAPHICS,
-				cubemapPipelineLayout,
+				skyboxPipelineLayout,
 				DESCRIPTORSET_ID_FRAME,
 				1,
 				&defaultDescriptorSetsUboFrame[i]});
 		backgroundSecondaryCommandBuffers[i]->BindDescriptorSets(
 			BindDescriptorSetsInfo{
 				PipelineBindPoint::GRAPHICS,
-				cubemapPipelineLayout,
+				skyboxPipelineLayout,
 				1,
 				1,
 				&cubemapDescriptorSets[0]});
-		backgroundSecondaryCommandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, cubemapPipeline});
-		backgroundSecondaryCommandBuffers[i]->DrawIndirect({cubemapIndirectDrawCmdBuffer,
+		backgroundSecondaryCommandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, skyboxPipeline});
+		backgroundSecondaryCommandBuffers[i]->DrawIndirect({skyboxIndirectDrawCmdBuffer,
 															0,
 															1,
 															sizeof(DrawIndirectCommand)});
@@ -807,7 +807,7 @@ void AppBase::prepareCubemap()
 		device->Create(DescriptorSetLayoutCreateInfo{texBindings}),
 	};
 	//create pipeline layout
-	cubemapPipelineLayout = device->Create(PipelineLayoutCreateInfo{{defaultDescriptorSetLayouts[0], setLayouts[0]}});
+	skyboxPipelineLayout = device->Create(PipelineLayoutCreateInfo{{defaultDescriptorSetLayouts[0], setLayouts[0]}});
 
 	//setup descriptor pool
 	std::vector<DescriptorPoolSize> poolSizes{
@@ -844,17 +844,17 @@ void AppBase::prepareCubemap()
 		.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
 		.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 	};
-	cubmapImage2D = device->Create(imageCreateInfo, pixels);
-	//cubmapImage2D->GenerateMipmaps(Filter::LINEAR);
+	skyboxImage2D = device->Create(imageCreateInfo, pixels);
+	//skyboxImage2D->GenerateMipmaps(Filter::LINEAR);
 	freeImage(pixels);
 
 	ImageViewCreateInfo imageViewCreateInfo{
-		.pImage = cubmapImage2D,
+		.pImage = skyboxImage2D,
 		.viewType = ImageViewType::TYPE_2D,
 		.format = ShitFormat::RGBA8_UNORM,
 		.subresourceRange = {0, 1, 0, 1},
 	};
-	cubemapImageView2D = device->Create(imageViewCreateInfo);
+	skyboxImageView2D = device->Create(imageViewCreateInfo);
 
 	//cubmap
 	imageCreateInfo.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT;
@@ -862,12 +862,12 @@ void AppBase::prepareCubemap()
 	imageCreateInfo.arrayLayers = 6;
 	imageCreateInfo.extent = {CUBEMAP_WIDTH, CUBEMAP_WIDTH, 1};
 	imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
-	cubemapImage = device->Create(imageCreateInfo, nullptr);
+	skyboxImageCube = device->Create(imageCreateInfo, nullptr);
 
-	imageViewCreateInfo.pImage = cubemapImage;
+	imageViewCreateInfo.pImage = skyboxImageCube;
 	imageViewCreateInfo.viewType = ImageViewType::TYPE_CUBE;
 	imageViewCreateInfo.subresourceRange.layerCount = 6;
-	cubemapImageView = device->Create(imageViewCreateInfo);
+	skyboxImageViewCube = device->Create(imageViewCreateInfo);
 
 	//update descriptor set
 	std::vector<WriteDescriptorSet> writes;
@@ -878,13 +878,13 @@ void AppBase::prepareCubemap()
 			0,
 			DescriptorType::COMBINED_IMAGE_SAMPLER,
 			std::vector<DescriptorImageInfo>{{linearSampler,
-											  cubemapImageView,
+											  skyboxImageViewCube,
 											  ImageLayout::GENERAL}}});
 	device->UpdateDescriptorSets(writes, {});
 	//=======================================================
 	//equirectangular2cube shader
-	convert2DToCubemap(device, cubemapImageView2D, cubemapImageView, CUBEMAP_WIDTH);
-	//	takeScreenshot(device, cubemapImage);
+	convert2DToCubemap(device, skyboxImageView2D, skyboxImageViewCube);
+	//	takeScreenshot(device, skyboxImageCube);
 	//=========================================================
 	//create shaders
 
@@ -951,7 +951,7 @@ void AppBase::prepareCubemap()
 	};
 
 	VertexInputStateCreateInfo vertexInputStateCreateInfo{};
-	cubemapPipeline = device->Create(GraphicsPipelineCreateInfo{
+	skyboxPipeline = device->Create(GraphicsPipelineCreateInfo{
 		cubemapShaderStageCreateInfos,
 		{},
 		PipelineInputAssemblyStateCreateInfo{PrimitiveTopology::TRIANGLE_LIST},
@@ -962,12 +962,12 @@ void AppBase::prepareCubemap()
 		depthStencilState,
 		colorBlendState,
 		{},
-		cubemapPipelineLayout,
+		skyboxPipelineLayout,
 		renderPass,
 		0});
 	//create draw command buffer
 	std::vector<DrawIndirectCommand> drawIndirectCmds{{36, 1, 0, 0}};
-	cubemapIndirectDrawCmdBuffer = device->Create(
+	skyboxIndirectDrawCmdBuffer = device->Create(
 		BufferCreateInfo{
 			{},
 			sizeof(DrawIndirectCommand) * drawIndirectCmds.size(),

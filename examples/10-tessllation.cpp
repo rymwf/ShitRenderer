@@ -956,7 +956,7 @@ public:
 		auto trans = glm::dvec3(modelCenter.x, a.y, modelCenter.z) * scaleFactor;
 		//auto trans = glm::dvec3(0, 0, 0);
 		intanceAttribute.matrix = glm::translate(glm::scale(glm::translate(glm::dmat4(1), trans), glm::dvec3(scaleFactor)), -modelCenter);
-		pModel->CreateImageInstanceAttributeBuffers(device, {intanceAttribute}, true);
+		pModel->AssignInstances(device,{intanceAttribute});
 
 		camera.center = trans;
 		camera.eye.x = camera.center.x;

@@ -386,8 +386,9 @@ void parseArgument(int ac, char **av)
 	}
 }
 
-void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube, uint32_t width)
+void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube)
 {
+	auto cubemapWidth = pImageViewCube->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->extent.width;
 	//==
 	//create sampler
 	Sampler *linearSampler = pDevice->Create(SamplerCreateInfo{
@@ -411,14 +412,8 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 		DescriptorSetLayoutBinding{1, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
 	};
 	//cubemap rendering descriptors
-	//descriptor sets
-	std::vector<DescriptorSetLayoutBinding> texBindings{
-		DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //
-	};
-
 	std::vector<DescriptorSetLayout *> setLayouts = {
 		pDevice->Create(DescriptorSetLayoutCreateInfo{cubemapComputeBindings}),
-		pDevice->Create(DescriptorSetLayoutCreateInfo{texBindings}),
 	};
 	//create pipeline layout
 	PipelineLayout *pipelineLayoutGenerateCubemap = pDevice->Create(PipelineLayoutCreateInfo{{setLayouts[0]}});
@@ -427,10 +422,9 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 	std::vector<DescriptorPoolSize> poolSizes{
 		{cubemapComputeBindings[0].descriptorType, cubemapComputeBindings[0].descriptorCount},
 		{cubemapComputeBindings[1].descriptorType, cubemapComputeBindings[1].descriptorCount},
-		{texBindings[0].descriptorType, texBindings[0].descriptorCount},
 	};
 	DescriptorPoolCreateInfo descriptorPoolCreateInfo{
-		2u,
+		1u,
 		poolSizes};
 	DescriptorPool *descriptorPool = pDevice->Create(descriptorPoolCreateInfo);
 
@@ -469,7 +463,7 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 
 	//generate cubemap pipeline
 	std::vector<uint32_t> constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
-	std::vector<uint32_t> constantValues = {width};
+	std::vector<uint32_t> constantValues = {cubemapWidth};
 
 	Pipeline *pipelineGenerateCubemap = pDevice->Create(ComputePipelineCreateInfo{
 		PipelineShaderStageCreateInfo{
@@ -487,7 +481,7 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 		//store image layout
 		ImageLayout srcImageLayout = pImageView2D->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->initialLayout;
 		ImageLayout dstImageLayout = pImageViewCube->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->initialLayout;
-		bool srcImageLayoutNeedChange = srcImageLayout == ImageLayout::SHADER_READ_ONLY_OPTIMAL ? false : true;
+		bool srcImageLayoutNeedChange = (srcImageLayout == ImageLayout::SHADER_READ_ONLY_OPTIMAL) || (srcImageLayout == ImageLayout::GENERAL) ? false : true;
 		bool dstImageLayoutNeedChange = dstImageLayout == ImageLayout::GENERAL ? false : true;
 		ImageMemoryBarrier imageBarrier0{
 			AccessFlagBits::MEMORY_READ_BIT,
@@ -537,7 +531,7 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 			1,
 			&compDescriptorSets[0],
 		});
-		cmdBuffer->Dispatch({width, 6, 1});
+		cmdBuffer->Dispatch({cubemapWidth, 6, 1});
 
 		//restore image layout
 		if (srcImageLayoutNeedChange)
@@ -579,7 +573,199 @@ void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pIm
 				&imageBarrier0});
 		}
 	});
-	//takeScreenshot(device, cubemapImage);
 
 	pDevice->Destroy(linearSampler);
+	pDevice->Destroy(pipelineLayoutGenerateCubemap);
+	pDevice->Destroy(descriptorPool);
+	pDevice->Destroy(compShaderGenerateCubemap);
+}
+void generateIrradianceMap(Device *pDevice, ImageView *pSrcImageViewCube, ImageView *pDstImageViewCube)
+{
+	auto dstImageWidth = pDstImageViewCube->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->extent.width;
+	//==
+	//create sampler
+	Sampler *linearSampler = pDevice->Create(SamplerCreateInfo{
+		Filter::LINEAR,
+		Filter::LINEAR,
+		SamplerMipmapMode::LINEAR,
+		SamplerWrapMode::CLAMP_TO_EDGE,
+		SamplerWrapMode::CLAMP_TO_EDGE,
+		SamplerWrapMode::CLAMP_TO_EDGE,
+		0,
+		false,
+		false,
+		{},
+		0.f,
+		30.f,
+	});
+	//===============================================
+	//descriptor sets
+	std::vector<DescriptorSetLayoutBinding> cubemapComputeBindings{
+		DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::COMPUTE_BIT},
+		DescriptorSetLayoutBinding{1, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
+	};
+	std::vector<DescriptorSetLayout *> setLayouts = {
+		pDevice->Create(DescriptorSetLayoutCreateInfo{cubemapComputeBindings}),
+	};
+	//create pipeline layout
+	PipelineLayout *pipelineLayoutGenerateCubemap = pDevice->Create(PipelineLayoutCreateInfo{{setLayouts[0]}});
+
+	//setup descriptor pool
+	std::vector<DescriptorPoolSize> poolSizes{
+		{cubemapComputeBindings[0].descriptorType, cubemapComputeBindings[0].descriptorCount},
+		{cubemapComputeBindings[1].descriptorType, cubemapComputeBindings[1].descriptorCount},
+	};
+	DescriptorPoolCreateInfo descriptorPoolCreateInfo{
+		1u,
+		poolSizes};
+	DescriptorPool *descriptorPool = pDevice->Create(descriptorPoolCreateInfo);
+
+	//allocate compute descriptor set
+	DescriptorSetAllocateInfo allocInfo{{setLayouts[0]}};
+	std::vector<DescriptorSet *> compDescriptorSets;
+	descriptorPool->Allocate(allocInfo, compDescriptorSets);
+
+	//update descriptor set
+	std::vector<WriteDescriptorSet> writes;
+	writes.emplace_back(
+		WriteDescriptorSet{
+			compDescriptorSets[0],
+			0,
+			0,
+			DescriptorType::COMBINED_IMAGE_SAMPLER,
+			std::vector<DescriptorImageInfo>{{linearSampler,
+											  pSrcImageViewCube,
+											  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
+	writes.emplace_back(
+		WriteDescriptorSet{
+			compDescriptorSets[0],
+			1,
+			0,
+			DescriptorType::STORAGE_IMAGE,
+			std::vector<DescriptorImageInfo>{{nullptr,
+											  pDstImageViewCube,
+											  ImageLayout::GENERAL}}});
+	pDevice->UpdateDescriptorSets(writes, {});
+	//=============================
+	//shader
+	const char *compShaderNameGenerateCubemap = "irradiance.comp.spv";
+	std::string compShaderPath = buildShaderPath(compShaderNameGenerateCubemap, rendererVersion);
+	Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+
+	//generate cubemap pipeline
+	std::vector<uint32_t> constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
+	std::vector<uint32_t> constantValues = {dstImageWidth};
+
+	Pipeline *pipelineGenerateCubemap = pDevice->Create(ComputePipelineCreateInfo{
+		PipelineShaderStageCreateInfo{
+			PipelineShaderStageCreateInfo{
+				ShaderStageFlagBits::COMPUTE_BIT,
+				compShaderGenerateCubemap,
+				"main",
+				{constantIDs,
+				 constantValues}},
+		},
+		pipelineLayoutGenerateCubemap});
+
+	//commandbuffer
+	pDevice->ExecuteOneTimeCommands([&](CommandBuffer *cmdBuffer) {
+		//store image layout
+		ImageLayout srcImageLayout = pSrcImageViewCube->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->initialLayout;
+		ImageLayout dstImageLayout = pSrcImageViewCube->GetCreateInfoPtr()->pImage->GetCreateInfoPtr()->initialLayout;
+		bool srcImageLayoutNeedChange = (srcImageLayout == ImageLayout::SHADER_READ_ONLY_OPTIMAL) || (srcImageLayout == ImageLayout::GENERAL) ? false : true;
+		bool dstImageLayoutNeedChange = dstImageLayout == ImageLayout::GENERAL ? false : true;
+		ImageMemoryBarrier imageBarrier0{
+			AccessFlagBits::MEMORY_READ_BIT,
+			AccessFlagBits::SHADER_READ_BIT,
+			srcImageLayout,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			pSrcImageViewCube->GetCreateInfoPtr()->pImage,
+			ImageSubresourceRange{0, 1, 0, 1}};
+		if (srcImageLayoutNeedChange)
+		{
+			//change image layout to shader read only
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
+		if (dstImageLayoutNeedChange)
+		{
+			imageBarrier0.oldImageLayout = dstImageLayout;
+			imageBarrier0.newImageLayout = ImageLayout::GENERAL;
+			imageBarrier0.pImage = pDstImageViewCube->GetCreateInfoPtr()->pImage;
+			//change image layout to general
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
+		cmdBuffer->BindPipeline(BindPipelineInfo{
+			PipelineBindPoint::COMPUTE,
+			pipelineGenerateCubemap});
+		cmdBuffer->BindDescriptorSets(BindDescriptorSetsInfo{
+			PipelineBindPoint::COMPUTE,
+			pipelineLayoutGenerateCubemap,
+			0,
+			1,
+			&compDescriptorSets[0],
+		});
+		cmdBuffer->Dispatch({dstImageWidth, 6, 1});
+
+		//restore image layout
+		if (srcImageLayoutNeedChange)
+		{
+			imageBarrier0.srcAccessMask = AccessFlagBits::SHADER_WRITE_BIT;
+			imageBarrier0.dstAccessMask = AccessFlagBits::SHADER_READ_BIT;
+			imageBarrier0.oldImageLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL;
+			imageBarrier0.newImageLayout = srcImageLayout;
+			imageBarrier0.pImage = pSrcImageViewCube->GetCreateInfoPtr()->pImage;
+			//change image layout to general
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
+		if (dstImageLayoutNeedChange)
+		{
+			imageBarrier0.srcAccessMask = AccessFlagBits::SHADER_WRITE_BIT;
+			imageBarrier0.dstAccessMask = AccessFlagBits::SHADER_READ_BIT;
+			imageBarrier0.oldImageLayout = ImageLayout::GENERAL;
+			imageBarrier0.newImageLayout = dstImageLayout;
+			imageBarrier0.pImage = pDstImageViewCube->GetCreateInfoPtr()->pImage;
+			//change image layout to general
+			cmdBuffer->PipeplineBarrier(PipelineBarrierInfo{
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+				{},
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&imageBarrier0});
+		}
+	});
+	pDevice->Destroy(linearSampler);
+	pDevice->Destroy(pipelineLayoutGenerateCubemap);
+	pDevice->Destroy(descriptorPool);
+	pDevice->Destroy(compShaderGenerateCubemap);
 }

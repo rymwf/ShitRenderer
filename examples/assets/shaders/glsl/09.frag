@@ -162,7 +162,7 @@ void main()
 
 	vec3 f_light=max(f_diff*(1-metallic)+f_spec+f_miss,0.);
 
-	vec3 Lo_brdf=PI*lightIntensity*NdotL*f_light+emissiveColor;
+	vec3 Lo_brdf=PI*lightIntensity*NdotL*f_light+emissiveColor+ambientColor*albedo;
 	outColor=vec4(Lo_brdf,texColor.a*uboMaterial.baseColorFactor.a);
 //	outColor=vec4(vec3(f_light),1);
 //outColor=fs_in.colorFactor;

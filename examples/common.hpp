@@ -127,7 +127,9 @@ PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device
  * @param pImageViewCube 
  * @param width cubemap width
  */
-void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube, uint32_t width);
+void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube);
+
+void generateIrradianceMap(Device *pDevice, ImageView *pSrcImageViewCube, ImageView *pDstImageViewCube);
 
 void parseArgument(int ac, char **av);
 

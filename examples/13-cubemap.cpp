@@ -87,7 +87,7 @@ public:
 			 DescriptorType::COMBINED_IMAGE_SAMPLER,
 			 std::vector<DescriptorImageInfo>{
 				 {linearSampler,
-				  cubemapImageView,
+				  skyboxImageViewCube,
 				  ImageLayout::GENERAL}}}};
 		device->UpdateDescriptorSets(writes, {});
 	}

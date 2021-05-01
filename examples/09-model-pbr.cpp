@@ -11,7 +11,7 @@ constexpr SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 int animationIndex = 0;
-static glm::vec3 ambientColor = glm::vec3(0.0);
+static glm::vec3 ambientColor = glm::vec3(0.1);
 
 static const char *vertShaderName = "09.vert.spv";
 static const char *fragShaderName = "09.frag.spv";
@@ -23,12 +23,12 @@ static const char *axisFragShaderName = "axis.frag.spv";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/SimpleSkin/glTF/SimpleSkin.gltf";
 
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheresNoTextures/glTF/MetalRoughSpheresNoTextures.gltf";
-//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
+const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/AlphaBlendModeTest/glTF/AlphaBlendModeTest.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/OrientationTest/glTF/OrientationTest.gltf";
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
+//const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Fox/glTF/Fox.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/BrainStem/glTF/BrainStem.gltf";
 
 struct Light

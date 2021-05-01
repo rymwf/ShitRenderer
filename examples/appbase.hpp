@@ -194,16 +194,16 @@ protected:
 
 	std::vector<Buffer *> uboFrameBuffers;
 
-	//cubemap
-	Image *cubmapImage2D;
-	ImageView *cubemapImageView2D;
+	//skybox
+	Image *skyboxImage2D;
+	ImageView *skyboxImageView2D;
 
-	Image *cubemapImage;
-	ImageView *cubemapImageView;
+	Image *skyboxImageCube;
+	ImageView *skyboxImageViewCube;
 
-	PipelineLayout *cubemapPipelineLayout;
-	Pipeline *cubemapPipeline;
-	Buffer *cubemapIndirectDrawCmdBuffer;
+	PipelineLayout *skyboxPipelineLayout;
+	Pipeline *skyboxPipeline;
+	Buffer *skyboxIndirectDrawCmdBuffer;
 
 	//sample
 	Sampler *linearSampler;
