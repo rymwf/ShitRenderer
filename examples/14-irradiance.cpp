@@ -23,6 +23,9 @@ class HelloApp : public AppBase
 	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
 
+	Image *irradianceImageCube;
+	ImageView *irradianceImageViewCube;
+
 public:
 	HelloApp(uint32_t width, uint32_t height) : AppBase(width, height) {}
 
@@ -244,6 +247,8 @@ public:
 	}
 	void prepare() override
 	{
+		createIrradianceMap();
+
 		commandPool = device->Create(CommandPoolCreateInfo{
 			{},
 			graphicsQueueFamilyIndex->index});
@@ -294,6 +299,47 @@ public:
 			auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(curTime - animationStartTime).count();
 			testModel->UpdateAnimation(animationIndex, elapsedTime, imageIndex);
 		}
+	}
+	void createIrradianceMap()
+	{
+		ImageCreateInfo imageCreateInfo{
+			.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
+			.imageType = ImageType::TYPE_2D,
+			.format = ShitFormat::RGBA8_UNORM, //TODO: check if format support storage image
+			.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
+			.mipLevels = 0,
+			.arrayLayers = 6,
+			.samples = SampleCountFlagBits::BIT_1,
+			.tiling = ImageTiling::OPTIMAL,
+			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
+			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+		};
+
+		irradianceImageCube = device->Create(imageCreateInfo, nullptr);
+
+		ImageViewCreateInfo imageViewCreateInfo{
+			irradianceImageCube,
+			ImageViewType::TYPE_CUBE,
+			ShitFormat::RGBA8_UNORM,
+			{},
+			{0, 1, 0, 6},
+		};
+
+		irradianceImageViewCube = device->Create(imageViewCreateInfo);
+		generateIrradianceMap(
+			device,
+			skyboxImageViewCube,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			irradianceImageViewCube,
+			ImageLayout::UNDEFINED,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+		device->Destroy(irradianceImageViewCube);
+
+		irradianceImageCube->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+		imageViewCreateInfo.subresourceRange.levelCount = irradianceImageCube->GetCreateInfoPtr()->mipLevels;
+		irradianceImageViewCube = device->Create(imageViewCreateInfo);
 	}
 };
 

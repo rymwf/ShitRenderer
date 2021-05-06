@@ -528,8 +528,6 @@ void AppBase::createDefaultCommandPool()
 void AppBase::prepareBackground()
 {
 	prepareSkybox();
-	createIrradianceMap();
-	createPrefilteredEnvMap();
 
 	prepareAxis();
 
@@ -1024,69 +1022,4 @@ void AppBase::removeSecondaryCommandBuffer(uint32_t imageIndex, const CommandBuf
 		[pCommandBuffer](auto e) {
 			return e == pCommandBuffer;
 		}));
-}
-void AppBase::createIrradianceMap()
-{
-	ImageCreateInfo imageCreateInfo{
-		.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
-		.imageType = ImageType::TYPE_2D,
-		.format = ShitFormat::RGBA8_UNORM, //TODO: check if format support storage image
-		.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
-		.mipLevels = 0,
-		.arrayLayers = 6,
-		.samples = SampleCountFlagBits::BIT_1,
-		.tiling = ImageTiling::OPTIMAL,
-		.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
-		.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-	};
-
-	irradianceImageCube = device->Create(imageCreateInfo, nullptr);
-
-	ImageViewCreateInfo imageViewCreateInfo{
-		irradianceImageCube,
-		ImageViewType::TYPE_CUBE,
-		ShitFormat::RGBA8_UNORM,
-		{},
-		{0, 1, 0, 6},
-	};
-
-	irradianceImageViewCube = device->Create(imageViewCreateInfo);
-	generateIrradianceMap(
-		device,
-		skyboxImageViewCube,
-		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-		irradianceImageViewCube,
-		ImageLayout::UNDEFINED,
-		ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-	device->Destroy(irradianceImageViewCube);
-
-	irradianceImageCube->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-
-	imageViewCreateInfo.subresourceRange.levelCount = irradianceImageCube->GetCreateInfoPtr()->mipLevels;
-	irradianceImageViewCube = device->Create(imageViewCreateInfo);
-}
-void AppBase::createPrefilteredEnvMap()
-{
-	ImageCreateInfo imageCreateInfo = *skyboxImageCube->GetCreateInfoPtr();
-	imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
-	imageCreateInfo.initialLayout = ImageLayout::UNDEFINED;
-
-	prefilteredEnvMap = device->Create(imageCreateInfo, nullptr);
-
-	prefilteredEnvMapView = device->Create(ImageViewCreateInfo{
-		prefilteredEnvMap,
-		ImageViewType::TYPE_CUBE,
-		ShitFormat::RGBA8_UNORM,
-		{},
-		{0, prefilteredEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
-	});
-	generatePrefilteredEnvMap(
-		device,
-		skyboxImageCube,
-		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-		prefilteredEnvMap,
-		ImageLayout::UNDEFINED,
-		ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 }

@@ -22,6 +22,9 @@ class HelloApp : public AppBase
 	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
 
+	Image *prefilteredEnvMap;
+	ImageView *prefilteredEnvMapView;
+
 public:
 	HelloApp(uint32_t width, uint32_t height) : AppBase(width, height) {}
 
@@ -239,6 +242,8 @@ public:
 	}
 	void prepare() override
 	{
+		createPrefilteredEnvMap();
+
 		commandPool = device->Create(CommandPoolCreateInfo{
 			{},
 			graphicsQueueFamilyIndex->index});
@@ -292,6 +297,30 @@ public:
 			auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(curTime - animationStartTime).count();
 			testModel->UpdateAnimation(animationIndex, elapsedTime, imageIndex);
 		}
+	}
+	void createPrefilteredEnvMap()
+	{
+		ImageCreateInfo imageCreateInfo = *skyboxImageCube->GetCreateInfoPtr();
+		imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
+		imageCreateInfo.initialLayout = ImageLayout::UNDEFINED;
+
+		prefilteredEnvMap = device->Create(imageCreateInfo, nullptr);
+
+		prefilteredEnvMapView = device->Create(ImageViewCreateInfo{
+			prefilteredEnvMap,
+			ImageViewType::TYPE_CUBE,
+			ShitFormat::RGBA8_UNORM,
+			{},
+			{0, prefilteredEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
+		});
+		generatePrefilteredEnvMap(
+			device,
+			skyboxImageCube,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			prefilteredEnvMap,
+			ImageLayout::UNDEFINED,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 	}
 };
 

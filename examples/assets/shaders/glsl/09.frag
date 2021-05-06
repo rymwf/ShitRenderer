@@ -46,9 +46,9 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 	vec3 ambientColor;
 };
 
-mat3 TBN(vec3 N)
+mat3 surfaceTBN(vec3 N)
 {
-	vec3 up=vec3(0,1,0);
+	vec3 up=abs(N.z)>0.999?vec3(1,0,0):vec3(0,0,1);
 	vec3 T=cross(up,N);
 	vec3 B=cross(N,T);
 	return mat3(T,B,N);
@@ -130,7 +130,7 @@ void main()
 
 //	vec3 L=normalize(light.pos-fs_in.pos);
 	vec3 L=normalize(-light.direction);
-	vec3 N=normalize(TBN(fs_in.normal)*((texture(texNormal,fs_in.texCoord).rgb*2-1)*vec3(uboMaterial.normalScale,uboMaterial.normalScale,1.)));
+	vec3 N=normalize(surfaceTBN(fs_in.normal)*((texture(texNormal,fs_in.texCoord).rgb*2-1)*vec3(uboMaterial.normalScale,uboMaterial.normalScale,1.)));
 	//vec3 N=fs_in.normal;
 	vec3 V=normalize(eyePosition-fs_in.pos);
 	vec3 R=reflect(-V,N);

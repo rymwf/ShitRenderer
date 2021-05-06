@@ -30,7 +30,7 @@ vs_out;
 
 layout(binding=12 SET(0)) uniform UBOFrame{
 	mat4 PV;
-	vec3 eyePos;
+	vec3 eyePosition;
 };
 layout(binding=13 SET(1)) uniform UBONode{
 	mat4 M;

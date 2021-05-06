@@ -206,12 +206,6 @@ protected:
 	Image *skyboxImageCube;
 	ImageView *skyboxImageViewCube;
 
-	Image* irradianceImageCube;
-	ImageView* irradianceImageViewCube;
-
-	Image* prefilteredEnvMap;
-	ImageView* prefilteredEnvMapView;
-
 	PipelineLayout *skyboxPipelineLayout;
 	Pipeline *skyboxPipeline;
 	Buffer *skyboxIndirectDrawCmdBuffer;
@@ -247,8 +241,6 @@ protected:
 	void prepareBackground();
 	void prepareAxis();
 	void prepareSkybox();
-	void createIrradianceMap();
-	void createPrefilteredEnvMap();
 
 	void createDefaultCommandPool();
 	void createDefaultCommandBuffers();
