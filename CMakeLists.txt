@@ -207,6 +207,8 @@ newexample(11-compute-filter)
 newexample(12-compute-edgedetection)
 newexample(13-cubemap)
 newexample(14-irradiance)
+newexample(15-irradianceSH)
+newexample(16-prefilteredEnv)
 endif()
 
 

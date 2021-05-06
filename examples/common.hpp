@@ -112,8 +112,9 @@ float intToFloat(T value)
 	return (std::max)(float(value) / std::numeric_limits<T>::max(), -1.f);
 }
 
-void takeScreenshot(Device *pDevice, Image *pImage);
-void saveImage(const char *dstPath, Device *pDevice, Image *pImage);
+//image layout cannot be undefined or preinitialized
+void takeScreenshot(Device *pDevice, Image *pImage, ImageLayout imageLayout);
+void saveImage(const char *dstPath, Device *pDevice, Image *pImage, ImageLayout imageLayout);
 
 std::string readFile(const char *filename);
 std::string buildShaderPath(const char *shaderName, RendererVersion renderVersion);
@@ -121,15 +122,52 @@ WindowPixelFormat chooseSwapchainFormat(const std::vector<WindowPixelFormat> &ca
 PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device *pDevice, ShitWindow *window);
 
 /**
+ * @brief image will cast to shader read only
+ * 
+ * @param pImageView2D  layout must be shader read only
+ * @param pImageViewCube layout must be undefined and will cast to shader read only
+ * @param width 
+ */
+void convert2DToCubemap(
+	Device *pDevice,
+	ImageView *pSrcImageView2D,
+	ImageLayout srcInitialLayout,
+	ImageLayout srcFinalLayout,
+	ImageView *pDstImageViewCube,
+	ImageLayout dstInitialLayout,
+	ImageLayout dstFinalLayout);
+
+/**
  * @brief 
  * 
- * @param pImageView2D  
- * @param pImageViewCube 
- * @param width cubemap width
+ * @param pDevice 
+ * @param pSrcImageViewCube  layout must be shader read only
+ * @param pDstImageViewCube  layout must be undefined and will cast to shader read only
  */
-void convert2DToCubemap(Device *pDevice, ImageView *pImageView2D, ImageView *pImageViewCube);
+void generateIrradianceMap(
+	Device *pDevice,
+	ImageView *pSrcImageViewCube,
+	ImageLayout srcInitialLayout,
+	ImageLayout srcFinalLayout,
+	ImageView *pDstImageViewCube,
+	ImageLayout dstInitialLayout,
+	ImageLayout dstFinalLayout);
 
-void generateIrradianceMap(Device *pDevice, ImageView *pSrcImageViewCube, ImageView *pDstImageViewCube);
+/**
+ * @brief 
+ * 
+ * @param pDevice 
+ * @param pSrcImageCube  layout must be shader read only
+ * @param pDstImageCube layout must be undefined and will cast to shader read only
+ */
+void generatePrefilteredEnvMap(
+	Device *pDevice,
+	Image *pSrcImageCube,
+	ImageLayout srcInitialLayout,
+	ImageLayout srcFinalLayout,
+	Image *pDstImageCube,
+	ImageLayout dstInitialLayout,
+	ImageLayout dstFinalLayout);
 
 void parseArgument(int ac, char **av);
 

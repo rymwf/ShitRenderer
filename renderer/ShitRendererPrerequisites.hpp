@@ -430,7 +430,7 @@ namespace Shit
 		ImageTiling tiling; //no use for opengl
 		ImageUsageFlagBits usageFlags;
 		MemoryPropertyFlagBits memoryPropertyFlags;
-		ImageLayout initialLayout;
+		ImageLayout initialLayout; //if image data is not null, layout should not be undefined
 	};
 
 	using ClearColorValue = std::variant<std::array<float, 4>, std::array<int32_t, 4>, std::array<uint32_t, 4>>;
@@ -480,6 +480,20 @@ namespace Shit
 		uint32_t mipLevel;
 		uint32_t baseArrayLayer;
 		uint32_t layerCount;
+	};
+
+	struct ImageSubresource
+	{
+		uint32_t mipLevel;
+		uint32_t arrayLayer;
+	};
+	struct SubresourceLayout
+	{
+		uint64_t offset;
+		uint64_t size;
+		uint64_t rowPitch;
+		uint64_t arrayPitch;
+		uint64_t depthPitch;
 	};
 
 	struct ImageCopy

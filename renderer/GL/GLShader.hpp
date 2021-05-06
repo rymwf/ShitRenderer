@@ -15,8 +15,6 @@ namespace Shit
 
 	class GLShader final : public Shader
 	{
-		GLuint mHandle;
-
 	public:
 		GLShader(const ShaderCreateInfo &createInfo) : Shader(createInfo)
 		{

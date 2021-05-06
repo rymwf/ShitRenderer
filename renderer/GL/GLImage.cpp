@@ -155,12 +155,12 @@ namespace Shit
 			}
 			if (pData)
 			{
-				UpdateSubData(0, {{}, mCreateInfo.extent}, pData);
+				UpdateSubData(0, {}, {}, {{}, mCreateInfo.extent}, pData);
 				mpStateManager->PopTextureUnit();
 			}
 		}
 	}
-	void GLImage::UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData)
+	void GLImage::UpdateSubData(uint32_t mipLevel, [[maybe_unused]] ImageLayout initialLayout, [[maybe_unused]] ImageLayout finalLayout, const Rect3D &rect, const void *pData)
 	{
 		GLenum target = Map(mCreateInfo.imageType, mCreateInfo.samples);
 		mpStateManager->PushTextureUnit(0, target, mHandle);
@@ -207,18 +207,33 @@ namespace Shit
 	}
 	void GLImage::UnMapMemory()
 	{
-		UpdateSubData(0, Rect3D{{}, mCreateInfo.extent}, mTempData.data());
+		UpdateSubData(0, {}, {}, Rect3D{{}, mCreateInfo.extent}, mTempData.data());
 	}
 	void GLImage::FlushMappedMemoryRange([[maybe_unused]] uint64_t offset, [[maybe_unused]] uint64_t size)
 	{
 	}
-	void GLImage::GenerateMipmaps([[maybe_unused]] Filter filter)
+	void GLImage::GenerateMipmaps([[maybe_unused]] Filter filter, [[maybe_unused]] ImageLayout intialLayout, [[maybe_unused]] ImageLayout finalLayout)
 	{
 		//TODO: generate mipmap using different filter
 		auto target = Map(mCreateInfo.imageType, mCreateInfo.samples);
 		mpStateManager->PushTextureUnit(0, target, mHandle);
 		glGenerateMipmap(target);
 		mpStateManager->PopTextureUnit();
+	}
+	void GLImage::GetImageSubresourceLayout([[maybe_unused]] const ImageSubresource &subresouce, [[maybe_unused]] SubresourceLayout &subresourceLayout)
+	{
+		//
+		LOG("opengl GetImageSubresourceLayout not implemented yet");
+		if(mIsRenderbuffer)
+		{
+		}
+		else
+		{
+			auto target = Map(mCreateInfo.imageType, mCreateInfo.samples);
+			mpStateManager->PushTextureUnit(0, target, mHandle);
+			mpStateManager->PopTextureUnit();
+		}
+
 	}
 	//===================================================================
 
@@ -233,13 +248,14 @@ namespace Shit
 		}
 		auto target = Map(createInfo.viewType, pImage->GetCreateInfoPtr()->samples);
 		auto externalFormat = MapInternalFormat(createInfo.format);
+		auto internalFormat = MapInternalFormat(createInfo.format);
 		glGenTextures(1, &mHandle);
 		if (GLEW_VERSION_4_3)
 		{
 			glTextureView(mHandle,
 						  target,
 						  pImage->GetHandle(),
-						  externalFormat,
+						  internalFormat,
 						  createInfo.subresourceRange.baseMipLevel,
 						  createInfo.subresourceRange.levelCount,
 						  createInfo.subresourceRange.baseArrayLayer,
@@ -250,7 +266,7 @@ namespace Shit
 			glTextureViewEXT(mHandle,
 							 target,
 							 pImage->GetHandle(),
-							 externalFormat,
+							 internalFormat,
 							 createInfo.subresourceRange.baseMipLevel,
 							 createInfo.subresourceRange.levelCount,
 							 createInfo.subresourceRange.baseArrayLayer,

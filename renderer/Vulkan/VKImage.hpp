@@ -32,13 +32,15 @@ namespace Shit
 		{
 			return mHandle;
 		}
-		void UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData) override;
+		void UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData) override;
 
 		void MapMemory(uint64_t offset, uint64_t size, void **ppData) override;
 		void UnMapMemory() override;
 		void FlushMappedMemoryRange(uint64_t offset, uint64_t size) override;
 
-		void GenerateMipmaps(Filter filter) override;
+		void GenerateMipmaps(Filter filter, ImageLayout initialLayout, ImageLayout finalLayout) override;
+
+		void GetImageSubresourceLayout(const ImageSubresource &subresouce, SubresourceLayout &subresourceLayout) override;
 
 		//void TransformLayout(uint32_t baseMiplevel, uint32_t levelCount, ImageLayout dstImageLayout) override;
 	};

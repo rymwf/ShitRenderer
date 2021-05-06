@@ -770,11 +770,10 @@ public:
 			.samples = SampleCountFlagBits::BIT_1,
 			.tiling = ImageTiling::OPTIMAL,
 			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT,
-			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL};
+			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 
 		testImage = device->Create(imageCreateInfo, pixels);
-		testImage->GenerateMipmaps(Filter::LINEAR);
+		testImage->GenerateMipmaps(Filter::LINEAR, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 		ImageViewCreateInfo imageViewCreateInfo{
 			.pImage = testImage,

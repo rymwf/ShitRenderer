@@ -13,6 +13,8 @@
 
 #define PERSPECTIVE 1
 
+#define IRRADIANCE_MAP_WIDTH 64
+
 #define CREATE_APP(x)               \
 	int main(int argc, char **argv) \
 	{                               \
@@ -75,15 +77,18 @@ struct Node
 
 	void Update();
 	void AddChild(Node *pNode);
-	void EreaseChild(Node *pNode);
+	void RemoveChild(Node *pNode);
 };
 struct Camera : public Node
 {
+	Node eye;
 	FrustumDescription frustumDescription;
 	glm::mat4 frustumMatrix;
 	bool frustumUpdated;
 	void UpdateFrustum();
 	glm::mat4 GetProjectionMatrix();
+	Camera();
+	~Camera();
 };
 
 enum class LightType
@@ -201,6 +206,12 @@ protected:
 	Image *skyboxImageCube;
 	ImageView *skyboxImageViewCube;
 
+	Image* irradianceImageCube;
+	ImageView* irradianceImageViewCube;
+
+	Image* prefilteredEnvMap;
+	ImageView* prefilteredEnvMapView;
+
 	PipelineLayout *skyboxPipelineLayout;
 	Pipeline *skyboxPipeline;
 	Buffer *skyboxIndirectDrawCmdBuffer;
@@ -216,7 +227,7 @@ protected:
 	//=================
 	PipelineLayout *pipelineLayoutAxis;
 	Pipeline *pipelineAxis;
-	std::vector<DescriptorSet *> cubemapDescriptorSets;
+	std::vector<DescriptorSet *> skyboxDescriptorSets;
 	Buffer *drawIndirectCmdBufferAxis;
 
 	//==============
@@ -235,7 +246,9 @@ protected:
 
 	void prepareBackground();
 	void prepareAxis();
-	void prepareCubemap();
+	void prepareSkybox();
+	void createIrradianceMap();
+	void createPrefilteredEnvMap();
 
 	void createDefaultCommandPool();
 	void createDefaultCommandBuffers();

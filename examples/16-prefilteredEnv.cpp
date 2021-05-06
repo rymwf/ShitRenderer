@@ -2,11 +2,10 @@
 
 #define MODEL_SIZE 1.
 
-const char *vertShaderName = "13.vert.spv";
-const char *fragShaderName = "13.frag.spv";
+const char *vertShaderName = "16.vert.spv";
+const char *fragShaderName = "16.frag.spv";
 
-//static const char *testModelPath = ASSET_PATH "models/geosphere.gltf";
-static const char *testModelPath = ASSET_PATH "models/teapot.gltf";
+static const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
 
 int animationIndex = 0;
 
@@ -87,8 +86,8 @@ public:
 			 DescriptorType::COMBINED_IMAGE_SAMPLER,
 			 std::vector<DescriptorImageInfo>{
 				 {linearSampler,
-				  skyboxImageViewCube,
-				  ImageLayout::GENERAL}}}};
+				  prefilteredEnvMapView,
+				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}}};
 		device->UpdateDescriptorSets(writes, {});
 	}
 	void createPipeline()
@@ -228,16 +227,11 @@ public:
 		testModelViews[0]->translation = translation;
 		testModelViews[0]->scale = scaleFactor;
 
-		testModelViews[1]->pModel = testModel;
-		testModelViews[1]->translation = translation + glm::dvec3(3, 0, 0);
-		testModelViews[1]->scale = scaleFactor;
-
 		mainCamera->translation = translation;
 
 		rootNode->Update();
 		testModel->AssignInstances(device, {
 											   {{}, testModelViews[0]->globalMatrix},
-											   {{}, testModelViews[1]->globalMatrix},
 										   });
 
 		createPipeline();
@@ -256,8 +250,11 @@ public:
 		testModel = scene.LoadModel(testModelPath);
 		testModelViews.resize(2);
 		testModelViews[0] = scene.CreateNode<ModelView>(rootNode);
-		testModelViews[1] = scene.CreateNode<ModelView>(rootNode);
 		setScene();
+
+		//takeScreenshot(device, skyboxImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+		//takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+		//takeScreenshot(device, prefilteredEnvMap, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 	}
 	void createUniformBuffers()
 	{

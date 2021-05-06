@@ -2,8 +2,6 @@
 
 #define MODEL_SIZE 1.
 
-#define IRRADIANCE_MAP_WIDTH 64
-
 const char *vertShaderName = "14.vert.spv";
 const char *fragShaderName = "14.frag.spv";
 
@@ -24,9 +22,6 @@ class HelloApp : public AppBase
 
 	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
-
-	Image* irradianceImageCube;
-	ImageView* irradianceImageViewCube;
 
 public:
 	HelloApp(uint32_t width, uint32_t height) : AppBase(width, height) {}
@@ -93,7 +88,7 @@ public:
 			 std::vector<DescriptorImageInfo>{
 				 {linearSampler,
 				  irradianceImageViewCube,
-				  ImageLayout::GENERAL}}}};
+				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}}};
 		device->UpdateDescriptorSets(writes, {});
 	}
 	void createPipeline()
@@ -237,6 +232,7 @@ public:
 		testModelViews[1]->translation = translation + glm::dvec3(3, 0, 0);
 		testModelViews[1]->scale = scaleFactor;
 
+		mainCamera->translation = translation;
 		rootNode->Update();
 		testModel->AssignInstances(device, {
 											   {{}, testModelViews[0]->globalMatrix},
@@ -252,7 +248,6 @@ public:
 			{},
 			graphicsQueueFamilyIndex->index});
 
-		createIrradianceMap();
 		createUniformBuffers();
 		createDescriptorSets();
 
@@ -265,34 +260,6 @@ public:
 	}
 	void createUniformBuffers()
 	{
-	}
-	void createIrradianceMap()
-	{
-		ImageCreateInfo imageCreateInfo{
-			//.flags=ImageCreateFlagBits::MUTABLE_FORMAT_BIT,
-			.imageType = ImageType::TYPE_2D,
-			.format = ShitFormat::RGBA8_UNORM, //TODO: check if format support storage image
-			.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
-			.mipLevels = 1,
-			.arrayLayers = 6,
-			.samples = SampleCountFlagBits::BIT_1,
-			.tiling = ImageTiling::OPTIMAL,
-			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
-			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-			.initialLayout = ImageLayout::GENERAL,
-		};
-
-		irradianceImageCube= device->Create(imageCreateInfo, nullptr);
-
-		ImageViewCreateInfo imageViewCreateInfo{
-			.pImage = irradianceImageCube,
-			.viewType = ImageViewType::TYPE_CUBE,
-			.format = ShitFormat::RGBA8_UNORM,
-			.subresourceRange = {0, 1, 0, 6},
-		};
-		irradianceImageViewCube = device->Create(imageViewCreateInfo);
-
-		generateIrradianceMap(device, skyboxImageViewCube, irradianceImageViewCube);
 	}
 	void update(uint32_t imageIndex)
 	{

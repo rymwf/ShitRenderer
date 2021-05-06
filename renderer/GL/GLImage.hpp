@@ -32,7 +32,7 @@ namespace Shit
 		 * 
 		 * @param imageSubData 
 		 */
-		void UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData) override;
+		void UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData) override;
 		constexpr bool IsRenderbuffer() const
 		{
 			return mIsRenderbuffer;
@@ -41,7 +41,9 @@ namespace Shit
 		void UnMapMemory() override;
 		void FlushMappedMemoryRange(uint64_t offset, uint64_t size) override;
 
-		void GenerateMipmaps(Filter filter) override;
+		void GenerateMipmaps(Filter filter, ImageLayout intialLayout, ImageLayout finalLayout) override;
+
+		void GetImageSubresourceLayout(const ImageSubresource &subresouce, SubresourceLayout &subresourceLayout) override;
 	};
 
 	class GLImageView final : public ImageView

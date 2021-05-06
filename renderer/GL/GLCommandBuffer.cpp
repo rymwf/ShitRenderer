@@ -356,11 +356,18 @@ namespace Shit
 										pImageView->GetCreateInfoPtr()->viewType == ImageViewType::TYPE_2D ||
 										pImageView->GetCreateInfoPtr()->viewType == ImageViewType::TYPE_3D)
 										layered = GL_FALSE;
+									//mpStateManager->BindImageTexture(k,
+									//								 static_cast<const GLImage *>(pImageView->GetCreateInfoPtr()->pImage)->GetHandle(),
+									//								 pImageView->GetCreateInfoPtr()->subresourceRange.baseMipLevel,
+									//								 layered,
+									//								 pImageView->GetCreateInfoPtr()->subresourceRange.baseArrayLayer,
+									//								 GL_READ_WRITE,
+									//								 MapInternalFormat(pImageView->GetCreateInfoPtr()->format));
 									mpStateManager->BindImageTexture(k,
 																	 static_cast<const GLImageView *>(pImageView)->GetHandle(),
-																	 pImageView->GetCreateInfoPtr()->subresourceRange.baseMipLevel,
+																	 0,
 																	 layered,
-																	 pImageView->GetCreateInfoPtr()->subresourceRange.baseArrayLayer,
+																	 0,
 																	 GL_READ_WRITE,
 																	 MapInternalFormat(pImageView->GetCreateInfoPtr()->format));
 								}
@@ -431,6 +438,8 @@ namespace Shit
 				glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, regions[i].bufferImageHeight);
 				cmd->pDstImage->UpdateSubData(
 					regions[i].imageSubresource.mipLevel,
+					{},
+					{},
 					Rect3D{
 						Offset3D{
 							regions[i].imageOffset.x,
@@ -468,16 +477,16 @@ namespace Shit
 					regions[i].srcSubresource.mipLevel,
 					regions[i].srcOffset.x,
 					regions[i].srcOffset.y,
-					regions[i].srcOffset.z,
+					(std::max)(static_cast<uint32_t>(regions[i].srcOffset.z), regions[i].srcSubresource.baseArrayLayer),
 					pDstImage->GetHandle(),
 					dstTarget,
 					regions[i].dstSubresource.mipLevel,
 					regions[i].dstOffset.x,
 					regions[i].dstOffset.y,
-					regions[i].dstOffset.z,
+					(std::max)(static_cast<uint32_t>(regions[i].dstOffset.z), regions[i].dstSubresource.baseArrayLayer),
 					regions[i].extent.width,
 					regions[i].extent.height,
-					regions[i].extent.depth);
+					(std::max)(regions[i].extent.depth, regions[i].srcSubresource.layerCount));
 			}
 			return sizeof(Image *) * 2 + sizeof(uint32_t) + sizeof(ImageCopy) * cmd->regionCount;
 		}

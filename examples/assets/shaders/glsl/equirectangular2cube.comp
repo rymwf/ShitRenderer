@@ -10,48 +10,48 @@ layout(binding=0) uniform sampler2D inImage;
 layout(rgba8,binding=1) uniform imageCube outImage;
 
 vec3 getCubeTexCoordFromCubeMap(ivec3 st,int width){
-    vec2 uv=vec2(st.xy)*2./float(width)-1.;
-    vec3 res;
-    switch(st.z){
-        case 0: //x+
-            res=vec3(1.,-uv.y,-uv.x);
-            break;  
-        case 1: //x-
-            res=vec3(-1.,-uv.y,uv.x);
-            break;
-        case 2: //y+
-            res=vec3(uv.x,1,uv.y);
-            break;
-        case 3: //y-
-            res=vec3(uv.x,-1,-uv.y);
-            break;
-        case 4: //z+
-            res=vec3(uv.x,-uv.y,1.);
-            break;
-        case 5: //z-
-            res=vec3(-uv.x,-uv.y,-1.);
-            break;
-    }
-    return normalize(res);
+	vec2 uv=vec2(st.xy)*2./float(width)-1.;
+	vec3 res;
+	switch(st.z){
+		case 0: //x+
+			res=vec3(1.,-uv.y,-uv.x);
+			break;  
+		case 1: //x-
+			res=vec3(-1.,-uv.y,uv.x);
+			break;
+		case 2: //y+
+			res=vec3(uv.x,1,uv.y);
+			break;
+		case 3: //y-
+			res=vec3(uv.x,-1,-uv.y);
+			break;
+		case 4: //z+
+			res=vec3(uv.x,-uv.y,1.);
+			break;
+		case 5: //z-
+			res=vec3(-uv.x,-uv.y,-1.);
+			break;
+	}
+	return normalize(res);
 }
 
 vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
-    vec2 uv;
-    uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
-    uv.y=acos(cubeTexCoord.y)/PI;    //[0,1]
-    return uv;
+	vec2 uv;
+	uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
+	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
+	return uv;
 }
 
 void main()
 {
 	ivec3 st=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
 
-    int cubeTexWidth=int(gl_WorkGroupSize.x);
+	int cubeTexWidth=int(gl_WorkGroupSize.x);
 
-    vec3 cubeTexCoord=getCubeTexCoordFromCubeMap(st,cubeTexWidth);
-    vec2 uv=CubeTexCoord2EquirectangularUV(cubeTexCoord);
+	vec3 cubeTexCoord=getCubeTexCoordFromCubeMap(st,cubeTexWidth);
+	vec2 uv=CubeTexCoord2EquirectangularUV(cubeTexCoord);
 
-    imageStore(outImage,st,texture(inImage,uv));
-//    imageStore(outImage,st,vec4(1));
+	imageStore(outImage,st,texture(inImage,uv));
+//	imageStore(outImage,st,vec4(1));
 }
 

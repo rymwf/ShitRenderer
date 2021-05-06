@@ -373,7 +373,7 @@ void Model::LoadImages()
 		//imageCreateInfo.mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)(width, height))) + 1);
 		imageCreateInfo.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
 		mModelAssets[mpCurDevice].images.emplace_back(mpCurDevice->Create(imageCreateInfo, pixels));
-		mModelAssets[mpCurDevice].images.back()->GenerateMipmaps(Filter::LINEAR);
+		mModelAssets[mpCurDevice].images.back()->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 		//imageview
 		imageViewCreateInfo.pImage = mModelAssets[mpCurDevice].images.back();

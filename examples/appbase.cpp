@@ -18,8 +18,8 @@ static const char *axisFragShaderName = "axis.frag.spv";
 static const char *cubemapVertShaderName = "cubemap.vert.spv";
 static const char *cubemapFragShaderName = "cubemap.frag.spv";
 
-//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
-static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
+static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
+//static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
 
 static glm::vec3 ambientColor = glm::vec3(0.0);
 
@@ -36,13 +36,24 @@ void Node::AddChild(Node *pNode)
 	children.emplace_back(pNode);
 	pNode->pParent = this;
 }
-void Node::EreaseChild(Node *pNode)
+void Node::RemoveChild(Node *pNode)
 {
 	auto it = std::find_if(children.begin(), children.end(), [pNode](auto &&e) {
 		return e == pNode;
 	});
 	if (it != children.end())
 		children.erase(it);
+}
+Camera::Camera()
+{
+	eye.translation = glm::dvec3(0, 0, 5);
+	AddChild(&eye);
+
+	frustumDescription = {0.1, 0, PerspectiveProjectionDescription{45, 1}};
+	UpdateFrustum();
+}
+Camera::~Camera()
+{
 }
 void Camera::UpdateFrustum()
 {
@@ -67,7 +78,7 @@ void Camera::UpdateFrustum()
 }
 glm::mat4 Camera::GetProjectionMatrix()
 {
-	return frustumMatrix * glm::mat4(glm::translate(glm::transpose(glm::mat4(glm::mat3(globalMatrix))), -glm::vec3(globalMatrix[3])));
+	return frustumMatrix * glm::mat4(glm::translate(glm::transpose(glm::mat4(glm::mat3(eye.globalMatrix))), -glm::vec3(eye.globalMatrix[3])));
 }
 Model *Scene::LoadModel(const char *pPath)
 {
@@ -387,17 +398,14 @@ void AppBase::processBaseEvent(const Event &ev)
 						   pre_y = value.ypos;
 
 						   //TODO: change camera
-						   static glm::dvec3 initialPos = glm::dvec3(0, 0, 5);
-						   mainCamera->rotation = glm::dquat(glm::dvec3(0, glm::radians(-phi), 0)) *
-												  mainCamera->rotation *
+						   mainCamera->rotation = glm::dquat(glm::dvec3(0, glm::radians(-phi), 0)) * mainCamera->rotation *
 												  glm::dquat(glm::dvec3(glm::radians(-theta), 0, 0));
-						   mainCamera->translation = glm::dvec3(glm::mat4_cast(mainCamera->rotation) * glm::dvec4(initialPos, 1)) *
-													 glm::length(mainCamera->translation) / 5.;
+						   //mainCamera->translation = glm::dvec3(glm::mat4_cast(mainCamera->rotation) * glm::dvec4(mainCamera->translation, 1));
 						   mainCamera->Update();
 					   }
 				   },
 				   [&](const MouseWheelEvent &value) {
-					   mainCamera->translation *= (1 + double(-value.yoffset) / 10.);
+					   mainCamera->eye.translation *= (1 + double(-value.yoffset) / 10.);
 					   mainCamera->Update();
 				   },
 			   },
@@ -465,7 +473,7 @@ void AppBase::mainloop()
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchainImages[imageIndex]);
+			takeScreenshot(device, swapchainImages[imageIndex], ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -479,7 +487,6 @@ void AppBase::run()
 
 	//create main camera
 	mainCamera = scene.CreateNode<Camera>(rootNode);
-	mainCamera->translation = glm::dvec3(0, 0, 5);
 	mainCamera->frustumDescription = {0.1, 0,
 									  PerspectiveProjectionDescription{
 										  45.f,
@@ -520,7 +527,10 @@ void AppBase::createDefaultCommandPool()
 }
 void AppBase::prepareBackground()
 {
-	prepareCubemap();
+	prepareSkybox();
+	createIrradianceMap();
+	createPrefilteredEnvMap();
+
 	prepareAxis();
 
 	auto count = swapchainImages.size();
@@ -558,7 +568,7 @@ void AppBase::prepareBackground()
 				skyboxPipelineLayout,
 				1,
 				1,
-				&cubemapDescriptorSets[0]});
+				&skyboxDescriptorSets[0]});
 		backgroundSecondaryCommandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, skyboxPipeline});
 		backgroundSecondaryCommandBuffers[i]->DrawIndirect({skyboxIndirectDrawCmdBuffer,
 															0,
@@ -637,7 +647,7 @@ void AppBase::updateDefaultBuffers(uint32_t imageIndex)
 	{
 		uboFrame.ambientColor = ambientColor;
 		uboFrame.PV = mainCamera->GetProjectionMatrix();
-		uboFrame.eyePosition = glm::vec3(mainCamera->globalMatrix[3]);
+		uboFrame.eyePosition = glm::vec3(mainCamera->eye.globalMatrix[3]);
 		updated.assign(swapchainImages.size(), true);
 		mainCamera->updated = false;
 		mainCamera->frustumUpdated = false;
@@ -795,7 +805,7 @@ void AppBase::prepareAxis()
 		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 	drawIndirectCmdBufferAxis = device->Create(bufferCreateInfo, drawIndirectCmds.data());
 }
-void AppBase::prepareCubemap()
+void AppBase::prepareSkybox()
 {
 	//cubemap rendering descriptors
 	//descriptor sets
@@ -820,7 +830,7 @@ void AppBase::prepareCubemap()
 
 	//allocate cubmap descriptor sets
 	DescriptorSetAllocateInfo allocInfo = {{setLayouts[0]}};
-	descriptorPool->Allocate(allocInfo, cubemapDescriptorSets);
+	descriptorPool->Allocate(allocInfo, skyboxDescriptorSets);
 
 	//===================================================
 	//generate cubemap
@@ -845,7 +855,6 @@ void AppBase::prepareCubemap()
 		.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 	};
 	skyboxImage2D = device->Create(imageCreateInfo, pixels);
-	//skyboxImage2D->GenerateMipmaps(Filter::LINEAR);
 	freeImage(pixels);
 
 	ImageViewCreateInfo imageViewCreateInfo{
@@ -857,34 +866,59 @@ void AppBase::prepareCubemap()
 	skyboxImageView2D = device->Create(imageViewCreateInfo);
 
 	//cubmap
-	imageCreateInfo.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT;
-	imageCreateInfo.initialLayout = ImageLayout::GENERAL;
-	imageCreateInfo.arrayLayers = 6;
-	imageCreateInfo.extent = {CUBEMAP_WIDTH, CUBEMAP_WIDTH, 1};
-	imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
+	imageCreateInfo = {
+		ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
+		ImageType::TYPE_2D,
+		ShitFormat::RGBA8_UNORM,
+		{CUBEMAP_WIDTH, CUBEMAP_WIDTH, 1},
+		0,
+		6,
+		SampleCountFlagBits::BIT_1,
+		ImageTiling::OPTIMAL,
+		ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
+		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 	skyboxImageCube = device->Create(imageCreateInfo, nullptr);
 
-	imageViewCreateInfo.pImage = skyboxImageCube;
-	imageViewCreateInfo.viewType = ImageViewType::TYPE_CUBE;
-	imageViewCreateInfo.subresourceRange.layerCount = 6;
+	imageViewCreateInfo = {
+		skyboxImageCube,
+		ImageViewType::TYPE_CUBE,
+		ShitFormat::RGBA8_UNORM,
+		{},
+		{0, 1, 0, 6}};
+	skyboxImageViewCube = device->Create(imageViewCreateInfo);
+
+	//=======================================================
+	//equirectangular2cube shader
+	convert2DToCubemap(
+		device,
+		skyboxImageView2D,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+		skyboxImageViewCube,
+		ImageLayout::UNDEFINED,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+	//generate mipmap
+	skyboxImageCube->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+	//change skyboxImageViewCube to all levels
+	device->Destroy(skyboxImageViewCube);
+	imageViewCreateInfo.subresourceRange.levelCount = skyboxImageCube->GetCreateInfoPtr()->mipLevels;
 	skyboxImageViewCube = device->Create(imageViewCreateInfo);
 
 	//update descriptor set
 	std::vector<WriteDescriptorSet> writes;
 	writes.emplace_back(
 		WriteDescriptorSet{
-			cubemapDescriptorSets[0],
+			skyboxDescriptorSets[0],
 			0,
 			0,
 			DescriptorType::COMBINED_IMAGE_SAMPLER,
 			std::vector<DescriptorImageInfo>{{linearSampler,
 											  skyboxImageViewCube,
-											  ImageLayout::GENERAL}}});
+											  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}});
 	device->UpdateDescriptorSets(writes, {});
-	//=======================================================
-	//equirectangular2cube shader
-	convert2DToCubemap(device, skyboxImageView2D, skyboxImageViewCube);
-	//	takeScreenshot(device, skyboxImageCube);
+
 	//=========================================================
 	//create shaders
 
@@ -990,4 +1024,69 @@ void AppBase::removeSecondaryCommandBuffer(uint32_t imageIndex, const CommandBuf
 		[pCommandBuffer](auto e) {
 			return e == pCommandBuffer;
 		}));
+}
+void AppBase::createIrradianceMap()
+{
+	ImageCreateInfo imageCreateInfo{
+		.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
+		.imageType = ImageType::TYPE_2D,
+		.format = ShitFormat::RGBA8_UNORM, //TODO: check if format support storage image
+		.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
+		.mipLevels = 0,
+		.arrayLayers = 6,
+		.samples = SampleCountFlagBits::BIT_1,
+		.tiling = ImageTiling::OPTIMAL,
+		.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
+		.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+	};
+
+	irradianceImageCube = device->Create(imageCreateInfo, nullptr);
+
+	ImageViewCreateInfo imageViewCreateInfo{
+		irradianceImageCube,
+		ImageViewType::TYPE_CUBE,
+		ShitFormat::RGBA8_UNORM,
+		{},
+		{0, 1, 0, 6},
+	};
+
+	irradianceImageViewCube = device->Create(imageViewCreateInfo);
+	generateIrradianceMap(
+		device,
+		skyboxImageViewCube,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+		irradianceImageViewCube,
+		ImageLayout::UNDEFINED,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+	device->Destroy(irradianceImageViewCube);
+
+	irradianceImageCube->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+	imageViewCreateInfo.subresourceRange.levelCount = irradianceImageCube->GetCreateInfoPtr()->mipLevels;
+	irradianceImageViewCube = device->Create(imageViewCreateInfo);
+}
+void AppBase::createPrefilteredEnvMap()
+{
+	ImageCreateInfo imageCreateInfo = *skyboxImageCube->GetCreateInfoPtr();
+	imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
+	imageCreateInfo.initialLayout = ImageLayout::UNDEFINED;
+
+	prefilteredEnvMap = device->Create(imageCreateInfo, nullptr);
+
+	prefilteredEnvMapView = device->Create(ImageViewCreateInfo{
+		prefilteredEnvMap,
+		ImageViewType::TYPE_CUBE,
+		ShitFormat::RGBA8_UNORM,
+		{},
+		{0, prefilteredEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
+	});
+	generatePrefilteredEnvMap(
+		device,
+		skyboxImageCube,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+		prefilteredEnvMap,
+		ImageLayout::UNDEFINED,
+		ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 }

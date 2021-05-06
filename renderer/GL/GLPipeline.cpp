@@ -38,9 +38,17 @@ namespace Shit
 	{
 		auto shader = glCreateShader(Map(shaderStageCreateInfo.stage));
 		if (shader)
+		{
 			glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V,
 						   shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.data(),
 						   static_cast<GLsizei>(shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.size()));
+			GLint a;
+			glGetShaderiv(shader,GL_SPIR_V_BINARY,&a);
+			if (!a)
+			{
+				LOG("failed to load spirv module");
+			}
+		}
 		else
 			THROW("failed to create shader");
 		//equal to compilation

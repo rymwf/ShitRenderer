@@ -32,6 +32,9 @@ namespace Shit
 						mCreateInfo.extent.depth))) +
 				1);
 		auto device = static_cast<VKDevice *>(pDevice)->GetHandle();
+
+		ImageLayout tempLayout = mCreateInfo.initialLayout == ImageLayout::PREINITIALIZED ? ImageLayout::PREINITIALIZED : ImageLayout::UNDEFINED;
+
 		VkImageCreateInfo imageCreateInfo{
 			VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			nullptr,
@@ -47,7 +50,7 @@ namespace Shit
 			VK_SHARING_MODE_EXCLUSIVE,
 			0,
 			nullptr,
-			mCreateInfo.initialLayout == ImageLayout::PREINITIALIZED ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED};
+			Map(tempLayout)};
 
 		if (vkCreateImage(device, &imageCreateInfo, nullptr, &mHandle) != VK_SUCCESS)
 			THROW("failed to create image");
@@ -67,7 +70,10 @@ namespace Shit
 
 		if (pData)
 		{
-			UpdateSubData(0, {{}, mCreateInfo.extent}, pData);
+			UpdateSubData(0,
+						  tempLayout,
+						  mCreateInfo.initialLayout,
+						  {{}, mCreateInfo.extent}, pData);
 		}
 		else if (mCreateInfo.initialLayout != ImageLayout::UNDEFINED && mCreateInfo.initialLayout != ImageLayout::PREINITIALIZED)
 		{
@@ -79,7 +85,7 @@ namespace Shit
 					nullptr,
 					0,
 					VK_ACCESS_SHADER_READ_BIT,
-					VK_IMAGE_LAYOUT_UNDEFINED,
+					Map(tempLayout),
 					Map(mCreateInfo.initialLayout),
 					VK_QUEUE_FAMILY_IGNORED,
 					VK_QUEUE_FAMILY_IGNORED,
@@ -95,7 +101,7 @@ namespace Shit
 			});
 		}
 	}
-	void VKImage::UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData)
+	void VKImage::UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData) 
 	{
 		uint64_t size = rect.extent.width * rect.extent.height * rect.extent.depth * GetFormatSize(mCreateInfo.format);
 
@@ -121,7 +127,7 @@ namespace Shit
 				nullptr,
 				0,
 				VK_ACCESS_TRANSFER_WRITE_BIT,
-				VK_IMAGE_LAYOUT_UNDEFINED,
+				Map(initialLayout),
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				VK_QUEUE_FAMILY_IGNORED,
 				VK_QUEUE_FAMILY_IGNORED,
@@ -155,7 +161,7 @@ namespace Shit
 			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = Map(mCreateInfo.initialLayout);
+			barrier.newLayout = Map(finalLayout);
 
 			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
 								 VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -166,7 +172,7 @@ namespace Shit
 								 1, &barrier);
 		});
 	}
-	void VKImage::GenerateMipmaps(Filter filter)
+	void VKImage::GenerateMipmaps(Filter filter, ImageLayout initialLayout, ImageLayout finalLayout)
 	{
 		auto mipExtent = mCreateInfo.extent;
 		auto mipLevels = static_cast<uint32_t>(std::floor(std::log2((std::max)((std::max)(mipExtent.width, mipExtent.height), mipExtent.depth))) + 1);
@@ -178,7 +184,7 @@ namespace Shit
 			nullptr,
 			0,
 			VK_ACCESS_TRANSFER_WRITE_BIT,
-			Map(mCreateInfo.initialLayout),
+			Map(initialLayout),
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			VK_QUEUE_FAMILY_IGNORED,
 			VK_QUEUE_FAMILY_IGNORED,
@@ -253,7 +259,7 @@ namespace Shit
 			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = Map(mCreateInfo.initialLayout);
+			barrier.newLayout = Map(finalLayout);
 			barrier.subresourceRange.baseMipLevel = mipLevels - 1;
 
 			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
@@ -269,7 +275,7 @@ namespace Shit
 				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-				barrier.newLayout = Map(mCreateInfo.initialLayout);
+				barrier.newLayout = Map(finalLayout);
 				barrier.subresourceRange.baseMipLevel = 0;
 				barrier.subresourceRange.levelCount = mipLevels - 1;
 
@@ -300,6 +306,21 @@ namespace Shit
 			offset,
 			size};
 		vkFlushMappedMemoryRanges(static_cast<VKDevice *>(mpDevice)->GetHandle(), 1, &range);
+	}
+
+	void VKImage::GetImageSubresourceLayout(const ImageSubresource &subresouce, SubresourceLayout &subresourceLayout)
+	{
+		VkImageSubresource a{
+			GetImageAspectFromFormat(mCreateInfo.format),
+			subresouce.mipLevel,
+			subresouce.arrayLayer};
+		VkSubresourceLayout ret;
+		vkGetImageSubresourceLayout(
+			static_cast<VKDevice *>(mpDevice)->GetHandle(),
+			mHandle,
+			&a,
+			&ret);
+		memcpy(&subresourceLayout, &ret, sizeof(ret));
 	}
 	//=======================================================================================
 

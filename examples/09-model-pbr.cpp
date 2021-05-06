@@ -426,7 +426,7 @@ public:
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchainImages[imageIndex]);
+			takeScreenshot(device, swapchainImages[imageIndex], ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;

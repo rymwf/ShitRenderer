@@ -25,16 +25,18 @@ namespace Shit
 		{
 			return &mCreateInfo;
 		}
-		virtual void UpdateSubData(uint32_t mipLevel, const Rect3D &rect, const void *pData) = 0;
+		virtual void UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData) = 0;
+
 		virtual void MapMemory(uint64_t offset, uint64_t size, void **ppData) = 0;
 		virtual void UnMapMemory() = 0;
 		virtual void FlushMappedMemoryRange(uint64_t offset, uint64_t size) = 0;
 
-		virtual void GenerateMipmaps(Filter filter) = 0;
+		virtual void GenerateMipmaps(Filter filter, ImageLayout initialLayout, ImageLayout finalLayout) = 0;
 
 		//virtual void TransformLayout([[maybe_unused]] uint32_t baseMiplevel, uint32_t levelCount, [[maybe_unused]] ImageLayout dstImageLayout)
 		//{
 		//}
+		virtual void GetImageSubresourceLayout(const ImageSubresource &subresouce, SubresourceLayout &subresourceLayout) = 0;
 	};
 
 	class ImageView

@@ -175,7 +175,7 @@ private:
 		Buffer *materialBuffer; //
 		std::vector<DescriptorSet *> materialDescriptorSets;
 
-		//TODO: use texture buffer to include attributes of different instances
+		//TODO: use texture buffer to store attribute of instances
 		std::vector<Buffer *> frameNodeAttributeBuffers;
 		std::vector<std::vector<DescriptorSet *>> frameNodeDescriptorSets;
 
