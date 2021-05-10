@@ -19,6 +19,8 @@ namespace Shit
 		Image(const ImageCreateInfo &createInfo) : mCreateInfo(createInfo) {}
 		Image() = default;
 
+		uint64_t mMemorySize{};
+
 	public:
 		virtual ~Image() {}
 		constexpr const ImageCreateInfo *GetCreateInfoPtr() const
@@ -37,6 +39,11 @@ namespace Shit
 		//{
 		//}
 		virtual void GetImageSubresourceLayout(const ImageSubresource &subresouce, SubresourceLayout &subresourceLayout) = 0;
+
+		constexpr uint64_t GetMemorySize() const
+		{
+			return mMemorySize;
+		}
 	};
 
 	class ImageView

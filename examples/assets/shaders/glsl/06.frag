@@ -12,7 +12,7 @@ void main()
 {
 //   outColor = vec4(fs_in.color, 1);
 //  outColor = texture(tex,fs_in.texCoord);
-if(gl_FragCoord.x>400)
+if(gl_FragCoord.x>640)
 {
   outColor = textureLod(tex,fs_in.texCoord,5);
   //outColor = textureLod(tex,vec3(fs_in.texCoord,0),5);

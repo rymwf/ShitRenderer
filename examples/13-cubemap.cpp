@@ -245,6 +245,8 @@ public:
 	}
 	void prepare() override
 	{
+		takeScreenshot(device, skyboxImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
 		commandPool = device->Create(CommandPoolCreateInfo{
 			{},
 			graphicsQueueFamilyIndex->index});

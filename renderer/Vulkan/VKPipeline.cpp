@@ -66,8 +66,8 @@ namespace Shit
 			entries[i].resize(count);
 			for (size_t j = 0; j < count; ++j)
 			{
-				entries[i][j] = VkSpecializationMapEntry{shaderModuleInfo.specializationInfo.constantIDs[i],
-														 static_cast<uint32_t>(i * constantVaule_T_size),
+				entries[i][j] = VkSpecializationMapEntry{shaderModuleInfo.specializationInfo.constantIDs[j],
+														 static_cast<uint32_t>(j * constantVaule_T_size),
 														 constantVaule_T_size};
 			}
 			specInfos[i].mapEntryCount = static_cast<uint32_t>(count);

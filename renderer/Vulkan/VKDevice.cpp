@@ -55,19 +55,18 @@ namespace Shit
 		deviceFeatures.sampleRateShading = true;
 
 		std::vector<VkDeviceQueueCreateInfo> queueInfos;
-		std::vector<float> queuePriorities;
+		std::vector<std::vector<float>> queuePriorities(mQueueFamilyProperties.size());
 		for (uint32_t i = 0, len = static_cast<uint32_t>(mQueueFamilyProperties.size()); i < len; ++i)
 		{
-			queuePriorities.clear();
 			//TODO: how to arrange queue priorities
-			queuePriorities.resize(mQueueFamilyProperties[i].queueCount, 1.f);
+			queuePriorities[i].resize(mQueueFamilyProperties[i].queueCount, 1.f);
 			queueInfos.emplace_back(
 				VkDeviceQueueCreateInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 										NULL,
 										0,
 										i,									  //queue family index
 										mQueueFamilyProperties[i].queueCount, //queue count
-										queuePriorities.data()});
+										queuePriorities[i].data()});
 		}
 
 		VkDeviceCreateInfo deviceInfo{
@@ -81,9 +80,7 @@ namespace Shit
 			static_cast<uint32_t>(extensionNames.size()),
 			extensionNames.data(),
 			&deviceFeatures};
-		if (vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &mDevice) != VK_SUCCESS)
-			THROW("create logical device failed");
-		CreateOneTimeCommandPool();
+		CHECK_VK_RESULT(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &mDevice))
 	}
 
 	std::optional<QueueFamilyIndex> VKDevice::GetPresentQueueFamilyIndex(ShitWindow *pWindow)
@@ -161,12 +158,12 @@ namespace Shit
 	Buffer *VKDevice::Create(const BufferCreateInfo &createInfo, const void *pData)
 	{
 		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, GetPhysicalDevice(), createInfo));
+		VKBuffer *buffer = static_cast<VKBuffer *>(mBuffers.back().get());
 
 		if (pData)
 		{
 			if (static_cast<bool>(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))
 			{
-				Buffer *buffer = mBuffers.back().get();
 				void *data;
 				buffer->MapMemory(0, createInfo.size, &data);
 				memcpy(data, pData, static_cast<size_t>(createInfo.size));
@@ -186,13 +183,58 @@ namespace Shit
 				memcpy(data, pData, static_cast<size_t>(createInfo.size));
 				stagingbuffer.UnMapMemory();
 
-				ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
-					BufferCopy bufferCopy{0, 0, createInfo.size};
-					pCommandBuffer->CopyBuffer({&stagingbuffer,
-												mBuffers.back().get(),
-												1,
-												&bufferCopy});
-				});
+				VkDevice device = mDevice;
+
+				auto queueFamilyIndex = GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {});
+				VkQueue queue;
+				vkGetDeviceQueue(device, queueFamilyIndex->index, 0, &queue);
+
+				VkCommandPool commandPool;
+				VkCommandPoolCreateInfo commandPoolCreateInfo{
+					VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+					nullptr,
+					VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+					queueFamilyIndex->index};
+				CHECK_VK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool))
+
+				VkCommandBuffer commandBuffer;
+				VkCommandBufferAllocateInfo commandBufferAllocateInfo{
+					VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+					nullptr,
+					commandPool,
+					VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+					1};
+				CHECK_VK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer))
+
+				VkCommandBufferBeginInfo beginInfo{
+					VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+					nullptr,
+					VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+				};
+
+				vkBeginCommandBuffer(commandBuffer, &beginInfo);
+				VkBufferCopy bufferCopy{0, 0, createInfo.size};
+				vkCmdCopyBuffer(
+					commandBuffer,
+					stagingbuffer.GetHandle(),
+					buffer->GetHandle(),
+					1,
+					&bufferCopy);
+				vkEndCommandBuffer(commandBuffer);
+
+				VkSubmitInfo submitInfo{
+					VK_STRUCTURE_TYPE_SUBMIT_INFO,
+					nullptr,
+					0,
+					nullptr,
+					nullptr,
+					1,
+					&commandBuffer,
+					0,
+					nullptr};
+				CHECK_VK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE))
+				vkQueueWaitIdle(queue);
+				vkDestroyCommandPool(device, commandPool, nullptr);
 			}
 			else
 			{

@@ -453,19 +453,56 @@ namespace Shit
 
 		R8_UNORM,
 		R8_SRGB,
+		R8_USCALED,
+		R8_SSCALED,
 
 		RG8_UNORM,
 		RG8_SRGB,
+		RG8_USCALED,
+		RG8_SSCALED,
 
 		RGB8_UNORM,
 		RGB8_SRGB,
+		RGR8_USCALED,
+		RGR8_SSCALED,
 		BGR8_UNORM,
 		BGR8_SRGB,
+		BGR8_USCALED,
+		BGR8_SSCALED,
 
 		RGBA8_UNORM,
 		RGBA8_SRGB,
+		RGBA8_USCALED,
+		RGBA8_SSCALED,
 		BGRA8_UNORM,
 		BGRA8_SRGB,
+		BGRA8_USCALED,
+		BGRA8_SSCALED,
+
+		R16_UNORM,
+		R16_USCALED,
+		R16_SSCALED,
+		R16_SFLOAT,
+
+		RG16_UNORM,
+		RG16_USCALED,
+		RG16_SSCALED,
+		RG16_SFLOAT,
+
+		RGB16_UNORM,
+		RGB16_USCALED,
+		RGB16_SSCALED,
+		RGB16_SFLOAT,
+
+		RGBA16_UNORM,
+		RGBA16_USCALED,
+		RGBA16_SSCALED,
+		RGBA16_SFLOAT,
+
+		R32_SFLOAT,
+		RG32_SFLOAT,
+		RGB32_SFLOAT,
+		RGBA32_SFLOAT,
 
 		D16_UNORM,
 		D24_UNORM,
@@ -488,27 +525,68 @@ namespace Shit
 		{
 		case ShitFormat::R8_UNORM:
 		case ShitFormat::R8_SRGB:
+		case ShitFormat::R8_USCALED:
+		case ShitFormat::R8_SSCALED:
 		case ShitFormat::S8_UINT:
 			return 1;
 		case ShitFormat::RG8_UNORM:
 		case ShitFormat::RG8_SRGB:
+		case ShitFormat::RG8_USCALED:
+		case ShitFormat::RG8_SSCALED:
+		case ShitFormat::R16_UNORM:
+		case ShitFormat::R16_USCALED:
+		case ShitFormat::R16_SSCALED:
+		case ShitFormat::R16_SFLOAT:
 		case ShitFormat::D16_UNORM:
 			return 2;
+
 		case ShitFormat::RGB8_UNORM:
 		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::RGR8_USCALED:
+		case ShitFormat::RGR8_SSCALED:
 		case ShitFormat::BGR8_UNORM:
 		case ShitFormat::BGR8_SRGB:
+		case ShitFormat::BGR8_USCALED:
+		case ShitFormat::BGR8_SSCALED:
 		case ShitFormat::D24_UNORM:
 			return 3;
+
 		case ShitFormat::RGBA8_UNORM:
 		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::RGBA8_USCALED:
+		case ShitFormat::RGBA8_SSCALED:
 		case ShitFormat::BGRA8_UNORM:
 		case ShitFormat::BGRA8_SRGB:
+		case ShitFormat::BGRA8_USCALED:
+		case ShitFormat::BGRA8_SSCALED:
+		case ShitFormat::RG16_UNORM:
+		case ShitFormat::RG16_USCALED:
+		case ShitFormat::RG16_SSCALED:
+		case ShitFormat::RG16_SFLOAT:
+		case ShitFormat::R32_SFLOAT:
 		case ShitFormat::D32_SFLOAT:
 		case ShitFormat::D24_UNORM_S8_UINT:
 			return 4;
+
 		case ShitFormat::D32_SFLOAT_S8_UINT:
 			return 5;
+		case ShitFormat::RGB16_UNORM:
+		case ShitFormat::RGB16_USCALED:
+		case ShitFormat::RGB16_SSCALED:
+		case ShitFormat::RGB16_SFLOAT:
+			return 6;
+
+		case ShitFormat::RGBA16_UNORM:
+		case ShitFormat::RGBA16_USCALED:
+		case ShitFormat::RGBA16_SSCALED:
+		case ShitFormat::RGBA16_SFLOAT:
+		case ShitFormat::RG32_SFLOAT:
+			return 8;
+
+		case ShitFormat::RGB32_SFLOAT:
+			return 12;
+		case ShitFormat::RGBA32_SFLOAT:
+			return 16;
 		default:
 			return 0;
 		}
@@ -528,15 +606,6 @@ namespace Shit
 		case ShitFormat::D32_SFLOAT_S8_UINT:
 			return true;
 		default:
-		case ShitFormat::R8_UNORM:
-		case ShitFormat::RG8_UNORM:
-		case ShitFormat::D16_UNORM:
-		case ShitFormat::RGB8_UNORM:
-		case ShitFormat::BGR8_UNORM:
-		case ShitFormat::D24_UNORM:
-		case ShitFormat::RGBA8_UNORM:
-		case ShitFormat::BGRA8_UNORM:
-		case ShitFormat::D24_UNORM_S8_UINT:
 			return false;
 		}
 	}

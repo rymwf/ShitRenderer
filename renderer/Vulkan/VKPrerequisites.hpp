@@ -17,7 +17,10 @@
 #include <vulkan/vulkan_win32.h>
 #endif
 
-#define LAYER_VALIDATION_KHRONOS_validation "VK_LAYER_KHRONOS_validation"
+#define VK_LAYER_KHRONOS_validation "VK_LAYER_KHRONOS_validation"
+#define VK_LAYER_LUNARG_monitor "VK_LAYER_LUNARG_monitor"
+#define VK_LAYER_LUNARG_device_simulation "VK_LAYER_LUNARG_device_simulation"
+
 #define CHECK_VK_RESULT(x)                             \
 	{                                                  \
 		auto res = x;                                  \

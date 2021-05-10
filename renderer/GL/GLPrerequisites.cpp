@@ -281,19 +281,56 @@ namespace Shit
 
 		{GL_R8, GL_RED},
 		{GL_SR8_EXT, GL_RED}, //need GL_EXT_texture_sRGB_R8	2015
+		{GL_R8UI, GL_RED},
+		{GL_R8I, GL_RED},
 
 		{GL_RG8, GL_RG},
 		{GL_SRG8_EXT, GL_RG}, //need GL_EXT_texture_sRGB_RG8	2015
+		{GL_RG8UI, GL_RG},
+		{GL_RG8I, GL_RG},
 
 		{GL_RGB8, GL_RGB},
 		{GL_SRGB8, GL_RGB},
-		{GL_BGR_EXT, GL_BGR}, //need GL_EXT_bgra
-		{GL_NONE, GL_NONE},	  //no matching for BGR_SRGB
+		{GL_RGB8UI, GL_RGB},
+		{GL_RGB8I, GL_RGB},
+		{GL_BGR_EXT, GL_BGR},	  //need GL_EXT_bgra
+		{GL_NONE, GL_NONE},		  //no matching for BGR_SRGB
+		{GL_BGR_INTEGER, GL_BGR}, //no unsigned
+		{GL_BGR_INTEGER, GL_BGR},
 
 		{GL_RGBA8, GL_RGBA},
 		{GL_SRGB8_ALPHA8, GL_RGBA},
-		{GL_BGRA8_EXT, GL_BGRA_EXT}, //need GL_EXT_texture_format_BGRA8888 2008
-		{GL_NONE, GL_NONE},			 //no matching for BGRA_SRGB
+		{GL_RGBA8UI, GL_RGBA},
+		{GL_RGBA8I, GL_RGBA},
+		{GL_BGRA8_EXT, GL_BGRA},	//need GL_EXT_texture_format_BGRA8888 2008
+		{GL_NONE, GL_NONE},			//no matching for BGRA_SRGB
+		{GL_BGRA_INTEGER, GL_BGRA}, //no unsigned
+		{GL_BGRA_INTEGER, GL_BGRA},
+
+		{GL_R16, GL_RED},
+		{GL_R16UI, GL_RED},
+		{GL_R16I, GL_RED},
+		{GL_R16F, GL_RED},
+
+		{GL_RG16, GL_RG},
+		{GL_RG16UI, GL_RG},
+		{GL_RG16I, GL_RG},
+		{GL_RG16F, GL_RG},
+
+		{GL_RGB16, GL_RGB},
+		{GL_RGB16UI, GL_RGB},
+		{GL_RGB16I, GL_RGB},
+		{GL_RGB16F, GL_RGB},
+
+		{GL_RGBA16, GL_RGBA},
+		{GL_RGBA16UI, GL_RGBA},
+		{GL_RGBA16I, GL_RGBA},
+		{GL_RGBA16F, GL_RGBA},
+
+		{GL_R32F, GL_RED},
+		{GL_RG32F, GL_RG},
+		{GL_RGB32F, GL_RGB},
+		{GL_RGBA32F, GL_RGBA},
 
 		{GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT},
 		{GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT},
@@ -578,9 +615,66 @@ namespace Shit
 	{
 		switch (format)
 		{
-		case ShitFormat::D32_SFLOAT:
+		case ShitFormat::R8_UNORM:
+		case ShitFormat::R8_SRGB:
+		case ShitFormat::R8_USCALED:
+		case ShitFormat::RG8_UNORM:
+		case ShitFormat::RG8_SRGB:
+		case ShitFormat::RG8_USCALED:
+		case ShitFormat::RGB8_UNORM:
+		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::RGR8_USCALED:
+		case ShitFormat::BGR8_UNORM:
+		case ShitFormat::BGR8_SRGB:
+		case ShitFormat::BGR8_USCALED:
+		case ShitFormat::RGBA8_UNORM:
+		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::RGBA8_USCALED:
+		case ShitFormat::BGRA8_UNORM:
+		case ShitFormat::BGRA8_SRGB:
+		case ShitFormat::BGRA8_USCALED:
+			return GL_UNSIGNED_BYTE;
+
+		case ShitFormat::R8_SSCALED:
+		case ShitFormat::RG8_SSCALED:
+		case ShitFormat::RGR8_SSCALED:
+		case ShitFormat::BGR8_SSCALED:
+		case ShitFormat::RGBA8_SSCALED:
+		case ShitFormat::BGRA8_SSCALED:
+			return GL_BYTE;
+
+		case ShitFormat::R16_UNORM:
+		case ShitFormat::R16_USCALED:
+		case ShitFormat::RG16_UNORM:
+		case ShitFormat::RG16_USCALED:
+		case ShitFormat::RGB16_UNORM:
+		case ShitFormat::RGB16_USCALED:
+		case ShitFormat::RGBA16_UNORM:
+		case ShitFormat::RGBA16_USCALED:
+			return GL_UNSIGNED_SHORT;
+
+		case ShitFormat::R16_SSCALED:
+		case ShitFormat::RG16_SSCALED:
+		case ShitFormat::RGB16_SSCALED:
+		case ShitFormat::RGBA16_SSCALED:
+			return GL_SHORT;
+
+		case ShitFormat::R16_SFLOAT:
+		case ShitFormat::RG16_SFLOAT:
+		case ShitFormat::RGB16_SFLOAT:
+		case ShitFormat::RGBA16_SFLOAT:
+			return GL_HALF_FLOAT;
+
 		case ShitFormat::D24_UNORM_S8_UINT:
+			return GL_UNSIGNED_INT;
+
+		case ShitFormat::D32_SFLOAT:
 		case ShitFormat::D32_SFLOAT_S8_UINT:
+
+		case ShitFormat::R32_SFLOAT:
+		case ShitFormat::RG32_SFLOAT:
+		case ShitFormat::RGB32_SFLOAT:
+		case ShitFormat::RGBA32_SFLOAT:
 			return GL_FLOAT;
 		default:
 			return GL_UNSIGNED_BYTE;

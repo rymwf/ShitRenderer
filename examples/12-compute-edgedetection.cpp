@@ -280,7 +280,7 @@ public:
 			outputImage0,
 			ImageSubresourceRange{0, 1, 0, 1}};
 
-		device->ExecuteOneTimeCommands([&](CommandBuffer *commandBuffer) {
+		executeOneTimeCommands(device, QueueFlagBits::COMPUTE_BIT, 0, [&](CommandBuffer *commandBuffer) {
 			//gray scale
 			commandBuffer->BindPipeline(BindPipelineInfo{
 				PipelineBindPoint::COMPUTE,
@@ -388,9 +388,9 @@ public:
 	}
 	void saveImages()
 	{
-		takeScreenshot(device, outputImage0);
+		takeScreenshot(device, outputImage0, ImageLayout::GENERAL);
 		std::this_thread::sleep_for(std::chrono::seconds(1));
-		takeScreenshot(device, outputImage1);
+		takeScreenshot(device, outputImage1, ImageLayout::GENERAL);
 	}
 	void createUBOBuffers()
 	{

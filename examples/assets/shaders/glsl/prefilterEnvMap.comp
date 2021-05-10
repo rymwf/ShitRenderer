@@ -2,18 +2,19 @@
 
 #define PI 3.141592653
 
-#define SAMPLENUM 1024
+#define SAMPLENUM 128
 
 layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
 layout(local_size_x_id=0)in;
 layout(local_size_y_id=1)in;
 layout(local_size_z_id=2)in;
 
-layout(binding=0) uniform samplerCube inImage;
-layout(rgba8,binding=1) uniform imageCube outImage;
+layout(binding=0) uniform sampler2D inImage;
+layout(rgba32f,binding=1) uniform imageCube outImage;
 
 //#define MAX_ROUGH_LEVEL 8	//min skybox size 256
 layout(constant_id=3) const int maxRoughLevel=7;
+layout(constant_id=4) const int skyboxWidth=1024;
 
 //===========================
 //http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
@@ -60,6 +61,12 @@ vec3 getCubeTexCoordFromCubeMap(ivec3 st,uint width){
 	}
 	return normalize(res);
 }
+vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
+	vec2 uv;
+	uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
+	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
+	return uv;
+}
 float BRDF_D(float alpha_g,float NdotH){
     float alpha_g2=alpha_g*alpha_g;
     float NdotH2=NdotH*NdotH;
@@ -80,12 +87,17 @@ vec3 importanceSample(vec2 xi,float alpha_g){
 }
 void main()
 {
-	ivec3 ijk=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
+	const ivec3 ijk=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
 	//const uint cubemapWidth=gl_WorkGroupSize.x;
 	const uint cubemapWidth=gl_NumWorkGroups.x;
-	int skyboxWidth=textureSize(inImage,0).x;
 
-	vec3 N=getCubeTexCoordFromCubeMap(ijk,cubemapWidth);
+	#ifndef VULKAN
+	//opengl specilization has some problem
+		if(any(greaterThanEqual(ijk,ivec3(cubemapWidth,cubemapWidth,6))))
+			return;
+	#endif
+
+	vec3 N=normalize(getCubeTexCoordFromCubeMap(ijk,cubemapWidth));
 	mat3 TBN=surfaceTBN(N);	
 	
 	float level=log2(float(skyboxWidth)/cubemapWidth);
@@ -96,23 +108,25 @@ void main()
 	vec3 V=N;
 	//Colbert, Mark, and Jaroslav Kˇriv´anek, “GPU-Based Importance Sampling,” in Hubert Nguyen, ed., GPU Gems 3, Addison-Wesley, pp. 459–475, 2007. 
 	//https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling
-	float l=0.5*log2(cubemapWidth*cubemapWidth*3/(SAMPLENUM*2*PI));
+	float l=0.5*log2(float(skyboxWidth*skyboxWidth)/SAMPLENUM);
 	float totalWeights = 0;
 	for(int i=0;i<SAMPLENUM;++i){
 
 		vec2 xi=hammersley2d(i,SAMPLENUM);
 		vec3 H=TBN*importanceSample(xi,alpha);
 		float NdotH=max(dot(N,H),0.);
-		vec3 L=reflect(-V,H);
+		vec3 L=normalize(reflect(-V,H));
 		float LdotH=NdotH;
-		float NdotL=dot(N,L);
+		float NdotL=max(dot(N,L),0);
 
 		float D=BRDF_D(alpha,NdotH);
 		float pdf=D*LdotH*sqrt(1-LdotH*LdotH);
-		float lod=l-0.5*log2(pdf);
+		float lod=max(l-0.5*log2(pdf),0);
+		vec2 st=CubeTexCoord2EquirectangularUV(L);
 		//unreal found that multiply with NdotL provide better result, take NdotL as weight
-		col+=textureLod(inImage,L,lod).rgb*max(NdotL,0);
-		totalWeights+=max(NdotL,0);
+		col+=textureLod(inImage,st,lod).rgb*NdotL;
+		//col+=clamp(textureLod(inImage,L,lod).rgb*NdotL,vec3(0),vec3(1));
+		totalWeights+=NdotL;
 	}
 	//col/=SAMPLENUM;
 	col/=totalWeights;

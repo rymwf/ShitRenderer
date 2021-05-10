@@ -18,7 +18,12 @@ static const char *axisFragShaderName = "axis.frag.spv";
 static const char *cubemapVertShaderName = "cubemap.vert.spv";
 static const char *cubemapFragShaderName = "cubemap.frag.spv";
 
-static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
+//static const char *cubemapImagePath = IMAGE_PATH "Ridgecrest_Road_Ref.hdr";
+static const char *cubemapImagePath = IMAGE_PATH "grace-new.hdr";
+//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Gold-Room_Ref.hdr";
+//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Ref.hdr";
+//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Env.hdr";
+//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
 //static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
 
 static glm::vec3 ambientColor = glm::vec3(0.0);
@@ -183,7 +188,7 @@ void AppBase::createSwapchains()
 		swapchainFormat.colorSpace,
 		{_width, _height},
 		1,
-		ImageUsageFlagBits::COLOR_ATTACHMENT_BIT,
+		ImageUsageFlagBits::COLOR_ATTACHMENT_BIT | ImageUsageFlagBits::TRANSFER_SRC_BIT,
 		presentMode};
 	window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 	while (swapchainCreateInfo.imageExtent.width == 0 && swapchainCreateInfo.imageExtent.height == 0)
@@ -473,7 +478,7 @@ void AppBase::mainloop()
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchainImages[imageIndex], ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+			takeScreenshot(device, swapchainImages[imageIndex], ImageLayout::PRESENT_SRC);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -835,39 +840,29 @@ void AppBase::prepareSkybox()
 	//load image
 	int width, height, components;
 	auto pixels = loadImage(cubemapImagePath, width, height, components, 4); //force load an alpha channel,even not exist
-	if (!pixels)
-		throw std::runtime_error("failed to load texture image!");
 
 	//=========================================================
 	//create cubemap
 	ImageCreateInfo imageCreateInfo{
 		.imageType = ImageType::TYPE_2D,
-		.format = ShitFormat::RGBA8_UNORM, //TODO: check if format support storage image
+		.format = ShitFormat::RGBA32_SFLOAT, //TODO: check if format support storage image
 		.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
 		.mipLevels = 1,
 		.arrayLayers = 1,
 		.samples = SampleCountFlagBits::BIT_1,
 		.tiling = ImageTiling::OPTIMAL,
-		.usageFlags = ImageUsageFlagBits::SAMPLED_BIT,
+		.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::TRANSFER_SRC_BIT,
 		.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
 		.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 	};
 	skyboxImage2D = device->Create(imageCreateInfo, pixels);
 	freeImage(pixels);
 
-	ImageViewCreateInfo imageViewCreateInfo{
-		.pImage = skyboxImage2D,
-		.viewType = ImageViewType::TYPE_2D,
-		.format = ShitFormat::RGBA8_UNORM,
-		.subresourceRange = {0, 1, 0, 1},
-	};
-	skyboxImageView2D = device->Create(imageViewCreateInfo);
-
 	//cubmap
 	imageCreateInfo = {
 		ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
 		ImageType::TYPE_2D,
-		ShitFormat::RGBA8_UNORM,
+		ShitFormat::RGBA32_SFLOAT,
 		{CUBEMAP_WIDTH, CUBEMAP_WIDTH, 1},
 		0,
 		6,
@@ -877,32 +872,24 @@ void AppBase::prepareSkybox()
 		MemoryPropertyFlagBits::DEVICE_LOCAL_BIT};
 	skyboxImageCube = device->Create(imageCreateInfo, nullptr);
 
-	imageViewCreateInfo = {
+	ImageViewCreateInfo imageViewCreateInfo = {
 		skyboxImageCube,
 		ImageViewType::TYPE_CUBE,
-		ShitFormat::RGBA8_UNORM,
+		ShitFormat::RGBA32_SFLOAT,
 		{},
-		{0, 1, 0, 6}};
+		{0, skyboxImage2D->GetCreateInfoPtr()->mipLevels, 0, 6}};
 	skyboxImageViewCube = device->Create(imageViewCreateInfo);
 
 	//=======================================================
 	//equirectangular2cube shader
 	convert2DToCubemap(
 		device,
-		skyboxImageView2D,
+		skyboxImage2D,
 		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 		ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-		skyboxImageViewCube,
+		skyboxImageCube,
 		ImageLayout::UNDEFINED,
 		ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-
-	//generate mipmap
-	skyboxImageCube->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-
-	//change skyboxImageViewCube to all levels
-	device->Destroy(skyboxImageViewCube);
-	imageViewCreateInfo.subresourceRange.levelCount = skyboxImageCube->GetCreateInfoPtr()->mipLevels;
-	skyboxImageViewCube = device->Create(imageViewCreateInfo);
 
 	//update descriptor set
 	std::vector<WriteDescriptorSet> writes;

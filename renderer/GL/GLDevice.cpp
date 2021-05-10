@@ -160,7 +160,6 @@ namespace Shit
 	GLDevice::GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo)
 		: Device(createInfo), mRenderSystemCreateInfo(renderSystemCreateInfo)
 	{
-		CreateOneTimeCommandPool();
 	}
 	CommandPool *GLDevice::Create(const CommandPoolCreateInfo &createInfo)
 	{

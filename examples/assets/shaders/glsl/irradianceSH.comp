@@ -1,0 +1,75 @@
+#version 450
+
+#define PI 3.141592653
+
+#define SAMPLENUM 1024
+
+layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+layout(local_size_y_id=1)in;
+layout(local_size_z_id=2)in;
+
+layout(rgba32f,binding=0) uniform image2D inImage;
+layout(rgba32f,binding=1) uniform imageCube outImage;
+
+
+vec3 getCubeTexCoordFromCubeMap(ivec3 st,uint width){
+    vec2 uv=vec2(st.xy)*2./float(width)-1.;
+    vec3 res;
+    switch(st.z){
+        case 0: //x+
+            res=vec3(1.,-uv.y,-uv.x);
+            break;  
+        case 1: //x-
+            res=vec3(-1.,-uv.y,uv.x);
+            break;
+        case 2: //y+
+            res=vec3(uv.x,1,uv.y);
+            break;
+        case 3: //y-
+            res=vec3(uv.x,-1,-uv.y);
+            break;
+        case 4: //z+
+            res=vec3(uv.x,-uv.y,1.);
+            break;
+        case 5: //z-
+            res=vec3(-uv.x,-uv.y,-1.);
+            break;
+    }
+    return normalize(res);
+}
+vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
+	vec2 uv;
+	uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
+	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
+	return uv;
+}
+ivec2 map_to_tile(int l, int m){
+    int s=l*l+l+m;
+    int j=s/3;
+    int i=s-j*3;
+    return ivec2(i,j);
+}
+
+vec3 Llm(int l,int m){
+    ivec2 uv=map_to_tile(l,m);
+    return imageLoad(inImage,uv).rgb*2.-1.;
+}
+
+//R. Ramamoorthi, "A SIGNAL-PROCESSING FRAMEWORK FOR FORWARD AND INVERSE RENDERING," 2002.
+vec3 irradianceRecontruct(vec3 N){
+    const float c[]=float[](0.429043,0.511664,0.743125,0.886227,0.247708);
+    return c[0]*Llm(2,2)*(N.x*N.x-N.z*N.z)+c[2]*Llm(2,0)*N.y*N.y+c[3]*Llm(0,0)-c[4]*Llm(2,0)
+    +2.*c[0]*(Llm(2,-2)*N.x*N.z+Llm(2,1)*N.x*N.y+Llm(2,-1)*N.y*N.z)
+    +2.*c[1]*(Llm(1,1)*N.x+Llm(1,-1)*N.z+Llm(1,0)*N.y);
+}
+void main()
+{
+	ivec3 ijk=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
+	//const uint cubemapWidth=gl_WorkGroupSize.x;
+	const uint cubemapWidth=gl_NumWorkGroups.x;
+
+    vec3 N=normalize(getCubeTexCoordFromCubeMap(ijk,cubemapWidth));
+
+    imageStore(outImage,ijk,vec4(irradianceRecontruct(N),1.));
+}

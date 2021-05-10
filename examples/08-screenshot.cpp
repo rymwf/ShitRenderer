@@ -307,7 +307,7 @@ public:
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchainImages[imageIndex]);
+			takeScreenshot(device, swapchainImages[imageIndex], ImageLayout::PRESENT_SRC);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -782,7 +782,7 @@ public:
 			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 		testImage = device->Create(imageCreateInfo, pixels);
-		testImage->GenerateMipmaps(Filter::LINEAR);
+		testImage->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 		ImageViewCreateInfo imageViewCreateInfo{
 			.pImage = testImage,

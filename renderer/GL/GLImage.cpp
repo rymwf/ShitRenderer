@@ -34,6 +34,19 @@ namespace Shit
 						(std::max)(mCreateInfo.extent.width, mCreateInfo.extent.height),
 						mCreateInfo.extent.depth))) +
 				1);
+		uint32_t width=mCreateInfo.extent.width;
+		uint32_t height=mCreateInfo.extent.height;
+		uint32_t depth=mCreateInfo.extent.depth;
+		uint32_t formatSize = GetFormatSize(mCreateInfo.format);
+		for (uint32_t i = 0; i < mCreateInfo.mipLevels;
+			 ++i,
+					  width = (std::max)(width / 2, 1u),
+					  height = (std::max)(height / 2, 1u),
+					  depth = (std::max)(depth / 2, 1u))
+		{
+			mMemorySize += width * height * depth * formatSize * mCreateInfo.arrayLayers;
+		}
+
 		if (!static_cast<bool>(mCreateInfo.flags & ImageCreateFlagBits::MUTABLE_FORMAT_BIT) &&
 			static_cast<bool>(mCreateInfo.usageFlags & (ImageUsageFlagBits::COLOR_ATTACHMENT_BIT | ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT_BIT)) &&
 			!static_cast<bool>(mCreateInfo.usageFlags & ImageUsageFlagBits::INPUT_ATTACHMENT_BIT) &&

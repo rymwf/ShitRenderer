@@ -194,7 +194,7 @@ public:
 	}
 	void processImage()
 	{
-		device->ExecuteOneTimeCommands([&](CommandBuffer *commandBuffer) {
+		executeOneTimeCommands(device, QueueFlagBits::COMPUTE_BIT, 0, [&](CommandBuffer *commandBuffer) {
 			//x convolution
 			commandBuffer->BindPipeline(BindPipelineInfo{
 				PipelineBindPoint::COMPUTE,
@@ -208,13 +208,13 @@ public:
 			});
 			commandBuffer->Dispatch(DispatchInfo{testImage->GetCreateInfoPtr()->extent.height, 1u, 1u});
 
-//			ImageMemoryBarrier barrier{
-//				AccessFlagBits::SHADER_WRITE_BIT,
-//				AccessFlagBits::SHADER_READ_BIT,
-//				ImageLayout::GENERAL,
-//				ImageLayout::GENERAL,
-//				outputImage,
-//				ImageSubresourceRange{0, 1, 0, 1}};
+			//			ImageMemoryBarrier barrier{
+			//				AccessFlagBits::SHADER_WRITE_BIT,
+			//				AccessFlagBits::SHADER_READ_BIT,
+			//				ImageLayout::GENERAL,
+			//				ImageLayout::GENERAL,
+			//				outputImage,
+			//				ImageSubresourceRange{0, 1, 0, 1}};
 		});
 	}
 	void createImages()
@@ -255,7 +255,7 @@ public:
 		};
 
 		testImage = device->Create(imageCreateInfo, pixels);
-		testImage->GenerateMipmaps(Filter::LINEAR);
+		testImage->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 		ImageViewCreateInfo imageViewCreateInfo{
 			.pImage = testImage,
@@ -267,6 +267,7 @@ public:
 		freeImage(pixels);
 
 		//=======
+		imageCreateInfo.mipLevels = 1;
 		imageCreateInfo.usageFlags = ImageUsageFlagBits::STORAGE_BIT;
 		imageCreateInfo.initialLayout = ImageLayout::GENERAL;
 		outputImage = device->Create(imageCreateInfo, nullptr);
@@ -275,7 +276,7 @@ public:
 	}
 	void saveImages()
 	{
-		takeScreenshot(device, outputImage);
+		takeScreenshot(device, outputImage, ImageLayout::GENERAL);
 	}
 	void createUBOBuffers()
 	{

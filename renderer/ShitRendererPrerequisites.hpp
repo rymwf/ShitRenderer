@@ -51,6 +51,7 @@
 	}
 
 #define SHIT_ATTACHMENT_UNUSED (~0U)
+#define SHIT_QUEUE_FAMILY_IGNORED (~0U)
 
 namespace Shit
 {
@@ -60,29 +61,61 @@ namespace Shit
 		{
 		case ShitFormat::R8_UNORM:
 		case ShitFormat::R8_SRGB:
+		case ShitFormat::R8_USCALED:
+		case ShitFormat::R8_SSCALED:
+		case ShitFormat::R16_UNORM:
+		case ShitFormat::R16_USCALED:
+		case ShitFormat::R16_SSCALED:
+		case ShitFormat::R16_SFLOAT:
+		case ShitFormat::R32_SFLOAT:
 		case ShitFormat::D16_UNORM:
 		case ShitFormat::D24_UNORM:
 		case ShitFormat::D32_SFLOAT:
 		case ShitFormat::D24_UNORM_S8_UINT:
 		case ShitFormat::D32_SFLOAT_S8_UINT:
 		case ShitFormat::S8_UINT:
-		default:
 			return 1;
 
 		case ShitFormat::RG8_UNORM:
 		case ShitFormat::RG8_SRGB:
+		case ShitFormat::RG8_USCALED:
+		case ShitFormat::RG8_SSCALED:
+		case ShitFormat::RG16_UNORM:
+		case ShitFormat::RG16_USCALED:
+		case ShitFormat::RG16_SSCALED:
+		case ShitFormat::RG16_SFLOAT:
+		case ShitFormat::RG32_SFLOAT:
 			return 2;
 
 		case ShitFormat::RGB8_UNORM:
 		case ShitFormat::RGB8_SRGB:
+		case ShitFormat::RGR8_USCALED:
+		case ShitFormat::RGR8_SSCALED:
 		case ShitFormat::BGR8_UNORM:
 		case ShitFormat::BGR8_SRGB:
+		case ShitFormat::BGR8_USCALED:
+		case ShitFormat::BGR8_SSCALED:
+		case ShitFormat::RGB16_UNORM:
+		case ShitFormat::RGB16_USCALED:
+		case ShitFormat::RGB16_SSCALED:
+		case ShitFormat::RGB16_SFLOAT:
+		case ShitFormat::RGB32_SFLOAT:
 			return 3;
 
 		case ShitFormat::RGBA8_UNORM:
 		case ShitFormat::RGBA8_SRGB:
+		case ShitFormat::RGBA8_USCALED:
+		case ShitFormat::RGBA8_SSCALED:
 		case ShitFormat::BGRA8_UNORM:
 		case ShitFormat::BGRA8_SRGB:
+		case ShitFormat::BGRA8_USCALED:
+		case ShitFormat::BGRA8_SSCALED:
+		case ShitFormat::RGBA16_UNORM:
+		case ShitFormat::RGBA16_USCALED:
+		case ShitFormat::RGBA16_SSCALED:
+		case ShitFormat::RGBA16_SFLOAT:
+		case ShitFormat::RGBA32_SFLOAT:
+		default:
 			return 4;
 		}
 	}
@@ -91,15 +124,37 @@ namespace Shit
 		switch (format)
 		{
 		case ShitFormat::D16_UNORM:
+		case ShitFormat::R16_UNORM:
+		case ShitFormat::R16_USCALED:
+		case ShitFormat::R16_SSCALED:
+		case ShitFormat::R16_SFLOAT:
+
+		case ShitFormat::RG16_UNORM:
+		case ShitFormat::RG16_USCALED:
+		case ShitFormat::RG16_SSCALED:
+		case ShitFormat::RG16_SFLOAT:
+
+		case ShitFormat::RGB16_UNORM:
+		case ShitFormat::RGB16_USCALED:
+		case ShitFormat::RGB16_SSCALED:
+		case ShitFormat::RGB16_SFLOAT:
+
+		case ShitFormat::RGBA16_UNORM:
+		case ShitFormat::RGBA16_USCALED:
+		case ShitFormat::RGBA16_SSCALED:
+		case ShitFormat::RGBA16_SFLOAT:
 			return 2;
 		case ShitFormat::D24_UNORM:
 			return 3;
 		case ShitFormat::D32_SFLOAT:
 		case ShitFormat::D24_UNORM_S8_UINT:
+		case ShitFormat::R32_SFLOAT:
+		case ShitFormat::RG32_SFLOAT:
+		case ShitFormat::RGB32_SFLOAT:
+		case ShitFormat::RGBA32_SFLOAT:
 			return 4;
 		case ShitFormat::D32_SFLOAT_S8_UINT:
 			return 5;
-		case ShitFormat::S8_UINT:
 		default:
 			return 1;
 		}
@@ -802,8 +857,8 @@ namespace Shit
 	{
 		AccessFlagBits srcAccessMask;
 		AccessFlagBits dstAccessMask;
-		//		uint32_t srcQueueFamilyIndex;
-		//		uint32_t dstQueueFamilyIndex;
+		//	uint32_t srcQueueFamilyIndex;
+		//	uint32_t dstQueueFamilyIndex;
 		Buffer *pBuffer;
 		uint64_t offset;
 		uint64_t size;

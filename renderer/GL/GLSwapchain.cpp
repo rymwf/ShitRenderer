@@ -32,6 +32,9 @@ namespace Shit
 			mpStateManager->EnableCapability(GL_FRAMEBUFFER_SRGB);
 		else
 			mpStateManager->DisableCapability(GL_FRAMEBUFFER_SRGB);
+		
+		//cubemap seamless
+		mpStateManager->EnableCapability(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 #ifndef NDEBUG
 		GL::listGLInfo();

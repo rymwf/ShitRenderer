@@ -111,13 +111,21 @@ namespace Shit
 		if (static_cast<bool>(createInfo.flags & RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT))
 		{
 			//enable validation layer
-			if (CheckLayerSupport(LAYER_VALIDATION_KHRONOS_validation))
+			if (CheckLayerSupport(VK_LAYER_KHRONOS_validation))
 			{
-				layers.emplace_back(LAYER_VALIDATION_KHRONOS_validation);
+				layers.emplace_back(VK_LAYER_KHRONOS_validation);
 				//add extensions
 			}
 			else
-				LOG("validation layer is not supported");
+				LOG("VK_LAYER_KHRONOS_validation layer is not supported");
+			//enable validation layer
+			if (CheckLayerSupport(VK_LAYER_LUNARG_monitor))
+			{
+				layers.emplace_back(VK_LAYER_LUNARG_monitor);
+				//add extensions
+			}
+			else
+				LOG("VK_LAYER_LUNARG_monitor layer is not supported");
 		}
 
 		VkInstanceCreateInfo instanceInfo{

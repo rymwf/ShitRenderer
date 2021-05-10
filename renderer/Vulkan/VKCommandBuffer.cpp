@@ -414,8 +414,8 @@ namespace Shit
 				nullptr,
 				Map(info.pBufferMemoryBarriers[i].srcAccessMask),
 				Map(info.pBufferMemoryBarriers[i].dstAccessMask),
-				VK_QUEUE_FAMILY_IGNORED, //e.srcQueueFamilyIndex,
-				VK_QUEUE_FAMILY_IGNORED, //e.dstQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED, // info.pBufferMemoryBarriers[i].srcQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED, // info.pBufferMemoryBarriers[i].dstQueueFamilyIndex,
 				static_cast<VKBuffer *>(info.pBufferMemoryBarriers[i].pBuffer)->GetHandle(),
 				info.pBufferMemoryBarriers[i].offset,
 				info.pBufferMemoryBarriers[i].size};
@@ -429,8 +429,8 @@ namespace Shit
 				Map(info.pImageMemoryBarriers[i].dstAccessMask),
 				Map(info.pImageMemoryBarriers[i].oldImageLayout),
 				Map(info.pImageMemoryBarriers[i].newImageLayout),
-				VK_QUEUE_FAMILY_IGNORED, //e.srcQueueFamilyIndex,
-				VK_QUEUE_FAMILY_IGNORED, //e.dstQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED, // info.pImageMemoryBarriers[i].srcQueueFamilyIndex,
+				VK_QUEUE_FAMILY_IGNORED, // info.pImageMemoryBarriers[i].dstQueueFamilyIndex,
 				static_cast<VKImage *>(info.pImageMemoryBarriers[i].pImage)->GetHandle(),
 				VkImageSubresourceRange{
 					GetImageAspectFromFormat(static_cast<VKImage *>(info.pImageMemoryBarriers[i].pImage)->GetCreateInfoPtr()->format),

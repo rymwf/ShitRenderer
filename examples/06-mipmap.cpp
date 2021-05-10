@@ -1,8 +1,6 @@
 #include "common.hpp"
 #include <stb_image.h>
 
-uint32_t WIDTH = 800, HEIGHT = 600;
-
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 const char *vertShaderName = "06.vert.spv";
@@ -712,7 +710,7 @@ public:
 			.initialLayout = ImageLayout::SHADER_READ_ONLY_OPTIMAL};
 
 		testImage = device->Create(imageCreateInfo, pixels);
-		testImage->GenerateMipmaps(Filter::LINEAR);
+		testImage->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 		ImageViewCreateInfo imageViewCreateInfo{
 			.pImage = testImage,

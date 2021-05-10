@@ -13,7 +13,7 @@
 
 #define PERSPECTIVE 1
 
-#define IRRADIANCE_MAP_WIDTH 64
+#define IRRADIANCE_MAP_WIDTH 32
 
 #define CREATE_APP(x)               \
 	int main(int argc, char **argv) \

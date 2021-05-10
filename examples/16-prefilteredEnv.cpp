@@ -7,6 +7,8 @@ const char *fragShaderName = "16.frag.spv";
 
 static const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
 
+#define MAX_ROUGHNESS_LEVEL 5
+
 int animationIndex = 0;
 
 class HelloApp : public AppBase
@@ -108,6 +110,9 @@ public:
 		std::vector<uint32_t> constantIDs{CONSTANT_ID_JOINTNUM};
 		std::vector<uint32_t> constantValues{jointMatrixNum};
 
+		std::vector<uint32_t> constantIDs2{3};
+		std::vector<uint32_t> constantValues2{MAX_ROUGHNESS_LEVEL};
+
 		std::vector<PipelineShaderStageCreateInfo>
 			shaderStageCreateInfos{
 				PipelineShaderStageCreateInfo{
@@ -119,6 +124,7 @@ public:
 					ShaderStageFlagBits::FRAGMENT_BIT,
 					fragShader,
 					"main",
+					{constantIDs2, constantValues2},
 				},
 			};
 		PipelineInputAssemblyStateCreateInfo inputAssemblyState{
@@ -242,7 +248,11 @@ public:
 	}
 	void prepare() override
 	{
+		//takeScreenshot(device, skyboxImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 		createPrefilteredEnvMap();
+		//takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+		takeScreenshot(device, prefilteredEnvMap, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
 
 		commandPool = device->Create(CommandPoolCreateInfo{
 			{},
@@ -257,9 +267,6 @@ public:
 		testModelViews[0] = scene.CreateNode<ModelView>(rootNode);
 		setScene();
 
-		//takeScreenshot(device, skyboxImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-		//takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-		//takeScreenshot(device, prefilteredEnvMap, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 	}
 	void createUniformBuffers()
 	{
@@ -309,13 +316,14 @@ public:
 		prefilteredEnvMapView = device->Create(ImageViewCreateInfo{
 			prefilteredEnvMap,
 			ImageViewType::TYPE_CUBE,
-			ShitFormat::RGBA8_UNORM,
+			ShitFormat::RGBA32_SFLOAT,
 			{},
 			{0, prefilteredEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
 		});
 		generatePrefilteredEnvMap(
 			device,
-			skyboxImageCube,
+			MAX_ROUGHNESS_LEVEL,
+			skyboxImage2D,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 			prefilteredEnvMap,

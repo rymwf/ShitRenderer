@@ -772,9 +772,9 @@ namespace Shit
 	{
 		auto offset = mBuffer.size();
 		if (realsize == 0)
-			mBuffer.resize(offset + sizeof(GLCommandCode) + sizeof(T));
+			mBuffer.insert(mBuffer.end(), sizeof(GLCommandCode) + sizeof(T), {});
 		else
-			mBuffer.resize(offset + sizeof(GLCommandCode) + realsize);
+			mBuffer.insert(mBuffer.end(), sizeof(GLCommandCode) + realsize, {});
 		mBuffer[offset] = static_cast<uint8_t>(commandCode);
 		return reinterpret_cast<T *>(&mBuffer[offset + sizeof(GLCommandCode)]);
 	}
@@ -782,7 +782,7 @@ namespace Shit
 	void *GLCommandBuffer::AllocateCommand<void>(GLCommandCode commandCode, size_t realsize)
 	{
 		auto offset = mBuffer.size();
-		mBuffer.resize(offset + sizeof(GLCommandCode) + realsize);
+		mBuffer.insert(mBuffer.end(), sizeof(GLCommandCode) + realsize, {});
 		mBuffer[offset] = static_cast<uint8_t>(commandCode);
 		return realsize == 0 ? &mBuffer[offset] : &mBuffer[offset + sizeof(GLCommandCode)];
 	}
@@ -799,6 +799,8 @@ namespace Shit
 	}
 	void GLCommandBuffer::Begin(const CommandBufferBeginInfo &beginInfo)
 	{
+		if (static_cast<bool>(beginInfo.usage & CommandBufferUsageFlagBits::ONE_TIME_SUBMIT_BIT))
+			mBuffer.clear();
 		memcpy(AllocateCommand<CommandBufferBeginInfo>(GLCommandCode::Begin), &beginInfo, sizeof(beginInfo));
 	}
 	void GLCommandBuffer::End() {}

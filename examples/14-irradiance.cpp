@@ -248,6 +248,7 @@ public:
 	void prepare() override
 	{
 		createIrradianceMap();
+		takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 		commandPool = device->Create(CommandPoolCreateInfo{
 			{},
@@ -302,44 +303,37 @@ public:
 	}
 	void createIrradianceMap()
 	{
-		ImageCreateInfo imageCreateInfo{
-			.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
-			.imageType = ImageType::TYPE_2D,
-			.format = ShitFormat::RGBA8_UNORM, //TODO: check if format support storage image
-			.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
-			.mipLevels = 0,
-			.arrayLayers = 6,
-			.samples = SampleCountFlagBits::BIT_1,
-			.tiling = ImageTiling::OPTIMAL,
-			.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
-			.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
-		};
+		irradianceImageCube = device->Create(
+			ImageCreateInfo{
+				.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
+				.imageType = ImageType::TYPE_2D,
+				.format = ShitFormat::RGBA32_SFLOAT, //TODO: check if format support storage image
+				.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
+				.mipLevels = 0,
+				.arrayLayers = 6,
+				.samples = SampleCountFlagBits::BIT_1,
+				.tiling = ImageTiling::OPTIMAL,
+				.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
+				.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+			},
+			nullptr);
 
-		irradianceImageCube = device->Create(imageCreateInfo, nullptr);
-
-		ImageViewCreateInfo imageViewCreateInfo{
-			irradianceImageCube,
-			ImageViewType::TYPE_CUBE,
-			ShitFormat::RGBA8_UNORM,
-			{},
-			{0, 1, 0, 6},
-		};
-
-		irradianceImageViewCube = device->Create(imageViewCreateInfo);
+		irradianceImageViewCube = device->Create(
+			ImageViewCreateInfo{
+				irradianceImageCube,
+				ImageViewType::TYPE_CUBE,
+				ShitFormat::RGBA32_SFLOAT,
+				{},
+				{0, irradianceImageCube->GetCreateInfoPtr()->mipLevels, 0, 6},
+			});
 		generateIrradianceMap(
 			device,
-			skyboxImageViewCube,
+			skyboxImage2D,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-			irradianceImageViewCube,
+			irradianceImageCube,
 			ImageLayout::UNDEFINED,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-		device->Destroy(irradianceImageViewCube);
-
-		irradianceImageCube->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-
-		imageViewCreateInfo.subresourceRange.levelCount = irradianceImageCube->GetCreateInfoPtr()->mipLevels;
-		irradianceImageViewCube = device->Create(imageViewCreateInfo);
 	}
 };
 

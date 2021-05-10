@@ -7,7 +7,7 @@ layout(local_size_y_id=1)in;
 layout(local_size_z_id=2)in;
 
 layout(binding=0) uniform sampler2D inImage;
-layout(rgba8,binding=1) uniform imageCube outImage;
+layout(rgba32f,binding=1) uniform imageCube outImage;
 
 vec3 getCubeTexCoordFromCubeMap(ivec3 st,int width){
 	vec2 uv=vec2(st.xy)*2./float(width)-1.;

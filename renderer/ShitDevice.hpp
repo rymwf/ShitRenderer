@@ -53,8 +53,6 @@ namespace Shit
 
 		DeviceCreateInfo mCreateInfo;
 
-		void CreateOneTimeCommandPool();
-
 	public:
 		Device(const DeviceCreateInfo &createInfo);
 		virtual ~Device() {}
@@ -114,8 +112,6 @@ namespace Shit
 		virtual Sampler *Create(const SamplerCreateInfo &createInfo) = 0;
 		virtual DescriptorPool *Create(const DescriptorPoolCreateInfo &createInfo) = 0;
 		virtual void UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, const std::vector<CopyDescriptorSet> &descriptorCopies) = 0;
-
-		void ExecuteOneTimeCommands(const std::function<void(CommandBuffer *)> &func);
 
 		void Destroy(const Swapchain *pSwapchain);
 		void Destroy(const Shader *pShader);

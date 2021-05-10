@@ -102,8 +102,22 @@ using namespace Shit;
 
 extern Shit::RendererVersion rendererVersion;
 
+/**
+ * @brief 
+ * 
+ * @param pDevice 
+ * @param queueFlags 
+ * @param queueIndex 
+ * @param func arguments are commandbuffer and queue family index
+ */
+void executeOneTimeCommands(
+	Device *pDevice,
+	QueueFlagBits queueFlags,
+	uint32_t queueIndex,
+	const std::function<void(CommandBuffer *)> &func);
+
 void *loadImage(const char *imagePath, int &width, int &height, int &components, int request_components);
-void saveImage(const char *imagePath, int width, int height, int component, const void *data);
+void saveImage(const char *imagePath, int width, int height, int component, const void *data, bool hdr = false);
 void freeImage(void *pData);
 
 template <typename T>
@@ -121,48 +135,37 @@ std::string buildShaderPath(const char *shaderName, RendererVersion renderVersio
 WindowPixelFormat chooseSwapchainFormat(const std::vector<WindowPixelFormat> &candidates, Device *pDevice, ShitWindow *pWindow);
 PresentMode choosePresentMode(const std::vector<PresentMode> &candidates, Device *pDevice, ShitWindow *window);
 
-/**
- * @brief image will cast to shader read only
- * 
- * @param pImageView2D  layout must be shader read only
- * @param pImageViewCube layout must be undefined and will cast to shader read only
- * @param width 
- */
 void convert2DToCubemap(
 	Device *pDevice,
-	ImageView *pSrcImageView2D,
+	Image *pSrcImage2D,
 	ImageLayout srcInitialLayout,
 	ImageLayout srcFinalLayout,
-	ImageView *pDstImageViewCube,
+	Image *pDstImageCube,
 	ImageLayout dstInitialLayout,
 	ImageLayout dstFinalLayout);
 
-/**
- * @brief 
- * 
- * @param pDevice 
- * @param pSrcImageViewCube  layout must be shader read only
- * @param pDstImageViewCube  layout must be undefined and will cast to shader read only
- */
 void generateIrradianceMap(
 	Device *pDevice,
-	ImageView *pSrcImageViewCube,
+	Image *pSrcImageView2D,
 	ImageLayout srcInitialLayout,
 	ImageLayout srcFinalLayout,
-	ImageView *pDstImageViewCube,
+	Image *pDstImageViewCube,
 	ImageLayout dstInitialLayout,
 	ImageLayout dstFinalLayout);
 
-/**
- * @brief 
- * 
- * @param pDevice 
- * @param pSrcImageCube  layout must be shader read only
- * @param pDstImageCube layout must be undefined and will cast to shader read only
- */
+void generateIrradianceMapSH(
+	Device *pDevice,
+	Image *pSrcImage2D,
+	ImageLayout srcInitialLayout,
+	ImageLayout srcFinalLayout,
+	Image *pDstImageCube,
+	ImageLayout dstInitialLayout,
+	ImageLayout dstFinalLayout);
+
 void generatePrefilteredEnvMap(
 	Device *pDevice,
-	Image *pSrcImageCube,
+	uint32_t maxRoughnessLevelNum,
+	Image *pSrcImage2D,
 	ImageLayout srcInitialLayout,
 	ImageLayout srcFinalLayout,
 	Image *pDstImageCube,

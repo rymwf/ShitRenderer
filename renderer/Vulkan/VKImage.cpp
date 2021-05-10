@@ -33,7 +33,20 @@ namespace Shit
 				1);
 		auto device = static_cast<VKDevice *>(pDevice)->GetHandle();
 
+#ifndef NDEBUG
+		VkImageFormatProperties imageFormatProperties;
+		vkGetPhysicalDeviceImageFormatProperties(
+			static_cast<VKDevice *>(mpDevice)->GetPhysicalDevice(),
+			Map(mCreateInfo.format),
+			Map(mCreateInfo.imageType),
+			Map(mCreateInfo.tiling),
+			Map(mCreateInfo.usageFlags),
+			Map(mCreateInfo.flags),
+			&imageFormatProperties);
+#endif
+
 		ImageLayout tempLayout = mCreateInfo.initialLayout == ImageLayout::PREINITIALIZED ? ImageLayout::PREINITIALIZED : ImageLayout::UNDEFINED;
+		mCreateInfo.usageFlags |= ImageUsageFlagBits::TRANSFER_SRC_BIT | ImageUsageFlagBits::TRANSFER_DST_BIT;
 
 		VkImageCreateInfo imageCreateInfo{
 			VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -46,7 +59,7 @@ namespace Shit
 			mCreateInfo.arrayLayers,
 			static_cast<VkSampleCountFlagBits>(mCreateInfo.samples),
 			Map(mCreateInfo.tiling),
-			Map(mCreateInfo.usageFlags) | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			Map(mCreateInfo.usageFlags),
 			VK_SHARING_MODE_EXCLUSIVE,
 			0,
 			nullptr,
@@ -57,6 +70,9 @@ namespace Shit
 
 		VkMemoryRequirements imageMemoryRequireMents;
 		vkGetImageMemoryRequirements(device, mHandle, &imageMemoryRequireMents);
+
+		mMemorySize = imageMemoryRequireMents.size;
+
 		LOG_VAR(imageMemoryRequireMents.size);
 		LOG_VAR(imageMemoryRequireMents.alignment);
 		LOG_VAR(imageMemoryRequireMents.memoryTypeBits);
@@ -77,31 +93,75 @@ namespace Shit
 		}
 		else if (mCreateInfo.initialLayout != ImageLayout::UNDEFINED && mCreateInfo.initialLayout != ImageLayout::PREINITIALIZED)
 		{
-			static_cast<VKDevice *>(mpDevice)->ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
-				VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(mCreateInfo.format);
-				//transfer layout from to initial layout
-				VkImageMemoryBarrier barrier{
-					VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					nullptr,
-					0,
-					VK_ACCESS_SHADER_READ_BIT,
-					Map(tempLayout),
-					Map(mCreateInfo.initialLayout),
-					VK_QUEUE_FAMILY_IGNORED,
-					VK_QUEUE_FAMILY_IGNORED,
-					mHandle,
-					{aspectFlags, 0, mCreateInfo.mipLevels, 0, mCreateInfo.arrayLayers}};
-				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-									 0,			   //dependency flags
-									 0, nullptr,   //memory barriers
-									 0, nullptr,   //buffer memory barriers
-									 1, &barrier); //image memory barriers
-			});
+			auto queueFamilyIndex = mpDevice->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {});
+			VkQueue queue;
+			vkGetDeviceQueue(device, queueFamilyIndex->index, 0, &queue);
+
+			VkCommandPool commandPool;
+			VkCommandPoolCreateInfo commandPoolCreateInfo{
+				VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+				nullptr,
+				VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+				queueFamilyIndex->index};
+			CHECK_VK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool))
+
+			VkCommandBuffer commandBuffer;
+			VkCommandBufferAllocateInfo commandBufferAllocateInfo{
+				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+				nullptr,
+				commandPool,
+				VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+				1};
+			CHECK_VK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer))
+
+			VkCommandBufferBeginInfo beginInfo{
+				VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+				nullptr,
+				VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+			};
+
+			vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+			VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(mCreateInfo.format);
+			//transfer layout from to initial layout
+			VkImageMemoryBarrier barrier{
+				VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				nullptr,
+				0,
+				VK_ACCESS_SHADER_READ_BIT,
+				Map(tempLayout),
+				Map(mCreateInfo.initialLayout),
+				VK_QUEUE_FAMILY_IGNORED,
+				VK_QUEUE_FAMILY_IGNORED,
+				mHandle,
+				{aspectFlags, 0, mCreateInfo.mipLevels, 0, mCreateInfo.arrayLayers}};
+
+			vkCmdPipelineBarrier(commandBuffer,
+								 VK_PIPELINE_STAGE_TRANSFER_BIT,
+								 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+								 0,			   //dependency flags
+								 0, nullptr,   //memory barriers
+								 0, nullptr,   //buffer memory barriers
+								 1, &barrier); //image memory barriers
+
+			vkEndCommandBuffer(commandBuffer);
+
+			VkSubmitInfo submitInfo{
+				VK_STRUCTURE_TYPE_SUBMIT_INFO,
+				nullptr,
+				0,
+				nullptr,
+				nullptr,
+				1,
+				&commandBuffer,
+				0,
+				nullptr};
+			CHECK_VK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE))
+			vkQueueWaitIdle(queue);
+			vkDestroyCommandPool(device, commandPool, nullptr);
 		}
 	}
-	void VKImage::UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData) 
+	void VKImage::UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData)
 	{
 		uint64_t size = rect.extent.width * rect.extent.height * rect.extent.depth * GetFormatSize(mCreateInfo.format);
 
@@ -118,59 +178,108 @@ namespace Shit
 		memcpy(data, pData, static_cast<size_t>(size));
 		stagingbuffer.UnMapMemory();
 
-		static_cast<VKDevice *>(mpDevice)->ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
-			VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(mCreateInfo.format);
+		//=================================================================================
+		VkDevice device = static_cast<VKDevice *>(mpDevice)->GetHandle();
 
-			//1. transfer layout from undefined to transder destination
-			VkImageMemoryBarrier barrier{
-				VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				nullptr,
-				0,
-				VK_ACCESS_TRANSFER_WRITE_BIT,
-				Map(initialLayout),
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				VK_QUEUE_FAMILY_IGNORED,
-				VK_QUEUE_FAMILY_IGNORED,
-				mHandle,
-				{aspectFlags,
-				 mipLevel,
-				 mCreateInfo.mipLevels,
-				 static_cast<uint32_t>(rect.offset.z),
-				 (std::max)(rect.extent.depth - static_cast<uint32_t>(rect.offset.z), 1u)}};
-			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-								 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, //src stage mask
-								 VK_PIPELINE_STAGE_TRANSFER_BIT,	//dst stage mask
-								 0,									//dependency flags
-								 0, nullptr,						//memory barriers
-								 0, nullptr,						//buffer memory barriers
-								 1, &barrier);						//image memory barriers
-			//2. copy image
-			BufferImageCopy bufferImageCopy{
-				0,																	 //buffer offset
-				0,																	 //buffer row length
-				0,																	 //buffer image height
-				{mipLevel, static_cast<uint32_t>(rect.offset.z), rect.extent.depth}, //image subresource
-				rect.offset,														 //image offset
-				rect.extent															 //image extent
-			};
-			pCommandBuffer->CopyBufferToImage({&stagingbuffer,
-											   this,
-											   1,
-											   &bufferImageCopy});
-			////3. transfer layout 
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = Map(finalLayout);
+		auto queueFamilyIndex = mpDevice->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {});
+		VkQueue queue;
+		vkGetDeviceQueue(device, queueFamilyIndex->index, 0, &queue);
 
-			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-								 VK_PIPELINE_STAGE_TRANSFER_BIT,
-								 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-								 0,
-								 0, nullptr,
-								 0, nullptr,
-								 1, &barrier);
-		});
+		VkCommandPool commandPool;
+		VkCommandPoolCreateInfo commandPoolCreateInfo{
+			VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			nullptr,
+			VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+			queueFamilyIndex->index};
+		CHECK_VK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool))
+
+		VkCommandBuffer commandBuffer;
+		VkCommandBufferAllocateInfo commandBufferAllocateInfo{
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			nullptr,
+			commandPool,
+			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			1};
+		CHECK_VK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer))
+
+		VkCommandBufferBeginInfo beginInfo{
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			nullptr,
+			VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		};
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		VkImageAspectFlags aspectFlags = GetImageAspectFromFormat(mCreateInfo.format);
+
+		//1. transfer layout from undefined to transder destination
+		VkImageMemoryBarrier barrier{
+			VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			nullptr,
+			0,
+			VK_ACCESS_TRANSFER_WRITE_BIT,
+			Map(initialLayout),
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			mHandle,
+			{aspectFlags,
+			 mipLevel,
+			 mCreateInfo.mipLevels,
+			 static_cast<uint32_t>(rect.offset.z),
+			 (std::max)(rect.extent.depth - static_cast<uint32_t>(rect.offset.z), 1u)}};
+		vkCmdPipelineBarrier(commandBuffer,
+							 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, //src stage mask
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,	//dst stage mask
+							 0,									//dependency flags
+							 0, nullptr,						//memory barriers
+							 0, nullptr,						//buffer memory barriers
+							 1, &barrier);						//image memory barriers
+		//2. copy image
+		VkBufferImageCopy bufferImageCopy{
+			0,																				  //buffer offset
+			0,																				  //buffer row length
+			0,																				  //buffer image height
+			{aspectFlags, mipLevel, static_cast<uint32_t>(rect.offset.z), rect.extent.depth}, //image subresource
+			{rect.offset.x, rect.offset.y, rect.offset.z},									  //image offset
+			{rect.extent.width, rect.extent.height, rect.extent.depth}						  //image extent
+		};
+		vkCmdCopyBufferToImage(
+			commandBuffer,
+			stagingbuffer.GetHandle(),
+			mHandle,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1,
+			&bufferImageCopy);
+		////3. transfer layout
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = Map(finalLayout);
+
+		vkCmdPipelineBarrier(commandBuffer,
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,
+							 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+							 0,
+							 0, nullptr,
+							 0, nullptr,
+							 1, &barrier);
+
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo{
+			VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			nullptr,
+			0,
+			nullptr,
+			nullptr,
+			1,
+			&commandBuffer,
+			0,
+			nullptr};
+		CHECK_VK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE))
+		vkQueueWaitIdle(queue);
+		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 	void VKImage::GenerateMipmaps(Filter filter, ImageLayout initialLayout, ImageLayout finalLayout)
 	{
@@ -212,82 +321,128 @@ namespace Shit
 			{{}, {}} //offset
 		};
 
-		static_cast<VKDevice *>(mpDevice)->ExecuteOneTimeCommands([&](CommandBuffer *pCommandBuffer) {
-			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
+		//=============================================
+		VkDevice device = static_cast<VKDevice *>(mpDevice)->GetHandle();
+
+		auto queueFamilyIndex = mpDevice->GetQueueFamilyIndexByFlag(QueueFlagBits::TRANSFER_BIT, {});
+		VkQueue queue;
+		vkGetDeviceQueue(device, queueFamilyIndex->index, 0, &queue);
+
+		VkCommandPool commandPool;
+		VkCommandPoolCreateInfo commandPoolCreateInfo{
+			VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			nullptr,
+			VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+			queueFamilyIndex->index};
+		CHECK_VK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool))
+
+		VkCommandBuffer commandBuffer;
+		VkCommandBufferAllocateInfo commandBufferAllocateInfo{
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			nullptr,
+			commandPool,
+			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			1};
+		CHECK_VK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer))
+
+		VkCommandBufferBeginInfo beginInfo{
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			nullptr,
+			VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		};
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		vkCmdPipelineBarrier(commandBuffer,
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,
+							 0,
+							 0, nullptr,
+							 0, nullptr,
+							 1, &barrier);
+		barrier.subresourceRange.levelCount = 1;
+		for (uint32_t i = 1; i < mipLevels; ++i)
+		{
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.subresourceRange.baseMipLevel = i - 1;
+
+			vkCmdPipelineBarrier(commandBuffer,
 								 VK_PIPELINE_STAGE_TRANSFER_BIT,
 								 VK_PIPELINE_STAGE_TRANSFER_BIT,
 								 0,
 								 0, nullptr,
 								 0, nullptr,
 								 1, &barrier);
-			barrier.subresourceRange.levelCount = 1;
-			for (uint32_t i = 1; i < mipLevels; ++i)
-			{
-				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-				barrier.subresourceRange.baseMipLevel = i - 1;
 
-				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 0,
-									 0, nullptr,
-									 0, nullptr,
-									 1, &barrier);
+			blitRegion.srcSubresource.mipLevel = i - 1;
+			blitRegion.srcOffsets[1] = {static_cast<int32_t>(mipExtent.width), static_cast<int32_t>(mipExtent.height), static_cast<int32_t>(mipExtent.depth)};
 
-				blitRegion.srcSubresource.mipLevel = i - 1;
-				blitRegion.srcOffsets[1] = {static_cast<int32_t>(mipExtent.width), static_cast<int32_t>(mipExtent.height), static_cast<int32_t>(mipExtent.depth)};
+			mipExtent.width = (std::max)(mipExtent.width >> 1, 1u);
+			mipExtent.height = (std::max)(mipExtent.height >> 1, 1u);
+			mipExtent.depth = (std::max)(mipExtent.depth >> 1, 1u);
 
-				mipExtent.width = (std::max)(mipExtent.width >> 1, 1u);
-				mipExtent.height = (std::max)(mipExtent.height >> 1, 1u);
-				mipExtent.depth = (std::max)(mipExtent.depth >> 1, 1u);
+			blitRegion.dstSubresource.mipLevel = i;
+			blitRegion.dstOffsets[1] = {static_cast<int32_t>(mipExtent.width), static_cast<int32_t>(mipExtent.height), static_cast<int32_t>(mipExtent.depth)};
+			vkCmdBlitImage(commandBuffer,
+						   mHandle,								 //srcImage
+						   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, //src image layout
+						   mHandle,								 //dstimage
+						   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, //dst image layout
+						   1,									 //region count
+						   &blitRegion,							 //regions
+						   Map(filter));
+		}
 
-				blitRegion.dstSubresource.mipLevel = i;
-				blitRegion.dstOffsets[1] = {static_cast<int32_t>(mipExtent.width), static_cast<int32_t>(mipExtent.height), static_cast<int32_t>(mipExtent.depth)};
-				vkCmdBlitImage(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-							   mHandle,								 //srcImage
-							   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, //src image layout
-							   mHandle,								 //dstimage
-							   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, //dst image layout
-							   1,									 //region count
-							   &blitRegion,							 //regions
-							   Map(filter));
-			}
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = Map(finalLayout);
+		barrier.subresourceRange.baseMipLevel = mipLevels - 1;
 
+		vkCmdPipelineBarrier(commandBuffer,
+							 VK_PIPELINE_STAGE_TRANSFER_BIT,
+							 VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+							 0,
+							 0, nullptr,
+							 0, nullptr,
+							 1, &barrier);
+
+		if (mipLevels > 1)
+		{
 			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier.newLayout = Map(finalLayout);
-			barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+			barrier.subresourceRange.baseMipLevel = 0;
+			barrier.subresourceRange.levelCount = mipLevels - 1;
 
-			vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
+			vkCmdPipelineBarrier(commandBuffer,
 								 VK_PIPELINE_STAGE_TRANSFER_BIT,
 								 VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
 								 0,
 								 0, nullptr,
 								 0, nullptr,
 								 1, &barrier);
+		}
 
-			if (mipLevels > 1)
-			{
-				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-				barrier.newLayout = Map(finalLayout);
-				barrier.subresourceRange.baseMipLevel = 0;
-				barrier.subresourceRange.levelCount = mipLevels - 1;
+		vkEndCommandBuffer(commandBuffer);
 
-				vkCmdPipelineBarrier(static_cast<VKCommandBuffer *>(pCommandBuffer)->GetHandle(),
-									 VK_PIPELINE_STAGE_TRANSFER_BIT,
-									 VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-									 0,
-									 0, nullptr,
-									 0, nullptr,
-									 1, &barrier);
-			}
-		});
+		VkSubmitInfo submitInfo{
+			VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			nullptr,
+			0,
+			nullptr,
+			nullptr,
+			1,
+			&commandBuffer,
+			0,
+			nullptr};
+		CHECK_VK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE))
+		vkQueueWaitIdle(queue);
+		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 	void VKImage::MapMemory(uint64_t offset, uint64_t size, void **ppData)
 	{

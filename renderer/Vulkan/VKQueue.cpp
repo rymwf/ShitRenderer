@@ -51,8 +51,7 @@ namespace Shit
 					static_cast<uint32_t>(signalSemaphores.size()),
 					signalSemaphores.data()});
 		}
-		if (VK_SUCCESS != vkQueueSubmit(mHandle, static_cast<uint32_t>(infos.size()), infos.data(), pFence ? static_cast<VKFence *>(pFence)->GetHandle() : VK_NULL_HANDLE))
-			THROW("failed to submit command");
+		CHECK_VK_RESULT(vkQueueSubmit(mHandle, static_cast<uint32_t>(infos.size()), infos.data(), pFence ? static_cast<VKFence *>(pFence)->GetHandle() : VK_NULL_HANDLE))
 	}
 	Result VKQueue::Present(const PresentInfo &presentInfo)
 	{

@@ -18,6 +18,7 @@ layout(binding=6 SET(4)) uniform samplerCube texCube;
 
 void main()
 {
+	//outColor=pow(texture(texCube,fs_in.normal),vec4(vec3(0.4545),1));
 	outColor=texture(texCube,fs_in.normal);
 	//outColor=vec4(1);
 }
