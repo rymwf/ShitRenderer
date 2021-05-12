@@ -9,7 +9,7 @@ layout(local_size_x_id=0)in;
 layout(local_size_y_id=1)in;
 layout(local_size_z_id=2)in;
 
-layout(rgba32f,binding=0) uniform image2D inImage;
+layout(rgba32f,binding=0) uniform image1D inImage;
 layout(rgba32f,binding=1) uniform imageCube outImage;
 
 
@@ -44,24 +44,50 @@ vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
 	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
 	return uv;
 }
-ivec2 map_to_tile(int l, int m){
-    int s=l*l+l+m;
-    int j=s/3;
-    int i=s-j*3;
-    return ivec2(i,j);
+int YlmTexCoord(int l, int m){
+	switch(l)
+	{
+		case 0:
+		default:
+			return 0;
+		case 1:
+			return m+2;
+		case 2:
+			return m+6;
+		case 4:
+			return m+13;
+	}
 }
 
 vec3 Llm(int l,int m){
-    ivec2 uv=map_to_tile(l,m);
-    return imageLoad(inImage,uv).rgb*2.-1.;
+    return imageLoad(inImage,YlmTexCoord(l,m)).rgb;
 }
 
-//R. Ramamoorthi, "A SIGNAL-PROCESSING FRAMEWORK FOR FORWARD AND INVERSE RENDERING," 2002.
 vec3 irradianceRecontruct(vec3 N){
-    const float c[]=float[](0.429043,0.511664,0.743125,0.886227,0.247708);
-    return c[0]*Llm(2,2)*(N.x*N.x-N.z*N.z)+c[2]*Llm(2,0)*N.y*N.y+c[3]*Llm(0,0)-c[4]*Llm(2,0)
-    +2.*c[0]*(Llm(2,-2)*N.x*N.z+Llm(2,1)*N.x*N.y+Llm(2,-1)*N.y*N.z)
-    +2.*c[1]*(Llm(1,1)*N.x+Llm(1,-1)*N.z+Llm(1,0)*N.y);
+    //const float c[]=float[](0.429043,0.511664,0.886227,0.247708);
+    //return c[0]*Llm(2,2)*(N.x*N.x-N.z*N.z)+c[3]*3*Llm(2,0)*N.y*N.y+c[2]*Llm(0,0)-c[3]*Llm(2,0)
+    //+2.*c[0]*(Llm(2,-2)*N.x*N.z+Llm(2,1)*N.x*N.y+Llm(2,-1)*N.y*N.z)
+    //+2.*c[1]*(Llm(1,1)*N.x+Llm(1,-1)*N.z+Llm(1,0)*N.y);
+	const float c[]={
+		0.8862269254527579,//Llm 00 40
+		1.0233267079464885,//1-1 10 11
+		0.8580855308097833,//2-2 2-1 21 22
+		0.2477079561003757,//20 4-2 42
+		0.08757798775621764,//4-1 41
+		0.3276868248068495,//4-4 4-3 44
+		0.23170957592641148//43
+		};
+	return 
+	c[0]*Llm(0,0)+
+	c[1]*(Llm(1,-1)*N.y+Llm(1,0)*N.z+Llm(1,1)*N.x)+
+	c[2]*(Llm(2,-2)*N.y*N.x+Llm(2,-1)*N.y*N.z+Llm(2,1)*N.x*N.z+Llm(2,2)*0.5*(N.x*N.x-N.y*N.y))+
+	c[3]*(Llm(2,0)*(3*N.z*N.z-1))-
+
+	c[0]*Llm(4,0)*(35*pow(N.z,4)-30*N.z*N.z+3)/64-
+	c[3]*(Llm(4,-2)*0.5*N.y*N.x*(7*N.z*N.z-1)+Llm(4,2)*0.25*(N.x*N.x-N.y*N.y)*(7*N.z*N.z-1))-
+	c[4]*(Llm(4,-1)*N.y*N.z*(7*N.z*N.z-1)+Llm(4,1)*N.x*N.z*(7*N.z*N.z-3))-
+	c[5]*(Llm(4,-4)*N.y*N.x*(N.x*N.x-N.y*N.y)+Llm(4,-3)*0.5*N.y*N.z*(3*N.x*N.x-N.y*N.y)+Llm(4,4)*0.25*(pow(N.x,4)-6*N.x*N.x*N.y*N.y+pow(N.y,4)))-
+	c[6]*Llm(4,3)*N.x*N.z*(N.x*N.x-3*N.y*N.y);
 }
 void main()
 {
@@ -71,5 +97,5 @@ void main()
 
     vec3 N=normalize(getCubeTexCoordFromCubeMap(ijk,cubemapWidth));
 
-    imageStore(outImage,ijk,vec4(irradianceRecontruct(N),1.));
+    imageStore(outImage,ijk,vec4(irradianceRecontruct(N.xzy),1.));
 }

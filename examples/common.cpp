@@ -964,9 +964,9 @@ void generateIrradianceMapSH(
 	Image *llmImage = pDevice->Create(
 		ImageCreateInfo{
 			{},
-			ImageType::TYPE_2D,
+			ImageType::TYPE_1D,
 			pSrcImage2D->GetCreateInfoPtr()->format,
-			{4, 4, 1},
+			{32, 1, 1},
 			1,
 			1,
 			SampleCountFlagBits::BIT_1,
@@ -978,7 +978,7 @@ void generateIrradianceMapSH(
 	ImageView *llmImageView = pDevice->Create(
 		ImageViewCreateInfo{
 			llmImage,
-			ImageViewType::TYPE_2D,
+			ImageViewType::TYPE_1D,
 			pSrcImage2D->GetCreateInfoPtr()->format,
 			{},
 			{0, 1, 0, 1}});
@@ -1126,7 +1126,7 @@ void generateIrradianceMapSH(
 		pCommandBuffer->BindPipeline(BindPipelineInfo{
 			PipelineBindPoint::COMPUTE,
 			llmPipeline});
-		pCommandBuffer->Dispatch(DispatchInfo{4, 1, 1});
+		pCommandBuffer->Dispatch(DispatchInfo{1, 1, 1});
 		//create irradiance image
 
 		barriers = {{AccessFlagBits::MEMORY_WRITE_BIT,
@@ -1215,8 +1215,8 @@ void generateIrradianceMapSH(
 			barriers.data()});
 	});
 
-	takeScreenshot(pDevice, llmImage, ImageLayout::GENERAL);
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	//takeScreenshot(pDevice, llmImage, ImageLayout::GENERAL);
+	//std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	pDstImageCube->GenerateMipmaps(Filter::LINEAR, dstFinalLayout, dstFinalLayout);
 	//release resouce

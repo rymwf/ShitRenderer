@@ -1,3 +1,4 @@
+//TODO: use product sampling, not done yet
 #include "appbase.hpp"
 
 #define MODEL_SIZE 1.

@@ -22,7 +22,6 @@ static const char *cubemapFragShaderName = "cubemap.frag.spv";
 static const char *cubemapImagePath = IMAGE_PATH "grace-new.hdr";
 //static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Gold-Room_Ref.hdr";
 //static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Ref.hdr";
-//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Env.hdr";
 //static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
 //static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
 
