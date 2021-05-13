@@ -7,7 +7,7 @@ const char *fragShaderName = "16.frag.spv";
 
 static const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
 
-#define MAX_ROUGHNESS_LEVEL 5
+#define MAX_ROUGHNESS_LEVEL 7
 
 int animationIndex = 0;
 
@@ -310,7 +310,7 @@ public:
 		ImageCreateInfo imageCreateInfo = *skyboxImageCube->GetCreateInfoPtr();
 		imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
 		imageCreateInfo.initialLayout = ImageLayout::UNDEFINED;
-
+		imageCreateInfo.mipLevels = 0;
 		prefilteredEnvMap = device->Create(imageCreateInfo, nullptr);
 
 		prefilteredEnvMapView = device->Create(ImageViewCreateInfo{

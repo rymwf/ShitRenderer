@@ -19,9 +19,9 @@ static const char *cubemapVertShaderName = "cubemap.vert.spv";
 static const char *cubemapFragShaderName = "cubemap.frag.spv";
 
 //static const char *cubemapImagePath = IMAGE_PATH "Ridgecrest_Road_Ref.hdr";
-static const char *cubemapImagePath = IMAGE_PATH "grace-new.hdr";
+//static const char *cubemapImagePath = IMAGE_PATH "grace-new.hdr";
 //static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Gold-Room_Ref.hdr";
-//static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Ref.hdr";
+static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Ref.hdr";
 //static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
 //static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
 
@@ -846,7 +846,7 @@ void AppBase::prepareSkybox()
 		.imageType = ImageType::TYPE_2D,
 		.format = ShitFormat::RGBA32_SFLOAT, //TODO: check if format support storage image
 		.extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
-		.mipLevels = 1,
+		.mipLevels = 0,
 		.arrayLayers = 1,
 		.samples = SampleCountFlagBits::BIT_1,
 		.tiling = ImageTiling::OPTIMAL,
@@ -856,6 +856,7 @@ void AppBase::prepareSkybox()
 	};
 	skyboxImage2D = device->Create(imageCreateInfo, pixels);
 	freeImage(pixels);
+	skyboxImage2D->GenerateMipmaps(Filter::LINEAR, ImageLayout::SHADER_READ_ONLY_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 	//cubmap
 	imageCreateInfo = {
@@ -876,7 +877,7 @@ void AppBase::prepareSkybox()
 		ImageViewType::TYPE_CUBE,
 		ShitFormat::RGBA32_SFLOAT,
 		{},
-		{0, skyboxImage2D->GetCreateInfoPtr()->mipLevels, 0, 6}};
+		{0, skyboxImageCube->GetCreateInfoPtr()->mipLevels, 0, 6}};
 	skyboxImageViewCube = device->Create(imageViewCreateInfo);
 
 	//=======================================================

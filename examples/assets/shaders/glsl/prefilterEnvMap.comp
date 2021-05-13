@@ -2,7 +2,7 @@
 
 #define PI 3.141592653
 
-#define SAMPLENUM 128
+#define SAMPLENUM 32
 
 layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
 layout(local_size_x_id=0)in;
@@ -121,7 +121,7 @@ void main()
 
 		float D=BRDF_D(alpha,NdotH);
 		float pdf=D*LdotH*sqrt(1-LdotH*LdotH);
-		float lod=max(l-0.5*log2(pdf),0);
+		float lod=l-0.5*log2(pdf);
 		vec2 st=CubeTexCoord2EquirectangularUV(L);
 		//unreal found that multiply with NdotL provide better result, take NdotL as weight
 		col+=textureLod(inImage,st,lod).rgb*NdotL;

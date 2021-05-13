@@ -1215,8 +1215,8 @@ void generateIrradianceMapSH(
 			barriers.data()});
 	});
 
-	//takeScreenshot(pDevice, llmImage, ImageLayout::GENERAL);
-	//std::this_thread::sleep_for(std::chrono::seconds(1));
+	takeScreenshot(pDevice, llmImage, ImageLayout::GENERAL);
+	std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	pDstImageCube->GenerateMipmaps(Filter::LINEAR, dstFinalLayout, dstFinalLayout);
 	//release resouce
@@ -1377,7 +1377,7 @@ void generatePrefilteredEnvMap(
 		{
 			barriers.emplace_back(
 				ImageMemoryBarrier{
-					{},
+					AccessFlagBits::MEMORY_WRITE_BIT,
 					AccessFlagBits::SHADER_READ_BIT,
 					srcInitialLayout,
 					ImageLayout::SHADER_READ_ONLY_OPTIMAL,

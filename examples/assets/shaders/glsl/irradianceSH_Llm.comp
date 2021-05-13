@@ -2,7 +2,7 @@
 
 #define PI 3.141592653
 
-#define SAMPLENUM 1024
+#define SAMPLENUM 2048
 
 //TODO: add windowing
 
@@ -34,82 +34,54 @@ mat3 surfaceTBN(vec3 N)
 	vec3 B=cross(N,T);
 	return mat3(T,B,N);
 }
-vec3 getCubeTexCoordFromCubeMap(ivec3 st,uint width){
-	vec2 uv=vec2(st.xy)*2./float(width)-1.;
-	vec3 res;
-	switch(st.z){
-		case 0: //x+
-			res=vec3(1.,-uv.y,-uv.x);
-			break;  
-		case 1: //x-
-			res=vec3(-1.,-uv.y,uv.x);
-			break;
-		case 2: //y+
-			res=vec3(uv.x,1,uv.y);
-			break;
-		case 3: //y-
-			res=vec3(uv.x,-1,-uv.y);
-			break;
-		case 4: //z+
-			res=vec3(uv.x,-uv.y,1.);
-			break;
-		case 5: //z-
-			res=vec3(-uv.x,-uv.y,-1.);
-			break;
-	}
-	return normalize(res);
-}
 
 vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
 	vec2 uv;
-	uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
+	uv.x=atan(cubeTexCoord.z,cubeTexCoord.x)/(2*PI)+0.5;//  //[0 1]
 	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
 	return uv;
 }
-//https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-10-real-time-computation-dynamic
 float SH_Ylm(vec3 N,int l,int m){
-	//p should be normalized
-	m+=l;
 	if(l==0&&m==0)return 0.282095;
 	else if(l==1){
 		switch(m){
-			case 0:return 0.488603*N.y; //-1
-			case 1:return 0.488603*N.z; //0
-			case 2:return 0.488603*N.x; //1
+			case -1:return 0.488603*N.y; 
+			case 0:return 0.488603*N.z;
+			case 1:return 0.488603*N.x;
 		}	
 	}else if(l==2){
 		switch(m){
-			case 0:return 1.092548*N.x*N.y; //-2
-			case 1:return 1.092548*N.y*N.z; //-1
-			case 2:return 0.315392*(3*N.z*N.z-1.); //0
-			case 3:return 1.092548*N.x*N.z; //1
-			case 4:return 0.546274*(N.x*N.x-N.y*N.y);   //2
+			case -2:return 1.092548*N.x*N.y;
+			case -1:return 1.092548*N.y*N.z; 
+			case 0:return 0.315392*(3*N.z*N.z-1.);
+			case 1:return 1.092548*N.x*N.z;
+			case 2:return 0.546274*(N.x*N.x-N.y*N.y);
 		}
 	}
 	else if(l==3)
 	{
 		switch(m){
-			case 0:return 0.590043589926644*N.y*(3*N.x*N.x-N.y*N.y); //-3
-			case 1:return 2.890611442640554*N.y*N.x*N.z; //-2
-			case 2:return 0.457045799464466*N.y*(5*N.z*N.z-1); //-1
-			case 3:return 0.373176332590115*N.z*(5*N.z*N.z-3); //0
-			case 4:return 0.457045799464466*N.x*(5*N.z*N.z-1); //1
-			case 5:return 1.445305721320277*N.z*(N.x*N.x-N.y*N.y); //2
-			case 6:return 0.590043589926644*N.x*(N.x*N.x-3*N.y*N.y); //3
+			case -3:return 0.590043589926644*N.y*(3*N.x*N.x-N.y*N.y); 
+			case -2:return 2.890611442640554*N.y*N.x*N.z; 
+			case -1:return 0.457045799464466*N.y*(5*N.z*N.z-1); 
+			case 0:return 0.373176332590115*N.z*(5*N.z*N.z-3);
+			case 1:return 0.457045799464466*N.x*(5*N.z*N.z-1);
+			case 2:return 1.445305721320277*N.z*(N.x*N.x-N.y*N.y);
+			case 3:return 0.590043589926644*N.x*(N.x*N.x-3*N.y*N.y);
 		}
 	}
 	else if(l==4)
 	{
 		switch(m){
-			case 0:return 2.5033429417967046*N.y*N.x*(N.x*N.x-N.y*N.y); //-4
-			case 1:return 1.7701307697799304*N.y*N.z*(3*N.x*N.x-N.y*N.y); //-3
-			case 2:return 0.9461746957575601*N.y*N.x*(7*N.z*N.z-1); //-2
-			case 3:return 0.6690465435572892*N.y*N.z*(7*N.z*N.z-3); //-1
-			case 4:return 0.10578554691520431*(35*pow(N.z,4)-30*N.z*N.z+3); //0
-			case 5:return 0.6690465435572892*N.x*N.z*(7*N.z*N.z-3); //1
-			case 6:return 0.47308734787878004*(N.x*N.x-N.y*N.y)*(7*N.z*N.z-1); //2
-			case 7:return 1.7701307697799304*N.x*N.z*(N.x*N.x-3*N.y*N.y); //3
-			case 8:return 0.6258357354491761*(pow(N.x,4)-6*N.x*N.x*N.y*N.y+pow(N.y,4)); //4
+			case -4:return 2.5033429417967046*N.y*N.x*(N.x*N.x-N.y*N.y); 
+			case -3:return 1.7701307697799304*N.y*N.z*(3*N.x*N.x-N.y*N.y); 
+			case -2:return 0.9461746957575601*N.y*N.x*(7*N.z*N.z-1); 
+			case -1:return 0.6690465435572892*N.y*N.z*(7*N.z*N.z-3); 
+			case 0:return 0.10578554691520431*(35.*pow(abs(N.z),4)-30.*N.z*N.z+3);
+			case 1:return 0.6690465435572892*N.x*N.z*(7*N.z*N.z-3);
+			case 2:return 0.47308734787878004*(N.x*N.x-N.y*N.y)*(7*N.z*N.z-1);
+			case 3:return 1.7701307697799304*N.x*N.z*(N.x*N.x-3*N.y*N.y);
+			case 4:return 0.6258357354491761*(pow(abs(N.x),4)-6*N.x*N.x*N.y*N.y+pow(abs(N.y),4));
 		}
 	}
 	return 0.;
@@ -131,7 +103,7 @@ vec3 Llm(ivec2 lm){
 		vec2 st=CubeTexCoord2EquirectangularUV(L.xzy);
 		float pdf=sinTheta/(4*PI);
 		float lod=max(l-0.5*log2(pdf),0.);
-		col+=textureLod(inImage,st,lod).rgb*Ylm; 
+		col+=textureLod(inImage,st,l).rgb*Ylm; 
 	}
 	col*=4./float(SAMPLENUM);;
 	return col;
