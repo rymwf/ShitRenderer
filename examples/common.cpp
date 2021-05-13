@@ -1298,7 +1298,7 @@ void generatePrefilteredEnvMap(
 
 	//=================================================================================
 	// create shader module
-	const char *prefilterShaderName = "prefilterEnvMap.comp.spv";
+	const char *prefilterShaderName = "reflectionEnv.comp.spv";
 	std::string prefilterShaderPath = buildShaderPath(prefilterShaderName, rendererVersion);
 	Shader *prefilterShader = pDevice->Create(ShaderCreateInfo{readFile(prefilterShaderPath.c_str())});
 
