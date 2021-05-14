@@ -2,9 +2,10 @@
 
 #define MODEL_SIZE 1.
 
-const char *vertShaderName = "16.vert.spv";
-const char *fragShaderName = "16.frag.spv";
+const char *vertShaderName = "17.vert.spv";
+const char *fragShaderName = "17.frag.spv";
 
+static const char *envBRDFImagePath = IMAGE_PATH "envBRDF.hdr";
 static const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
 
 #define MAX_ROUGHNESS_LEVEL 7
@@ -24,8 +25,14 @@ class HelloApp : public AppBase
 	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
 
-	Image *prefilteredEnvMap;
-	ImageView *prefilteredEnvMapView;
+	Image *reflectionEnvMap;
+	ImageView *reflectionEnvMapView;
+
+	Image *irradianceImageCube;
+	ImageView *irradianceImageViewCube;
+
+	Image *envBRDFImage;
+	ImageView *envBRDFImageView;
 
 public:
 	HelloApp(uint32_t width, uint32_t height) : AppBase(width, height) {}
@@ -64,7 +71,9 @@ public:
 			DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
 		};
 		std::vector<DescriptorSetLayoutBinding> otherBindings{
-			DescriptorSetLayoutBinding{TEXTURE_BINDING_PREFILTERD_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
+			DescriptorSetLayoutBinding{TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
+			DescriptorSetLayoutBinding{TEXTURE_BINDING_IRRADIANCE_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
+			DescriptorSetLayoutBinding{TEXTURE_BINDING_BRDF_ENV, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
 		};
 		std::vector<DescriptorSetLayout *> setLayouts(5);
 		setLayouts[DESCRIPTORSET_ID_FRAME] = (device->Create(DescriptorSetLayoutCreateInfo{frameBindings}));
@@ -76,7 +85,7 @@ public:
 		pipelineLayout = device->Create(PipelineLayoutCreateInfo{setLayouts});
 
 		std::vector<DescriptorPoolSize> poolsizes{
-			{DescriptorType::COMBINED_IMAGE_SAMPLER, 1},
+			{DescriptorType::COMBINED_IMAGE_SAMPLER, 3},
 		};
 
 		DescriptorPool *descriptorPool = device->Create(DescriptorPoolCreateInfo{1, poolsizes});
@@ -86,13 +95,30 @@ public:
 		//update descriptor sets
 		std::vector<WriteDescriptorSet> writes{
 			{descriptorSets[0],
-			 TEXTURE_BINDING_PREFILTERD_CUBEMAP,
+			 TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP,
 			 0,
 			 DescriptorType::COMBINED_IMAGE_SAMPLER,
 			 std::vector<DescriptorImageInfo>{
 				 {linearSampler,
-				  prefilteredEnvMapView,
-				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}}};
+				  reflectionEnvMapView,
+				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}},
+			{descriptorSets[0],
+			 TEXTURE_BINDING_IRRADIANCE_ENV_CUBEMAP,
+			 0,
+			 DescriptorType::COMBINED_IMAGE_SAMPLER,
+			 std::vector<DescriptorImageInfo>{
+				 {linearSampler,
+				  irradianceImageViewCube,
+				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}},
+			{descriptorSets[0],
+			 TEXTURE_BINDING_BRDF_ENV,
+			 0,
+			 DescriptorType::COMBINED_IMAGE_SAMPLER,
+			 std::vector<DescriptorImageInfo>{
+				 {linearSampler,
+				  envBRDFImageView,
+				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}},
+		};
 		device->UpdateDescriptorSets(writes, {});
 	}
 	void createPipeline()
@@ -240,7 +266,7 @@ public:
 
 		rootNode->Update();
 		testModel->AssignInstances(device, {
-											   {{}, testModelViews[0]->globalMatrix},
+											   {glm::vec4{1}, testModelViews[0]->globalMatrix},
 										   });
 
 		createPipeline();
@@ -248,11 +274,12 @@ public:
 	}
 	void prepare() override
 	{
+		loadAssets();
+
+		createIrradianceMap();
 		//takeScreenshot(device, skyboxImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 		createPrefilteredEnvMap();
 		//takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-		takeScreenshot(device, prefilteredEnvMap, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-
 
 		commandPool = device->Create(CommandPoolCreateInfo{
 			{},
@@ -262,7 +289,6 @@ public:
 		createDescriptorSets();
 
 		//load assets
-		testModel = scene.LoadModel(testModelPath);
 		testModelViews.resize(2);
 		testModelViews[0] = scene.CreateNode<ModelView>(rootNode);
 		setScene();
@@ -311,24 +337,63 @@ public:
 		imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
 		imageCreateInfo.initialLayout = ImageLayout::UNDEFINED;
 		imageCreateInfo.mipLevels = 0;
-		prefilteredEnvMap = device->Create(imageCreateInfo, nullptr);
+		reflectionEnvMap = device->Create(imageCreateInfo, nullptr);
 
-		prefilteredEnvMapView = device->Create(ImageViewCreateInfo{
-			prefilteredEnvMap,
+		reflectionEnvMapView = device->Create(ImageViewCreateInfo{
+			reflectionEnvMap,
 			ImageViewType::TYPE_CUBE,
 			ShitFormat::RGBA32_SFLOAT,
 			{},
-			{0, prefilteredEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
+			{0, reflectionEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
 		});
-		generatePrefilteredEnvMap(
+		generateReflectionEnvMap(
 			device,
 			MAX_ROUGHNESS_LEVEL,
 			skyboxImage2D,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-			prefilteredEnvMap,
+			reflectionEnvMap,
 			ImageLayout::UNDEFINED,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+	}
+	void createIrradianceMap()
+	{
+		irradianceImageCube = device->Create(
+			ImageCreateInfo{
+				.flags = ImageCreateFlagBits::CUBE_COMPATIBLE_BIT,
+				.imageType = ImageType::TYPE_2D,
+				.format = ShitFormat::RGBA32_SFLOAT, //TODO: check if format support storage image
+				.extent = {IRRADIANCE_MAP_WIDTH, IRRADIANCE_MAP_WIDTH, 1},
+				.mipLevels = 0,
+				.arrayLayers = 6,
+				.samples = SampleCountFlagBits::BIT_1,
+				.tiling = ImageTiling::OPTIMAL,
+				.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT,
+				.memoryPropertyFlags = MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+			},
+			nullptr);
+
+		irradianceImageViewCube = device->Create(
+			ImageViewCreateInfo{
+				irradianceImageCube,
+				ImageViewType::TYPE_CUBE,
+				ShitFormat::RGBA32_SFLOAT,
+				{},
+				{0, irradianceImageCube->GetCreateInfoPtr()->mipLevels, 0, 6},
+			});
+		generateIrradianceMapSH(
+			device,
+			skyboxImage2D,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+			irradianceImageCube,
+			ImageLayout::UNDEFINED,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+	}
+	void loadAssets()
+	{
+		generateEnvBRDFMap(device, envBRDFImage, ImageLayout::SHADER_READ_ONLY_OPTIMAL, envBRDFImageView);
+		testModel = scene.LoadModel(testModelPath);
 	}
 };
 

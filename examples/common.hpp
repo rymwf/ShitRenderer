@@ -59,8 +59,9 @@ using namespace Shit;
 #define TEXTURE_BINDING_EMISSION 4
 #define TEXTURE_BINDING_TRANSPARENCY 5
 
-#define TEXTURE_BINDING_PREFILTERD_CUBEMAP 6
-#define TEXTURE_BINDING_IRRADIANCE_CUBEMAP 7
+#define TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP 6
+#define TEXTURE_BINDING_IRRADIANCE_ENV_CUBEMAP 7
+#define TEXTURE_BINDING_BRDF_ENV 8
 
 #define UNIFORM_BINDING_FRAME 12
 #define UNIFORM_BINDING_NODE 13
@@ -162,7 +163,7 @@ void generateIrradianceMapSH(
 	ImageLayout dstInitialLayout,
 	ImageLayout dstFinalLayout);
 
-void generatePrefilteredEnvMap(
+void generateReflectionEnvMap(
 	Device *pDevice,
 	uint32_t maxRoughnessLevelNum,
 	Image *pSrcImage2D,
@@ -171,6 +172,8 @@ void generatePrefilteredEnvMap(
 	Image *pDstImageCube,
 	ImageLayout dstInitialLayout,
 	ImageLayout dstFinalLayout);
+
+void generateEnvBRDFMap(Device *pDevice, Image *&envBRDFImage, ImageLayout finalLayout, ImageView *&envBRDFImageView);
 
 void parseArgument(int ac, char **av);
 

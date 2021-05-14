@@ -24,8 +24,8 @@ class HelloApp : public AppBase
 	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
 
-	Image *prefilteredEnvMap;
-	ImageView *prefilteredEnvMapView;
+	Image *reflectionEnvMap;
+	ImageView *reflectionEnvMapView;
 
 public:
 	HelloApp(uint32_t width, uint32_t height) : AppBase(width, height) {}
@@ -64,7 +64,7 @@ public:
 			DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
 		};
 		std::vector<DescriptorSetLayoutBinding> otherBindings{
-			DescriptorSetLayoutBinding{TEXTURE_BINDING_PREFILTERD_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
+			DescriptorSetLayoutBinding{TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
 		};
 		std::vector<DescriptorSetLayout *> setLayouts(5);
 		setLayouts[DESCRIPTORSET_ID_FRAME] = (device->Create(DescriptorSetLayoutCreateInfo{frameBindings}));
@@ -86,12 +86,12 @@ public:
 		//update descriptor sets
 		std::vector<WriteDescriptorSet> writes{
 			{descriptorSets[0],
-			 TEXTURE_BINDING_PREFILTERD_CUBEMAP,
+			 TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP,
 			 0,
 			 DescriptorType::COMBINED_IMAGE_SAMPLER,
 			 std::vector<DescriptorImageInfo>{
 				 {linearSampler,
-				  prefilteredEnvMapView,
+				  reflectionEnvMapView,
 				  ImageLayout::SHADER_READ_ONLY_OPTIMAL}}}};
 		device->UpdateDescriptorSets(writes, {});
 	}
@@ -251,7 +251,7 @@ public:
 		//takeScreenshot(device, skyboxImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 		createPrefilteredEnvMap();
 		//takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-		takeScreenshot(device, prefilteredEnvMap, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+		takeScreenshot(device, reflectionEnvMap, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
 
 		commandPool = device->Create(CommandPoolCreateInfo{
@@ -311,22 +311,22 @@ public:
 		imageCreateInfo.usageFlags = ImageUsageFlagBits::SAMPLED_BIT | ImageUsageFlagBits::STORAGE_BIT;
 		imageCreateInfo.initialLayout = ImageLayout::UNDEFINED;
 		imageCreateInfo.mipLevels = 0;
-		prefilteredEnvMap = device->Create(imageCreateInfo, nullptr);
+		reflectionEnvMap = device->Create(imageCreateInfo, nullptr);
 
-		prefilteredEnvMapView = device->Create(ImageViewCreateInfo{
-			prefilteredEnvMap,
+		reflectionEnvMapView = device->Create(ImageViewCreateInfo{
+			reflectionEnvMap,
 			ImageViewType::TYPE_CUBE,
 			ShitFormat::RGBA32_SFLOAT,
 			{},
-			{0, prefilteredEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
+			{0, reflectionEnvMap->GetCreateInfoPtr()->mipLevels, 0, 6},
 		});
-		generatePrefilteredEnvMap(
+		generateReflectionEnvMap(
 			device,
 			MAX_ROUGHNESS_LEVEL,
 			skyboxImage2D,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-			prefilteredEnvMap,
+			reflectionEnvMap,
 			ImageLayout::UNDEFINED,
 			ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 	}

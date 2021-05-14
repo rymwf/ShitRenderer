@@ -64,7 +64,7 @@ public:
 			DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
 		};
 		std::vector<DescriptorSetLayoutBinding> otherBindings{
-			DescriptorSetLayoutBinding{TEXTURE_BINDING_PREFILTERD_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
+			DescriptorSetLayoutBinding{TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
 		};
 		std::vector<DescriptorSetLayout *> setLayouts(5);
 		setLayouts[DESCRIPTORSET_ID_FRAME] = (device->Create(DescriptorSetLayoutCreateInfo{frameBindings}));
@@ -86,7 +86,7 @@ public:
 		//update descriptor sets
 		std::vector<WriteDescriptorSet> writes{
 			{descriptorSets[0],
-			 TEXTURE_BINDING_PREFILTERD_CUBEMAP,
+			 TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP,
 			 0,
 			 DescriptorType::COMBINED_IMAGE_SAMPLER,
 			 std::vector<DescriptorImageInfo>{

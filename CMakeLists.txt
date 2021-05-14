@@ -209,7 +209,8 @@ newexample(13-cubemap)
 newexample(14-irradiance)
 newexample(15-irradianceSH)
 newexample(16-reflectionEnv)
-newexample(17-ibl)
+newexample(17-envBRDF)
+newexample(18-ibl)
 endif()
 
 

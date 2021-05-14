@@ -1215,8 +1215,8 @@ void generateIrradianceMapSH(
 			barriers.data()});
 	});
 
-	takeScreenshot(pDevice, llmImage, ImageLayout::GENERAL);
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	//takeScreenshot(pDevice, llmImage, ImageLayout::GENERAL);
+	//std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	pDstImageCube->GenerateMipmaps(Filter::LINEAR, dstFinalLayout, dstFinalLayout);
 	//release resouce
@@ -1229,7 +1229,7 @@ void generateIrradianceMapSH(
 	pDevice->Destroy(shPipelineLayout);
 	pDevice->Destroy(shPipeline);
 }
-void generatePrefilteredEnvMap(
+void generateReflectionEnvMap(
 	Device *pDevice,
 	uint32_t maxRoughnessLevelNum,
 	Image *pSrcImage2D,
@@ -1465,4 +1465,112 @@ void generatePrefilteredEnvMap(
 	pDevice->Destroy(setLayout);
 	for (auto e : pipelines)
 		pDevice->Destroy(e);
+}
+
+void generateEnvBRDFMap(Device *pDevice, Image *&envBRDFImage, ImageLayout finalLayout, ImageView *&envBRDFImageView)
+{
+	envBRDFImage = pDevice->Create(
+		ImageCreateInfo{
+			{},
+			ImageType::TYPE_2D,
+			ShitFormat::RGBA32_SFLOAT,
+			{32, 32, 1},
+			1,
+			1,
+			SampleCountFlagBits::BIT_1,
+			ImageTiling::OPTIMAL,
+			ImageUsageFlagBits::STORAGE_BIT | ImageUsageFlagBits::SAMPLED_BIT,
+			MemoryPropertyFlagBits::DEVICE_LOCAL_BIT,
+			ImageLayout::GENERAL},
+		nullptr);
+	envBRDFImageView = pDevice->Create(
+		ImageViewCreateInfo{
+			envBRDFImage,
+			ImageViewType::TYPE_2D,
+			envBRDFImage->GetCreateInfoPtr()->format,
+			{},
+			{0, 1, 0, 1}});
+	//===================================
+	//config descriptor 
+	std::vector<DescriptorSetLayoutBinding> bindings{
+		{0, DescriptorType::STORAGE_IMAGE, 1, ShaderStageFlagBits::COMPUTE_BIT},
+	};
+	auto descriptorSetLayout = pDevice->Create(DescriptorSetLayoutCreateInfo{bindings});
+	std::vector<DescriptorPoolSize> poolSize{
+		{DescriptorType::STORAGE_IMAGE, 1},
+	};
+	auto descriptorPool = pDevice->Create(DescriptorPoolCreateInfo{1, poolSize});
+
+	std::vector<DescriptorSet*> descriptorSets;
+	descriptorPool->Allocate(DescriptorSetAllocateInfo{{descriptorSetLayout}}, descriptorSets);
+
+	//create pipeline layout
+	auto pipelineLayout = pDevice->Create(PipelineLayoutCreateInfo{{descriptorSetLayout}});
+
+	//create pipeline
+	static const char *shaderName = "envBRDF.comp.spv";
+	auto shaderPath=buildShaderPath(shaderName,rendererVersion);
+	auto shader = pDevice->Create(ShaderCreateInfo{readFile(shaderPath.c_str())});
+
+	auto pipeline = pDevice->Create(ComputePipelineCreateInfo{
+		PipelineShaderStageCreateInfo{
+			ShaderStageFlagBits::COMPUTE_BIT,
+			shader,
+			"main",
+		},
+		pipelineLayout});
+
+	std::vector<WriteDescriptorSet> writes{
+		{descriptorSets[0],
+		 0,
+		 0,
+		 DescriptorType::STORAGE_IMAGE,
+		 std::vector<DescriptorImageInfo>{
+			 {nullptr, envBRDFImageView, ImageLayout::GENERAL},
+		 }},
+	};
+
+	pDevice->UpdateDescriptorSets(writes, {});
+
+	//run pipeline
+	executeOneTimeCommands(
+		pDevice,
+		QueueFlagBits::COMPUTE_BIT,
+		0,
+		[&](CommandBuffer *pCommandBuffer) {
+			pCommandBuffer->BindDescriptorSets(
+				BindDescriptorSetsInfo{
+					PipelineBindPoint::COMPUTE,
+					pipelineLayout,
+					0,
+					1,
+					&descriptorSets[0],
+				});
+			pCommandBuffer->BindPipeline(
+				BindPipelineInfo{
+					PipelineBindPoint::COMPUTE,
+					pipeline});
+			pCommandBuffer->Dispatch(DispatchInfo{1, 1, 1});
+			//convert image to dst image layout
+			if(finalLayout!=ImageLayout::GENERAL)
+			{
+				ImageMemoryBarrier barrier{
+					AccessFlagBits::SHADER_WRITE_BIT,
+					AccessFlagBits::MEMORY_READ_BIT,
+					ImageLayout::GENERAL,
+					finalLayout,
+					envBRDFImage,
+					{0, 1, 0, 1}};
+				pCommandBuffer->PipeplineBarrier(PipelineBarrierInfo{
+					PipelineStageFlagBits::COMPUTE_SHADER_BIT,
+					PipelineStageFlagBits::ALL_COMMANDS_BIT,
+					{},
+					0,
+					nullptr,
+					0,
+					nullptr,
+					1,
+					&barrier});
+			}
+		});
 }

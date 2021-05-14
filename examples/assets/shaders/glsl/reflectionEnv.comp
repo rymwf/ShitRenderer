@@ -2,7 +2,7 @@
 
 #define PI 3.141592653
 
-#define SAMPLENUM 32
+#define SAMPLENUM 512
 
 layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
 layout(local_size_x_id=0)in;

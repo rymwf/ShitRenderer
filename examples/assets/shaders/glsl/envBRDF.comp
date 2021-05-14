@@ -1,0 +1,133 @@
+#version 460
+
+layout(local_size_x=32,local_size_y=32)in;
+
+layout(rgba32f,binding=0) uniform image2D imgOut;
+
+#define PI 3.1415926535897932384626433832795
+#define SAMPLENUM 2048
+
+#define WIDTH gl_WorkGroupSize.x
+#define HEIGHT gl_WorkGroupSize.y
+
+//===========================
+//http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+float radicalInverse_VdC(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+vec2 hammersley2d(int i, int N) {
+	return vec2(float(i) / float(N), radicalInverse_VdC(uint(i)));
+}
+
+//================
+
+#define K_ASHIKHMIN
+//#define K_GINNEKEN
+
+float k_Ashikhmin(float NdotS){float phi=1.-acos(NdotS);return 1.-exp(-7.3*phi*phi);}
+float k_Ginneken(float NdotS){float phi=1.-acos(NdotS);return 4.41*phi/(4.41*phi+1.);}
+
+#ifdef K_ASHIKHMIN
+    #define K_G1(NdotS) k_Ashikhmin(NdotS) 
+#elif defined K_GINNEKEN
+    #define K_G1(NdotS) k_Ginneken(NdotS)
+#endif
+
+float BRDF_Alpha(float roughness){
+    //roughness=max(0.001,roughness);
+    return roughness*roughness;
+}
+//Disney modification for G
+//can only be used for analytic shading, when used for IBL, it will be too dark  
+float BRDF_Alpha_G(float roughness){
+    return pow((roughness+1.)/2.,2.);
+}
+
+float Lambda(float a,float NdotS){
+    float a2=a*a;
+    return (-1.+sqrt(1.+1./a2))/2.;
+}
+float Lambda_a(float alpha,float NdotS){
+    return NdotS/(alpha*sqrt(1.-NdotS*NdotS));
+}
+float BRDF_G(float alpha,vec3 L,vec3 V,vec3 N){
+    vec3 H=normalize(L+V);
+
+    float NdotL=max(0.,dot(N,L));
+    float NdotV=max(0.,dot(N,V));
+    float HdotL=dot(H,L);
+    float HdotV=dot(H,V);
+
+
+    float lambda_a_L=Lambda_a(alpha,NdotL);
+    float lambda_a_V=Lambda_a(alpha,NdotV);
+
+    float lambda_L=Lambda(lambda_a_L,NdotL);
+    float lambda_V=Lambda(lambda_a_V,NdotV);
+    //Heitz direction and height correlated form
+    float a=lambda_V<lambda_L?NdotV:NdotL;
+    float G2=step(0.,HdotL)*step(0.,HdotV)/((1.+max(lambda_L,lambda_V)+K_G1(a)*min(lambda_L,lambda_V)));
+    return G2;
+}
+
+//B. Walter, "Microfacet Models for Refraction through Rough Surfaces," Rendering Techniques 2007,Eurographics Association, pp. 195–206, 2007.
+vec3 importanceSample(vec2 xi,float alpha_g){
+	//GGX
+    float cosTheta=sqrt((1.-xi.y)/((alpha_g*alpha_g-1.)*xi.y+1.));
+
+
+    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+    float phi=2.*PI*xi.x;;  //[0,2*PI]
+
+    // from spherical coordinates to cartesian coordinates
+    return vec3(cos(phi) * sinTheta,sin(phi) * sinTheta,cosTheta);
+}
+
+void main(){
+    ivec2 uv=ivec2(gl_LocalInvocationID.xy);
+
+    vec3 col=vec3(0);
+
+    float roughness=float(uv.y+1)/(WIDTH);
+    float NdotV=float(uv.x+1)/(WIDTH);
+
+    vec3 N=vec3(0,0,1);
+    vec3 V;
+    V.x = sqrt( 1.0 - NdotV * NdotV ); // sin
+    V.y = 0.;
+    V.z = NdotV; // cos
+    //float alpha=BRDF_Alpha_G(roughness);
+    float alpha=BRDF_Alpha(roughness);
+    // float alpha=pow((roughness+1.)/2.,2.);
+    float A=0.;
+    float B=0.;
+    float C=0.;
+    
+    for(int i=0;i<SAMPLENUM;++i){
+        vec2 xi=hammersley2d(i,SAMPLENUM);
+        vec3 H=importanceSample(xi,alpha);
+
+        float HdotV=max(dot(H,V),0.);
+        vec3 L=reflect(-V,H);
+        float NdotL=L.z;
+        float NdotH=max(H.z,0.);
+
+        float G=BRDF_G(alpha,L,V,N)*(HdotV)/max(NdotH*NdotV,0.001);      
+        float Fc=pow(1.-HdotV,5.);
+        A+=(1.-Fc)*G;
+        B+=Fc*G;
+        C+=G;
+    }
+    col.r=A/float(SAMPLENUM);
+    col.g=B/float(SAMPLENUM);
+    col.b=C/float(SAMPLENUM);
+
+    imageStore(imgOut,uv,vec4(col,1.));
+}
+
+
