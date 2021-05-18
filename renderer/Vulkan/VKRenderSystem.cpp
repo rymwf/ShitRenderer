@@ -21,7 +21,7 @@ namespace Shit
 		vkDestroyInstance(instance, nullptr);
 	}
 
-	VkInstance vk_instance;
+	VkInstance g_vk_instance;
 
 	extern "C" [[nodiscard]] SHIT_API Shit::RenderSystem *ShitLoadRenderSystem(const Shit::RenderSystemCreateInfo &createInfo)
 	{
@@ -31,7 +31,13 @@ namespace Shit
 	{
 		delete pRenderSystem;
 	}
-
+	PFN_vkVoidFunction VKRenderSystem::GetInstanceProcAddr(const char *pName)
+	{
+		return vkGetInstanceProcAddr(g_vk_instance, pName);
+	}
+	void VKRenderSystem::LoadInstantceExtensionFunctions()
+	{
+	}
 	VKRenderSystem::~VKRenderSystem()
 	{
 		mWindows.clear();
@@ -137,9 +143,9 @@ namespace Shit
 			layers.data(),
 			static_cast<uint32_t>(extensionNames.size()),
 			extensionNames.data()};
-		if (vkCreateInstance(&instanceInfo, 0, &vk_instance) != VK_SUCCESS)
+		if (vkCreateInstance(&instanceInfo, 0, &g_vk_instance) != VK_SUCCESS)
 			THROW("create instance failed");
-		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(vk_instance, &DestroyVKInstance);
+		static std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)> sVkInstance = std::unique_ptr<VkInstance_T, decltype(&DestroyVKInstance)>(g_vk_instance, &DestroyVKInstance);
 	}
 
 	std::unique_ptr<Surface> VKRenderSystem::CreateSurface(const SurfaceCreateInfo &createInfo, ShitWindow *pWindow)
@@ -148,12 +154,12 @@ namespace Shit
 	}
 	void VKRenderSystem::EnumeratePhysicalDevice(std::vector<PhysicalDevice> &physicalDevices)
 	{
-		VK::queryPhysicalDevices(vk_instance, physicalDevices);
+		VK::queryPhysicalDevices(g_vk_instance, physicalDevices);
 	}
 
 	Device *VKRenderSystem::CreateDevice([[maybe_unused]] const DeviceCreateInfo &createInfo)
 	{
-		static PhysicalDevice physicalDevice = VK::pickPhysicalDevice(vk_instance);
+		static PhysicalDevice physicalDevice = VK::pickPhysicalDevice(g_vk_instance);
 		auto info = DeviceCreateInfo{physicalDevice};
 		mDevices.emplace_back(std::make_unique<VKDevice>(info));
 		return mDevices.back().get();

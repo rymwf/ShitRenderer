@@ -10,6 +10,7 @@
 #pragma once
 #include "common.hpp"
 #include "model.hpp"
+#include "imgui-impl.hpp"
 
 #define PERSPECTIVE 1
 
@@ -114,7 +115,7 @@ struct Light : public Node
 struct ModelView : public Node
 {
 	Model *pModel;
-//	uint32_t instanceIndex{};
+	//	uint32_t instanceIndex{};
 };
 class Scene
 {
@@ -166,7 +167,7 @@ protected:
 	Semaphore *renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 	Fence *inFlightFences[MAX_FRAMES_IN_FLIGHT];
 
-	RenderPass *renderPass;
+	RenderPass *defaultRenderPass;
 
 	Image *depthImage;
 	ImageView *depthImageView;
@@ -192,23 +193,13 @@ protected:
 	Camera *mainCamera;
 	Light *directionalLight;
 
-	CommandPool *defaultCommandPool;
+	CommandPool *defaultLongLiveCommandPool;
+	CommandPool *defaultShortLiveCommandPool;
 	std::vector<CommandBuffer *> defaultCommandBuffers;
 	std::vector<CommandBuffer *> backgroundSecondaryCommandBuffers;
 	std::vector<std::vector<CommandBuffer *>> frameSecondaryCommandBuffers;
 
 	std::vector<Buffer *> uboFrameBuffers;
-
-	//skybox
-	Image *skyboxImage2D;
-	ImageView *skyboxImageView2D;
-
-	Image *skyboxImageCube;
-	ImageView *skyboxImageViewCube;
-
-	PipelineLayout *skyboxPipelineLayout;
-	Pipeline *skyboxPipeline;
-	Buffer *skyboxIndirectDrawCmdBuffer;
 
 	//sample
 	Sampler *linearSampler;
@@ -219,20 +210,48 @@ protected:
 	std::vector<DescriptorSet *> defaultDescriptorSetsUboFrame;
 
 	//=================
+	//axis
 	PipelineLayout *pipelineLayoutAxis;
 	Pipeline *pipelineAxis;
-	std::vector<DescriptorSet *> skyboxDescriptorSets;
 	Buffer *drawIndirectCmdBufferAxis;
 
+	//========================================
+	//skybox
+	Image *skyboxImage2D;
+	ImageView *skyboxImageView2D;
+
+	Image *skyboxImageCube;
+	ImageView *skyboxImageViewCube;
+
+	std::vector<DescriptorSet *> skyboxDescriptorSets;
+	PipelineLayout *skyboxPipelineLayout;
+	Pipeline *skyboxPipeline;
+	Buffer *skyboxIndirectDrawCmdBuffer;
+
+	//====================
+	//imgui resources
+	std::vector<CommandBuffer*> imguiCommandBuffers;
+
+	void addSecondaryCommandBuffers(uint32_t imageIndex, const std::vector<CommandBuffer *> &commandBuffers);
+	void removeSecondaryCommandBuffer(uint32_t imageIndex, const CommandBuffer *pCommandBuffer);
+
+public:
+	AppBase(uint32_t width, uint32_t height);
+	void run();
+
+private:
 	//==============
 	void initRenderSystem();
-	void createSwapchains();
+	void createSwapchain();
 	void createDepthResources();
 	void createColorResources();
 	void createRenderPasses();
-	void createSyncObjects();
 	void createFramebuffers();
 
+	void destroyWindowResouces();
+	void recreateSwapchain();
+
+	void createSyncObjects();
 	void createSampler();
 
 	void createUBOFrameBuffers();
@@ -242,8 +261,11 @@ protected:
 	void prepareAxis();
 	void prepareSkybox();
 
+	void recordBackgroundSecondaryCommandBuffers(uint32_t imageIndex);
+
 	void createDefaultCommandPool();
 	void createDefaultCommandBuffers();
+	void recordDefaultCommandBuffers(uint32_t imageIndex, const std::vector<CommandBuffer *> &secondaryCommandBuffes);
 
 	void updateDefaultBuffers(uint32_t index);
 
@@ -256,10 +278,9 @@ protected:
 
 	virtual void drawFrame(uint32_t imageIndex, std::vector<CommandBuffer *> &primaryCommandBuffers) = 0;
 
-	void addSecondaryCommandBuffers(uint32_t imageIndex, const std::vector<CommandBuffer *> &commandBuffers);
-	void removeSecondaryCommandBuffer(uint32_t imageIndex, const CommandBuffer *pCommandBuffer);
-
-public:
-	AppBase(uint32_t width, uint32_t height);
-	void run();
+	void drawUI(uint32_t imageIndex);
+	virtual void drawImGui() = 0;
+	//=================================
+	//GUI
+	void prepareImGui();
 };

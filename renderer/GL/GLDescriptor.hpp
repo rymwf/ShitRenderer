@@ -12,8 +12,6 @@
 #include "GLPrerequisites.hpp"
 #include "GLBufferView.hpp"
 
-#define MAX_BINDING_NUM 32
-
 namespace Shit
 {
 	class GLDescriptorSetLayout final : public DescriptorSetLayout
@@ -30,37 +28,36 @@ namespace Shit
 	class GLDescriptorSet final : public DescriptorSet
 	{
 	public:
-		struct BindingAttribute
-		{
-			DescriptorType type{DescriptorType::None};
-			std::variant<
-				std::monostate,
-				ImageView *,
-				DescriptorBufferInfo,
-				BufferView *>
-				val;
-		};
-
 		GLDescriptorSet(GLStateManager *pStateManager, const DescriptorSetLayout *pDescriptorSetLayout);
 
-		template <IsAnyOf<ImageView *, DescriptorBufferInfo, BufferView *> T>
-		void Set(DescriptorType type, uint32_t binding, const std::vector<T> &values)
+		void Set(DescriptorType type, uint32_t binding, const std::vector<ImageView *> &values);
+		void Set(DescriptorType type, uint32_t binding, const std::vector<BufferView *> &values);
+		void Set(DescriptorType type, uint32_t binding, const std::vector<DescriptorBufferInfo> &values);
+
+		constexpr decltype(auto) GetBindingTextures() const
 		{
-			for (auto &&e : values)
-			{
-				mBindingAttributes[binding++] = BindingAttribute{
-					type,
-					e};
-			}
+			return &mBindingTextures;
 		}
-		constexpr decltype(auto) GetBindingAttributePtr() const
+		constexpr decltype(auto) GetBindingImages() const
 		{
-			return &mBindingAttributes;
+			return &mBindingImages;
+		}
+		constexpr decltype(auto) GetBindingUniformBuffers() const
+		{
+			return &mBindingUniformBuffers;
+		}
+		constexpr decltype(auto) GetBindingStorageBuffers() const
+		{
+			return &mBindingStorageBuffers;
 		}
 
 	private:
 		GLStateManager *mpStateManger;
-		std::array<BindingAttribute, MAX_BINDING_NUM> mBindingAttributes{};
+
+		std::unordered_map<uint32_t, std::pair<DescriptorType, void *>> mBindingTextures;					  //combined textures and buffer views
+		std::unordered_map<uint32_t, std::pair<DescriptorType, void *>> mBindingImages;						  //images and bufferviews
+		std::unordered_map<uint32_t, std::pair<DescriptorType, DescriptorBufferInfo>> mBindingUniformBuffers; //uniform buffer
+		std::unordered_map<uint32_t, std::pair<DescriptorType, DescriptorBufferInfo>> mBindingStorageBuffers;
 	};
 	class GLDescriptorPool final : public DescriptorPool
 	{

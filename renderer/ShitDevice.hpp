@@ -62,6 +62,8 @@ namespace Shit
 			return &mCreateInfo;
 		}
 
+		virtual Result WaitIdle() = 0;
+
 		virtual std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex([[maybe_unused]] ShitWindow *window)
 		{
 			//for opengl

@@ -15,7 +15,16 @@ namespace Shit
 		GL_SHADER_STORAGE_BUFFER,
 		GL_TRANSFORM_FEEDBACK_BUFFER,
 		GL_UNIFORM_BUFFER};
-
+	static const std::unordered_map<GLenum, int> glTextureTargetTable{
+		{GL_TEXTURE_1D, 0},
+		{GL_TEXTURE_2D, 1},
+		{GL_TEXTURE_3D, 2},
+		{GL_TEXTURE_CUBE_MAP, 3},
+		{GL_TEXTURE_1D_ARRAY, 4},
+		{GL_TEXTURE_2D_ARRAY, 5},
+		{GL_TEXTURE_CUBE_MAP_ARRAY, 6},
+		{GL_TEXTURE_BUFFER, 7},
+	};
 	static const std::unordered_map<GLenum, int> glCapabilityTable{
 		//{GL_CLIP_DISTANCE,},
 		{GL_BLEND, 0},
@@ -205,7 +214,8 @@ namespace Shit
 	void GLStateManager::BindTextureUnit(GLuint unit, GLenum target, GLuint texture)
 	{
 		auto &&a = mTextureState.boundTextures[unit];
-		if (a.first != target || a.second != texture)
+		auto index = glTextureTargetTable.at(target);
+		if (a[index] != texture)
 		{
 			if (mTextureState.activeUnit != unit)
 			{
@@ -213,34 +223,40 @@ namespace Shit
 				mTextureState.activeUnit = unit;
 			}
 			glBindTexture(target, texture);
-			a = {target, texture};
+			a[index] = texture;
 		}
 	}
 	void GLStateManager::PushTextureUnit(GLuint unit, GLenum target, GLuint texture)
 	{
 		auto &&a = mTextureState.boundTextures[unit];
-		mTextureState.textureStack.emplace(GLTextureState::StackEntry{unit, a.first, a.second});
+		auto index = glTextureTargetTable.at(target);
+		mTextureState.textureStack.emplace(GLTextureState::StackEntry{unit, target, a[index]});
 		BindTextureUnit(unit, target, texture);
 	}
 	void GLStateManager::PopTextureUnit()
 	{
 		auto &&a = mTextureState.textureStack.top();
-		if (a.target == 0)
-			a.target = mTextureState.boundTextures[a.unit].first;
 		BindTextureUnit(a.unit, a.target, a.texture);
 		mTextureState.textureStack.pop();
 	}
-	void GLStateManager::NotifyReleasedTexture(GLuint texture)
+	void GLStateManager::NotifyReleasedTexture(GLenum target, GLuint texture)
 	{
+		auto index = glTextureTargetTable.at(target);
 		for (auto &&e : mTextureState.boundTextures)
 		{
-			if (e.second == texture)
-				e.second = 0;
+			if (e[index] == texture)
+			{
+				e[index] = 0;
+				break;
+			}
 		}
 		for (auto &&e : mImageState.boundTextures)
 		{
 			if (e.texture == texture)
+			{
 				e.texture = 0;
+				break;
+			}
 		}
 	}
 	void GLStateManager::BindImageTexture(GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format)

@@ -591,52 +591,70 @@ namespace Shit
 		VK_FORMAT_UNDEFINED,
 
 		VK_FORMAT_R8_UNORM,
+		VK_FORMAT_R8_SNORM,
 		VK_FORMAT_R8_SRGB,
-		VK_FORMAT_R8_USCALED,
-		VK_FORMAT_R8_SSCALED,
+		VK_FORMAT_R8_UINT,
+		VK_FORMAT_R8_SINT,
 
 		VK_FORMAT_R8G8_UNORM,
+		VK_FORMAT_R8G8_SNORM,
 		VK_FORMAT_R8G8_SRGB,
-		VK_FORMAT_R8G8_USCALED,
-		VK_FORMAT_R8G8_SSCALED,
+		VK_FORMAT_R8G8_UINT,
+		VK_FORMAT_R8G8_SINT,
 
 		VK_FORMAT_R8G8B8_UNORM,
+		VK_FORMAT_R8G8B8_SNORM,
 		VK_FORMAT_R8G8B8_SRGB,
-		VK_FORMAT_R8G8B8_USCALED,
-		VK_FORMAT_R8G8B8_SSCALED,
+		VK_FORMAT_R8G8B8_UINT,
+		VK_FORMAT_R8G8B8_SINT,
 		VK_FORMAT_B8G8R8_UNORM,
 		VK_FORMAT_B8G8R8_SRGB,
-		VK_FORMAT_B8G8R8_USCALED,
-		VK_FORMAT_B8G8R8_SSCALED,
+		VK_FORMAT_B8G8R8_UINT,
+		VK_FORMAT_B8G8R8_SINT,
 
 		VK_FORMAT_R8G8B8A8_UNORM,
+		VK_FORMAT_R8G8B8A8_SNORM,
 		VK_FORMAT_R8G8B8A8_SRGB,
-		VK_FORMAT_R8G8B8A8_USCALED,
-		VK_FORMAT_R8G8B8A8_SSCALED,
+		VK_FORMAT_R8G8B8A8_UINT,
+		VK_FORMAT_R8G8B8A8_SINT,
 		VK_FORMAT_B8G8R8A8_UNORM,
 		VK_FORMAT_B8G8R8A8_SRGB,
-		VK_FORMAT_B8G8R8A8_USCALED,
-		VK_FORMAT_B8G8R8A8_SSCALED,
+		VK_FORMAT_B8G8R8A8_UINT,
+		VK_FORMAT_B8G8R8A8_SINT,
 
 		VK_FORMAT_R16_UNORM,
-		VK_FORMAT_R16_USCALED,
-		VK_FORMAT_R16_SSCALED,
+		VK_FORMAT_R16_SNORM,
+		VK_FORMAT_R16_UINT,
+		VK_FORMAT_R16_SINT,
 		VK_FORMAT_R16_SFLOAT,
 
 		VK_FORMAT_R16G16_UNORM,
-		VK_FORMAT_R16G16_USCALED,
-		VK_FORMAT_R16G16_SSCALED,
+		VK_FORMAT_R16G16_SNORM,
+		VK_FORMAT_R16G16_UINT,
+		VK_FORMAT_R16G16_SINT,
 		VK_FORMAT_R16G16_SFLOAT,
 
 		VK_FORMAT_R16G16B16_UNORM,
-		VK_FORMAT_R16G16B16_USCALED,
-		VK_FORMAT_R16G16B16_SSCALED,
+		VK_FORMAT_R16G16B16_UNORM,
+		VK_FORMAT_R16G16B16_UINT,
+		VK_FORMAT_R16G16B16_SINT,
 		VK_FORMAT_R16G16B16_SFLOAT,
 
 		VK_FORMAT_R16G16B16A16_UNORM,
-		VK_FORMAT_R16G16B16A16_USCALED,
-		VK_FORMAT_R16G16B16A16_SSCALED,
+		VK_FORMAT_R16G16B16A16_SNORM,
+		VK_FORMAT_R16G16B16A16_UINT,
+		VK_FORMAT_R16G16B16A16_SINT,
 		VK_FORMAT_R16G16B16A16_SFLOAT,
+
+		VK_FORMAT_R32_UINT,
+		VK_FORMAT_R32G32_UINT,
+		VK_FORMAT_R32G32B32_UINT,
+		VK_FORMAT_R32G32B32A32_UINT,
+
+		VK_FORMAT_R32_SINT,
+		VK_FORMAT_R32G32_SINT,
+		VK_FORMAT_R32G32B32_SINT,
+		VK_FORMAT_R32G32B32A32_SINT,
 
 		VK_FORMAT_R32_SFLOAT,
 		VK_FORMAT_R32G32_SFLOAT,
@@ -1080,7 +1098,6 @@ namespace Shit
 		VK_ERROR_INCOMPATIBLE_DISPLAY_KHR,
 		VK_ERROR_VALIDATION_FAILED_EXT,
 		VK_ERROR_INVALID_SHADER_NV,
-		VK_ERROR_INCOMPATIBLE_VERSION_KHR,
 		VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
 		VK_ERROR_NOT_PERMITTED_EXT,
 		VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT,
@@ -1462,187 +1479,4 @@ namespace Shit
 			return VK_IMAGE_ASPECT_COLOR_BIT;
 		}
 	}
-	VkFormat GetFormat(DataType dataType, uint32_t components, bool normalized)
-	{
-		if (normalized)
-		{
-			switch (components)
-			{
-			case 0:
-			case 1:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8_SNORM;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8_UNORM;
-				case DataType::SHORT:
-					return VK_FORMAT_R16_SNORM;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16_UNORM;
-				default:
-					break;
-				}
-				break;
-			case 2:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8G8_SNORM;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8G8_UNORM;
-				case DataType::SHORT:
-					return VK_FORMAT_R16G16_SNORM;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16G16_UNORM;
-				default:
-					break;
-				}
-				break;
-			case 3:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8G8B8_SNORM;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8G8B8_UNORM;
-				case DataType::SHORT:
-					return VK_FORMAT_R16G16B16_SNORM;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16G16B16_UNORM;
-				default:
-					break;
-				}
-				break;
-			case 4:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8G8B8A8_SNORM;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8G8B8A8_UNORM;
-				case DataType::SHORT:
-					return VK_FORMAT_R16G16B16A16_SNORM;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16G16B16A16_UNORM;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
-			}
-		}
-		else
-		{
-			switch (components)
-			{
-			case 0:
-			case 1:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8_SINT;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8_UINT;
-				case DataType::SHORT:
-					return VK_FORMAT_R16_SINT;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16_UINT;
-				case DataType::INT:
-					return VK_FORMAT_R32_SINT;
-				case DataType::UNSIGNED_INT:
-					return VK_FORMAT_R32_UINT;
-				case DataType::FLOAT_HALF:
-					return VK_FORMAT_R16_SFLOAT;
-				case DataType::FLOAT:
-					return VK_FORMAT_R32_SFLOAT;
-				case DataType::DOUBLE:
-					return VK_FORMAT_R64_SFLOAT;
-				default:
-					break;
-				}
-				break;
-			case 2:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8G8_SINT;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8G8_UINT;
-				case DataType::SHORT:
-					return VK_FORMAT_R16G16_SINT;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16G16_UINT;
-				case DataType::INT:
-					return VK_FORMAT_R32G32_SINT;
-				case DataType::UNSIGNED_INT:
-					return VK_FORMAT_R32G32_UINT;
-				case DataType::FLOAT_HALF:
-					return VK_FORMAT_R16G16_SFLOAT;
-				case DataType::FLOAT:
-					return VK_FORMAT_R32G32_SFLOAT;
-				case DataType::DOUBLE:
-					return VK_FORMAT_R64G64_SFLOAT;
-				default:
-					break;
-				}
-				break;
-			case 3:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8G8B8_SINT;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8G8B8_UINT;
-				case DataType::SHORT:
-					return VK_FORMAT_R16G16B16_SINT;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16G16B16_UINT;
-				case DataType::INT:
-					return VK_FORMAT_R32G32B32_SINT;
-				case DataType::UNSIGNED_INT:
-					return VK_FORMAT_R32G32B32_UINT;
-				case DataType::FLOAT_HALF:
-					return VK_FORMAT_R16G16B16_SFLOAT;
-				case DataType::FLOAT:
-					return VK_FORMAT_R32G32B32_SFLOAT;
-				case DataType::DOUBLE:
-					return VK_FORMAT_R64G64B64_SFLOAT;
-				default:
-					break;
-				}
-				break;
-			case 4:
-				switch (dataType)
-				{
-				case DataType::BYTE:
-					return VK_FORMAT_R8G8B8A8_SINT;
-				case DataType::UNSIGNED_BYTE:
-					return VK_FORMAT_R8G8B8A8_UINT;
-				case DataType::SHORT:
-					return VK_FORMAT_R16G16B16A16_SINT;
-				case DataType::UNSIGNED_SHORT:
-					return VK_FORMAT_R16G16B16A16_UINT;
-				case DataType::INT:
-					return VK_FORMAT_R32G32B32A32_SINT;
-				case DataType::UNSIGNED_INT:
-					return VK_FORMAT_R32G32B32A32_UINT;
-				case DataType::FLOAT_HALF:
-					return VK_FORMAT_R16G16B16A16_SFLOAT;
-				case DataType::FLOAT:
-					return VK_FORMAT_R32G32B32A32_SFLOAT;
-				case DataType::DOUBLE:
-					return VK_FORMAT_R64G64B64A64_SFLOAT;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
-			}
-		}
-		THROW("failed to faind appropriate format");
-	}
-
 } // namespace Shit

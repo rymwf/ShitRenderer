@@ -33,12 +33,12 @@ namespace Shit
 #else
 			static_assert(0, "there is no VK surface implementation");
 #endif
-			if (vkCreateWin32SurfaceKHR(vk_instance, &info, nullptr, &mHandle) != VK_SUCCESS)
+			if (vkCreateWin32SurfaceKHR(g_vk_instance, &info, nullptr, &mHandle) != VK_SUCCESS)
 				THROW("failed to create VK surface");
 		}
 		~VKSurface() override
 		{
-			vkDestroySurfaceKHR(vk_instance, mHandle, nullptr);
+			vkDestroySurfaceKHR(g_vk_instance, mHandle, nullptr);
 		}
 		constexpr VkSurfaceKHR GetHandle() const
 		{

@@ -163,7 +163,7 @@ namespace Shit
 	}
 	void VKImage::UpdateSubData(uint32_t mipLevel, ImageLayout initialLayout, ImageLayout finalLayout, const Rect3D &rect, const void *pData)
 	{
-		uint64_t size = rect.extent.width * rect.extent.height * rect.extent.depth * GetFormatSize(mCreateInfo.format);
+		uint64_t size = rect.extent.width * rect.extent.height * rect.extent.depth * GetDataTypeSize(GetFormatDataType(mCreateInfo.format)) * GetFormatComponentNum(mCreateInfo.format);
 
 		BufferCreateInfo stagingBufferCreateInfo{
 			{},

@@ -12,6 +12,7 @@
 #include "GLPrerequisites.hpp"
 namespace Shit
 {
+	//buffer texture
 	class GLBufferView final : public BufferView
 	{
 		GLuint mHandle;

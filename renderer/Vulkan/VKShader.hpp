@@ -26,8 +26,8 @@ namespace Shit
 				VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 				nullptr,
 				0,
-				createInfo.code.size(),
-				reinterpret_cast<const uint32_t *>(createInfo.code.data())};
+				createInfo.size,
+				reinterpret_cast<const uint32_t *>(createInfo.code)};
 
 			if (vkCreateShaderModule(mDevice, &tempCreateInfo, nullptr, &mHandle) != VK_SUCCESS)
 				THROW("failed to create shadermodule");

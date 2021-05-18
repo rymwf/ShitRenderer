@@ -68,7 +68,7 @@ namespace Shit
 		{
 			return mpFramebuffer;
 		}
-		std::shared_ptr<std::function<void(const Event &)>> GetProcessWindowEventCallable()
+		std::shared_ptr<std::function<void(const Event &)>> GetProcessWindowEventCallable() const
 		{
 			return mProcessWindowEventCallable;
 		}

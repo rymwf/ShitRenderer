@@ -16,6 +16,8 @@
 
 #define BUFFER_TARGET_NUM 15
 
+#define TEXTURE_TARGET_NUM 8
+
 #define MAX_DRAW_BUFFERS 8
 
 #define MAX_VIEWPORTS 16
@@ -97,7 +99,7 @@ namespace Shit
 			};
 			GLuint activeUnit;
 			//target and texture
-			std::array<std::pair<GLenum, GLuint>, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundTextures;
+			std::array<std::array<GLuint, TEXTURE_TARGET_NUM>, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundTextures;
 			std::stack<StackEntry> textureStack;
 		} mTextureState;
 
@@ -123,7 +125,7 @@ namespace Shit
 				GLenum access;
 				GLenum format;
 			};
-			std::array<StackEntry, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundTextures;
+			std::array<StackEntry, MAX_COMBINED_TEXTURE_IMAGE_UNITS> boundTextures; //TODO: same as texture??
 			std::stack<StackEntry> imageStack;
 		} mImageState;
 		struct GLRenderbufferState
@@ -340,7 +342,7 @@ namespace Shit
 		void BindTextureUnit(GLuint unit, GLenum target, GLuint texture);
 		void PushTextureUnit(GLuint unit, GLenum target, GLuint texture);
 		void PopTextureUnit();
-		void NotifyReleasedTexture(GLuint texture);
+		void NotifyReleasedTexture(GLenum target, GLuint texture);
 
 		//image
 		void BindImageTexture(GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format);

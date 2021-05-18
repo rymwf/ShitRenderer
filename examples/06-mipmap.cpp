@@ -28,21 +28,15 @@ struct Vertex
 		return {
 			{startLocation + 0,
 			 binding,
-			 3,
-			 DataType::FLOAT,
-			 false,
+			 ShitFormat::RGB32_SFLOAT,
 			 offsetof(Vertex, pos)},
 			{startLocation + 1,
 			 binding,
-			 3,
-			 DataType::FLOAT,
-			 false,
+			 ShitFormat::RGB32_SFLOAT,
 			 offsetof(Vertex, color)},
 			{startLocation + 2,
 			 binding,
-			 2,
-			 DataType::FLOAT,
-			 false,
+			 ShitFormat::RG32_SFLOAT,
 			 offsetof(Vertex, texCoord)},
 		};
 	}
@@ -153,7 +147,7 @@ public:
 		};
 		graphicsQueue = device->Create(queueCreateInfo);
 
-		createSwapchains();
+		createSwapchain();
 
 		createShaders();
 		createDescriptorSets();
@@ -230,7 +224,7 @@ public:
 	void recreateSwapchain()
 	{
 		cleanupSwapchain();
-		createSwapchains();
+		createSwapchain();
 		createRenderPasses();
 		createFramebuffers();
 		createPipeline();
@@ -290,14 +284,15 @@ public:
 		std::string vertCode = readFile(vertShaderPath.c_str());
 		std::string fragCode = readFile(fragShaderPath.c_str());
 
-		ShaderCreateInfo vertShaderCreateInfo{vertCode};
-		ShaderCreateInfo fragShaderCreateInfo{fragCode};
+		ShaderCreateInfo vertShaderCreateInfo{vertCode.size(), vertCode.data()};
+		ShaderCreateInfo fragShaderCreateInfo{fragCode.size(), fragCode.data()};
+
 
 		vertShader = device->Create(vertShaderCreateInfo);
 		fragShader = device->Create(fragShaderCreateInfo);
 	}
 
-	void createSwapchains()
+	void createSwapchain()
 	{
 		auto swapchainFormat = chooseSwapchainFormat(
 			{

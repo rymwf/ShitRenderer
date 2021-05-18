@@ -29,7 +29,19 @@
 
 namespace Shit
 {
-
+	PFN_vkVoidFunction VKDevice::GetDeviceProcAddr(const char *pName)
+	{
+		return vkGetDeviceProcAddr(mDevice, pName);
+	}
+	void VKDevice::LoadDeviceExtensionFunctions()
+	{
+	}
+	Result VKDevice::WaitIdle()
+	{
+		if (vkDeviceWaitIdle(mDevice) == VK_SUCCESS)
+			return Result::SUCCESS;
+		return Result::SHIT_ERROR;
+	}
 	VKDevice::VKDevice(const DeviceCreateInfo &createInfo) : Device(createInfo)
 	{
 		VkPhysicalDevice physicalDevice = GetPhysicalDevice();

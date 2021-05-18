@@ -35,6 +35,10 @@ namespace Shit
 		glSamplerParameteri(mHandle, GL_TEXTURE_WRAP_S, Map(createInfo.wrapModeU));
 		glSamplerParameteri(mHandle, GL_TEXTURE_WRAP_T, Map(createInfo.wrapModeV));
 		glSamplerParameteri(mHandle, GL_TEXTURE_WRAP_R, Map(createInfo.wrapModeW));
+		if (createInfo.anisotropyEnable)
+		{
+			glSamplerParameterf(mHandle, GL_TEXTURE_MAX_ANISOTROPY, createInfo.maxAnisotropy);
+		}
 		if (createInfo.compareEnable)
 		{
 			glSamplerParameteri(mHandle, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);

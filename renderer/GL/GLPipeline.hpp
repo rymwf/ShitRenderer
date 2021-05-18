@@ -28,8 +28,10 @@ namespace Shit
 		std::vector<GLuint> mShaders;
 		GLStateManager *mpStateManager;
 
+		std::unordered_map<uint32_t, std::pair<GLuint, GLsizei>> mPushConstantBuffers;
+
 	public:
-		GLPipeline(GLStateManager *pStateManager) : mpStateManager(pStateManager) {}
+		GLPipeline(GLStateManager *pStateManager, PipelineLayout *pPipelineLayout);
 
 		~GLPipeline() override
 		{
@@ -46,6 +48,10 @@ namespace Shit
 		constexpr GLuint GetHandle() const
 		{
 			return mHandle;
+		}
+		decltype(auto) GetPushConstantBuffer(uint32_t binding)
+		{
+			return mPushConstantBuffers[binding];
 		}
 	};
 

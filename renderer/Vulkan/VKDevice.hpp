@@ -30,6 +30,12 @@ namespace Shit
 			return mDevice;
 		}
 
+		PFN_vkVoidFunction GetDeviceProcAddr(const char *pName);
+
+		void LoadDeviceExtensionFunctions();
+
+		Result WaitIdle() override;
+
 		std::optional<QueueFamilyIndex> GetPresentQueueFamilyIndex(ShitWindow *pWindow) override;
 
 		constexpr VkPhysicalDevice GetPhysicalDevice() const

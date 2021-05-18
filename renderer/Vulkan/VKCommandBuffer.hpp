@@ -21,7 +21,7 @@ namespace Shit
 
 	public:
 		VKCommandBuffer(VkDevice device, VkCommandPool commandPool, const CommandBufferCreateInfo &createInfo);
-		constexpr VkCommandBuffer GetHandle()
+		constexpr VkCommandBuffer GetHandle() const
 		{
 			return mHandle;
 		}
@@ -60,9 +60,15 @@ namespace Shit
 		void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) override;
 
 		void PipeplineBarrier(const PipelineBarrierInfo &info) override;
-		void PushConstants(const PushConstantUpdateInfo &info) override;
+		void PushConstants(const PushConstantInfo &info) override;
 
 		void Dispatch(const DispatchInfo &info) override;
 		void DispatchIndirect(const DispatchIndirectInfo &info) override;
+
+		void BindTransformFeedbackBuffers(const BindTransformFeedbackBuffersInfo &info) override;
+		void BeginTransformFeedback(const BeginTransformFeedbackInfo &info) override;
+		void EndTransformFeedback(const EndTransformFeedbackInfo &info) override;
+		void SetViewport(const SetViewPortInfo &info) override;
+		void SetScissor(const SetScissorInfo &info) override;
 	};
 }

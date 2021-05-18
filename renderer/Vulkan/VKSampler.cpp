@@ -24,8 +24,8 @@ namespace Shit
 			Map(createInfo.wrapModeV),
 			Map(createInfo.wrapModeW),
 			createInfo.mipLodBias,
-			createInfo.anisotopyEnable,
-			16, //max anisotropy
+			createInfo.anisotropyEnable,
+			createInfo.maxAnisotropy, //max anisotropy
 			createInfo.compareEnable,
 			Map(createInfo.compareOp),
 			createInfo.minLod,

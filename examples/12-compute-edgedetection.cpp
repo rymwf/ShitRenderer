@@ -108,13 +108,16 @@ public:
 	void createShaders()
 	{
 		std::string compShaderPath = buildShaderPath(compShaderNameGrayScale, rendererVersion);
-		compShaderGrayscale = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+		auto compCode = readFile(compShaderPath.c_str());
+		compShaderGrayscale = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 
 		compShaderPath = buildShaderPath(compShaderName, rendererVersion);
-		compShader = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+		compCode = readFile(compShaderPath.c_str());
+		compShader = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 
 		compShaderPath = buildShaderPath(compShaderNameFilter, rendererVersion);
-		compShaderFilter = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+		compCode = readFile(compShaderPath.c_str());
+		compShaderFilter = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 	}
 
 	void createDescriptorSets()

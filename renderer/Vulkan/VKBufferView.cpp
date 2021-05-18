@@ -19,7 +19,7 @@ namespace Shit
 			VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
 			nullptr, //next
 			0,		 //flags
-			static_cast<VKBuffer *>(createInfo.pBuffer)->GetHandle(),
+			static_cast<const VKBuffer *>(createInfo.pBuffer)->GetHandle(),
 			Map(createInfo.format),
 			createInfo.offset,
 			createInfo.range};

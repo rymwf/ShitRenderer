@@ -20,7 +20,7 @@ namespace Shit
 		}
 		else
 		{
-			mpStateManager->NotifyReleasedTexture(mHandle);
+			mpStateManager->NotifyReleasedTexture(Map(mCreateInfo.imageType, mCreateInfo.samples), mHandle);
 			glDeleteTextures(1, &mHandle);
 		}
 	}
@@ -37,7 +37,7 @@ namespace Shit
 		uint32_t width=mCreateInfo.extent.width;
 		uint32_t height=mCreateInfo.extent.height;
 		uint32_t depth=mCreateInfo.extent.depth;
-		uint32_t formatSize = GetFormatSize(mCreateInfo.format);
+		uint32_t formatSize = GetDataTypeSize(GetFormatDataType(mCreateInfo.format)) * GetFormatComponentNum(mCreateInfo.format);
 		for (uint32_t i = 0; i < mCreateInfo.mipLevels;
 			 ++i,
 					  width = (std::max)(width / 2, 1u),
@@ -169,8 +169,8 @@ namespace Shit
 			if (pData)
 			{
 				UpdateSubData(0, {}, {}, {{}, mCreateInfo.extent}, pData);
-				mpStateManager->PopTextureUnit();
 			}
+			mpStateManager->PopTextureUnit();
 		}
 	}
 	void GLImage::UpdateSubData(uint32_t mipLevel, [[maybe_unused]] ImageLayout initialLayout, [[maybe_unused]] ImageLayout finalLayout, const Rect3D &rect, const void *pData)
@@ -188,7 +188,7 @@ namespace Shit
 				rect.extent.width,
 				rect.extent.height,
 				MapExternalFormat(mCreateInfo.format),
-				MapDataTypeFromFormat(mCreateInfo.format),
+				Map(GetFormatDataType(mCreateInfo.format)),
 				pData);
 			break;
 		case ImageType::TYPE_2D:
@@ -203,7 +203,7 @@ namespace Shit
 				rect.extent.height,
 				rect.extent.depth,
 				MapExternalFormat(mCreateInfo.format),
-				MapDataTypeFromFormat(mCreateInfo.format),
+				Map(GetFormatDataType(mCreateInfo.format)),
 				pData);
 			break;
 		}
@@ -215,7 +215,7 @@ namespace Shit
 		auto target = Map(mCreateInfo.imageType, mCreateInfo.samples);
 		mpStateManager->BindTextureUnit(0, target, mHandle);
 		mTempData.resize(mCreateInfo.extent.width * mCreateInfo.extent.height * GetFormatComponentNum(mCreateInfo.format));
-		glGetTexImage(target, 0, MapExternalFormat(mCreateInfo.format), MapDataTypeFromFormat(mCreateInfo.format), mTempData.data());
+		glGetTexImage(target, 0, MapExternalFormat(mCreateInfo.format), Map(GetFormatDataType(mCreateInfo.format)), mTempData.data());
 		*ppData = mTempData.data() + offset;
 	}
 	void GLImage::UnMapMemory()
@@ -368,6 +368,10 @@ namespace Shit
 	GLImageView::~GLImageView()
 	{
 		if (!static_cast<GLImage *>(mCreateInfo.pImage)->IsRenderbuffer())
+		{
+			GLenum target = Map(mCreateInfo.viewType, mCreateInfo.pImage->GetCreateInfoPtr()->samples);
+			mpStateManger->NotifyReleasedTexture(target, mHandle);
 			glDeleteTextures(1, &mHandle);
+		}
 	}
 } // namespace Shit

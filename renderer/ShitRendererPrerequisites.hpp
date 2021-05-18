@@ -55,124 +55,6 @@
 
 namespace Shit
 {
-	inline uint32_t GetFormatComponentNum(ShitFormat format)
-	{
-		switch (format)
-		{
-		case ShitFormat::R8_UNORM:
-		case ShitFormat::R8_SRGB:
-		case ShitFormat::R8_USCALED:
-		case ShitFormat::R8_SSCALED:
-		case ShitFormat::R16_UNORM:
-		case ShitFormat::R16_USCALED:
-		case ShitFormat::R16_SSCALED:
-		case ShitFormat::R16_SFLOAT:
-		case ShitFormat::R32_SFLOAT:
-		case ShitFormat::D16_UNORM:
-		case ShitFormat::D24_UNORM:
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D24_UNORM_S8_UINT:
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-		case ShitFormat::S8_UINT:
-			return 1;
-
-		case ShitFormat::RG8_UNORM:
-		case ShitFormat::RG8_SRGB:
-		case ShitFormat::RG8_USCALED:
-		case ShitFormat::RG8_SSCALED:
-		case ShitFormat::RG16_UNORM:
-		case ShitFormat::RG16_USCALED:
-		case ShitFormat::RG16_SSCALED:
-		case ShitFormat::RG16_SFLOAT:
-		case ShitFormat::RG32_SFLOAT:
-			return 2;
-
-		case ShitFormat::RGB8_UNORM:
-		case ShitFormat::RGB8_SRGB:
-		case ShitFormat::RGR8_USCALED:
-		case ShitFormat::RGR8_SSCALED:
-		case ShitFormat::BGR8_UNORM:
-		case ShitFormat::BGR8_SRGB:
-		case ShitFormat::BGR8_USCALED:
-		case ShitFormat::BGR8_SSCALED:
-		case ShitFormat::RGB16_UNORM:
-		case ShitFormat::RGB16_USCALED:
-		case ShitFormat::RGB16_SSCALED:
-		case ShitFormat::RGB16_SFLOAT:
-		case ShitFormat::RGB32_SFLOAT:
-			return 3;
-
-		case ShitFormat::RGBA8_UNORM:
-		case ShitFormat::RGBA8_SRGB:
-		case ShitFormat::RGBA8_USCALED:
-		case ShitFormat::RGBA8_SSCALED:
-		case ShitFormat::BGRA8_UNORM:
-		case ShitFormat::BGRA8_SRGB:
-		case ShitFormat::BGRA8_USCALED:
-		case ShitFormat::BGRA8_SSCALED:
-		case ShitFormat::RGBA16_UNORM:
-		case ShitFormat::RGBA16_USCALED:
-		case ShitFormat::RGBA16_SSCALED:
-		case ShitFormat::RGBA16_SFLOAT:
-		case ShitFormat::RGBA32_SFLOAT:
-		default:
-			return 4;
-		}
-	}
-	inline uint32_t GetFormatComponentSize(ShitFormat format)
-	{
-		switch (format)
-		{
-		case ShitFormat::D16_UNORM:
-		case ShitFormat::R16_UNORM:
-		case ShitFormat::R16_USCALED:
-		case ShitFormat::R16_SSCALED:
-		case ShitFormat::R16_SFLOAT:
-
-		case ShitFormat::RG16_UNORM:
-		case ShitFormat::RG16_USCALED:
-		case ShitFormat::RG16_SSCALED:
-		case ShitFormat::RG16_SFLOAT:
-
-		case ShitFormat::RGB16_UNORM:
-		case ShitFormat::RGB16_USCALED:
-		case ShitFormat::RGB16_SSCALED:
-		case ShitFormat::RGB16_SFLOAT:
-
-		case ShitFormat::RGBA16_UNORM:
-		case ShitFormat::RGBA16_USCALED:
-		case ShitFormat::RGBA16_SSCALED:
-		case ShitFormat::RGBA16_SFLOAT:
-			return 2;
-		case ShitFormat::D24_UNORM:
-			return 3;
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D24_UNORM_S8_UINT:
-		case ShitFormat::R32_SFLOAT:
-		case ShitFormat::RG32_SFLOAT:
-		case ShitFormat::RGB32_SFLOAT:
-		case ShitFormat::RGBA32_SFLOAT:
-			return 4;
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-			return 5;
-		default:
-			return 1;
-		}
-	}
-	inline uint32_t GetIndexTypeSize(IndexType type)
-	{
-		switch (type)
-		{
-		case IndexType::UINT8:
-			return 1;
-		case IndexType::UINT16:
-		default:
-			return 2;
-		case IndexType::UINT32:
-			return 4;
-		}
-	}
-
 	class RenderSystem;
 	class ShitWindow;
 	class Device;
@@ -276,7 +158,8 @@ namespace Shit
 
 	struct ShaderCreateInfo
 	{
-		std::string code;
+		size_t size;
+		void *code;
 	};
 
 	struct SpecializationInfo
@@ -293,11 +176,9 @@ namespace Shit
 	};
 	struct VertexAttributeDescription
 	{
-		uint32_t location;	 //location in shader
-		uint32_t binding;	 //index in given buffers
-		uint32_t components; //1,2,3,4
-		DataType dataType;
-		bool normalized;
+		uint32_t location; //location in shader
+		uint32_t binding;  //index in given buffers
+		ShitFormat format;
 		uint32_t offset;
 	};
 
@@ -439,7 +320,7 @@ namespace Shit
 	struct CommandPoolCreateInfo
 	{
 		CommandPoolCreateFlagBits flags;
-		QueueFamilyIndex queueFamilyIndex;
+		uint32_t queueFamilyIndex;
 	};
 	struct CommandBufferCreateInfo
 	{
@@ -507,7 +388,8 @@ namespace Shit
 		SamplerWrapMode wrapModeV;
 		SamplerWrapMode wrapModeW;
 		float mipLodBias;
-		bool anisotopyEnable;
+		bool anisotropyEnable;
+		float maxAnisotropy;
 		bool compareEnable;
 		CompareOp compareOp;
 		float minLod;
@@ -697,7 +579,8 @@ namespace Shit
 	//vulkan only
 	struct PushConstantRange
 	{
-		ShaderStageFlagBits stageFlags;
+		ShaderStageFlagBits stageFlags; //for vulkan
+		uint32_t binding;				//only needed in opengl, use non opaque uniform block to replace push constant
 		uint32_t offset;
 		uint32_t size;
 	};
@@ -812,13 +695,13 @@ namespace Shit
 	{
 		uint32_t firstBinding;
 		uint32_t bindingCount;
-		Buffer **ppBuffers; //buffer pointer array
-		uint64_t *pOffsets; //offset array
+		const Buffer *const *ppBuffers; //buffer pointer array
+		const uint64_t *pOffsets; //offset array
 	};
 	struct BindIndexBufferInfo
 	{
 		Buffer *pBuffer;
-		uint64_t offset; //must be 0
+		uint64_t offset; 
 		IndexType indexType;
 	};
 	struct BindPipelineInfo
@@ -829,7 +712,7 @@ namespace Shit
 	struct ExecuteSecondaryCommandBufferInfo
 	{
 		uint32_t count;
-		CommandBuffer **pCommandBuffers;
+		const CommandBuffer *const *pCommandBuffers;
 	};
 	struct BindDescriptorSetsInfo
 	{
@@ -837,13 +720,13 @@ namespace Shit
 		PipelineLayout *pPipelineLayout;
 		uint32_t firstset;
 		uint32_t descriptorSetCount;
-		DescriptorSet **ppDescriptorSets;
+		const DescriptorSet *const *ppDescriptorSets;
 		uint32_t dynamicOffsetCount; //dynamic uniform or storage buffer
-		uint32_t *pDynamicOffsets;
+		const uint32_t *pDynamicOffsets;
 	};
 	struct BufferViewCreateInfo
 	{
-		Buffer *pBuffer;
+		const Buffer *pBuffer;
 		ShitFormat format;
 		uint64_t offset;
 		uint64_t range;
@@ -886,13 +769,14 @@ namespace Shit
 		uint32_t imageMemoryBarrierCount;
 		ImageMemoryBarrier *pImageMemoryBarriers;
 	};
-	struct PushConstantUpdateInfo
+	struct PushConstantInfo
 	{
 		PipelineLayout *pPipelineLayout;
-		ShaderStageFlagBits stageFlags;
+		ShaderStageFlagBits stageFlags; //for vulkan
+		uint32_t binding;				//for opengl
 		uint32_t offset;
 		uint32_t size;
-		const void *pValues; //an array of size bytes
+		void *pValues; //an array of size bytes
 	};
 	struct DispatchInfo
 	{
@@ -909,7 +793,37 @@ namespace Shit
 	};
 	struct DispatchIndirectInfo
 	{
-		Buffer *pBuffer;
+		const Buffer *pBuffer;
 		uint64_t offset;
+	};
+
+	struct BindTransformFeedbackBuffersInfo
+	{
+		uint32_t firstBinding;
+		uint32_t bindingCount;
+		const Buffer *const *ppBuffers;
+		const uint64_t *pOffsets;
+		const uint64_t *pSizes;
+	};
+	struct BeginTransformFeedbackInfo
+	{
+		uint32_t firstCounterBuffer;
+		uint32_t counterBufferCount;
+		const Buffer *const *ppCounterBuffers;
+		const uint64_t *pCounterBufferOffsets;
+	};
+	using EndTransformFeedbackInfo = BeginTransformFeedbackInfo;
+
+	struct SetViewPortInfo
+	{
+		uint32_t firstViewport;
+		uint32_t viewportCount;
+		const Viewport *pViewports;
+	};
+	struct SetScissorInfo
+	{
+		uint32_t firstScissor;
+		uint32_t scissorCount;
+		const Rect2D* pScissors;
 	};
 } // namespace Shit

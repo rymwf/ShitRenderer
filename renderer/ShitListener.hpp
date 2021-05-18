@@ -13,7 +13,8 @@
 namespace Shit
 {
 	template <class... Args>
-	class Listener : public std::list<std::weak_ptr<std::function<void(Args...)>>>
+	//class Listener : public std::list<std::weak_ptr<std::function<void(Args...)>>>
+	class Listener : public std::list<std::shared_ptr<std::function<void(Args...)>>>
 	{
 	public:
 		Listener() {}
@@ -21,15 +22,16 @@ namespace Shit
 
 		void notify(Args... args)
 		{
-			for (auto it = this->begin(); it != this->end();)
+			for (auto &&it = this->begin(); it != this->end(); ++it)
 			{
-				if (it->expired())
-					it = this->erase(it);
-				else
-				{
-					(*(it->lock()))(args...);
-					++it;
-				}
+				(**it)(args...);
+				//if (it->expired())
+				//	it = this->erase(it);
+				//else
+				//{
+				//	(*(it->lock()))(args...);
+				//	++it;
+				//}
 			}
 		}
 	};

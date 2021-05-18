@@ -143,6 +143,7 @@ if(EXAMPLES)
 #find_package(Boost REQUIRED COMPONENTS program_options)
 find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 find_package(RapidJSON CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 #add examples
 function(newexample examplename)
 message(${examplename})
@@ -152,6 +153,7 @@ examples/${examplename}.cpp
 examples/common.cpp 
 examples/model.cpp
 examples/appbase.cpp
+examples/imgui-impl.cpp
 )
 
 set_target_properties(${examplename} PROPERTIES FOLDER examples
@@ -165,6 +167,7 @@ ${CMAKE_SOURCE_DIR}/examples
 ${CMAKE_BINARY_DIR} 
 ${TINYGLTF_INCLUDE_DIRS}
 ${RAPIDJSON_INCLUDE_DIRS}/rapidjson
+${IMGUI_INCLUDE_DIRS}
 )
 
 if(MSVC)
@@ -181,8 +184,8 @@ target_link_libraries(${examplename} PRIVATE
 GLEW::GLEW
 ShitRenderer
 #Boost::program_options
+imgui::imgui
 )
-
 
 add_dependencies(${examplename} ShitRenderer)
 #string(REGEX REPLACE "/" "\\\\" STR0 ${CMAKE_SOURCE_DIR}/3rdparty/assimp/build/bin/$(Configuration)/assimp-vc142-mt$<$<CONFIG:Debug>:d>.dll)
@@ -211,6 +214,7 @@ newexample(15-irradianceSH)
 newexample(16-reflectionEnv)
 newexample(17-envBRDF)
 newexample(18-ibl)
+#newexample(19-ibl-imgui)
 endif()
 
 

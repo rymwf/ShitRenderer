@@ -272,24 +272,29 @@ namespace Shit
 		GL_FLOAT,
 		GL_HALF_FLOAT,
 		GL_DOUBLE,
-		GL_INT_2_10_10_10_REV,
-		GL_UNSIGNED_INT_2_10_10_10_REV,
-		GL_UNSIGNED_INT_10F_11F_11F_REV};
+		//GL_INT_2_10_10_10_REV,
+		//GL_UNSIGNED_INT_2_10_10_10_REV,
+		//GL_UNSIGNED_INT_10F_11F_11F_REV,
+		GL_UNSIGNED_INT_24_8,
+	};
 
 	constexpr GLenum glFormatArray[][2]{
 		{GL_NONE, GL_NONE},
 
 		{GL_R8, GL_RED},
+		{GL_R8_SNORM, GL_RED},
 		{GL_SR8_EXT, GL_RED}, //need GL_EXT_texture_sRGB_R8	2015
 		{GL_R8UI, GL_RED},
 		{GL_R8I, GL_RED},
 
 		{GL_RG8, GL_RG},
+		{GL_RG8_SNORM, GL_RG},
 		{GL_SRG8_EXT, GL_RG}, //need GL_EXT_texture_sRGB_RG8	2015
 		{GL_RG8UI, GL_RG},
 		{GL_RG8I, GL_RG},
 
 		{GL_RGB8, GL_RGB},
+		{GL_RGB8_SNORM, GL_RGB},
 		{GL_SRGB8, GL_RGB},
 		{GL_RGB8UI, GL_RGB},
 		{GL_RGB8I, GL_RGB},
@@ -299,6 +304,7 @@ namespace Shit
 		{GL_BGR_INTEGER, GL_BGR},
 
 		{GL_RGBA8, GL_RGBA},
+		{GL_RGBA8_SNORM, GL_RGBA},
 		{GL_SRGB8_ALPHA8, GL_RGBA},
 		{GL_RGBA8UI, GL_RGBA},
 		{GL_RGBA8I, GL_RGBA},
@@ -308,24 +314,38 @@ namespace Shit
 		{GL_BGRA_INTEGER, GL_BGRA},
 
 		{GL_R16, GL_RED},
+		{GL_R16_SNORM, GL_RED},
 		{GL_R16UI, GL_RED},
 		{GL_R16I, GL_RED},
 		{GL_R16F, GL_RED},
 
 		{GL_RG16, GL_RG},
+		{GL_RG16_SNORM, GL_RG},
 		{GL_RG16UI, GL_RG},
 		{GL_RG16I, GL_RG},
 		{GL_RG16F, GL_RG},
 
 		{GL_RGB16, GL_RGB},
+		{GL_RGB16_SNORM, GL_RGB},
 		{GL_RGB16UI, GL_RGB},
 		{GL_RGB16I, GL_RGB},
 		{GL_RGB16F, GL_RGB},
 
 		{GL_RGBA16, GL_RGBA},
+		{GL_RGBA16_SNORM, GL_RGBA},
 		{GL_RGBA16UI, GL_RGBA},
 		{GL_RGBA16I, GL_RGBA},
 		{GL_RGBA16F, GL_RGBA},
+
+		{GL_R32UI, GL_RED},
+		{GL_RG32UI, GL_RG},
+		{GL_RGB32UI, GL_RGB},
+		{GL_RGBA32UI, GL_RGBA},
+
+		{GL_R32I, GL_RED},
+		{GL_RG32I, GL_RG},
+		{GL_RGB32I, GL_RGB},
+		{GL_RGBA32I, GL_RGBA},
 
 		{GL_R32F, GL_RED},
 		{GL_RG32F, GL_RG},
@@ -360,7 +380,7 @@ namespace Shit
 		GL_COPY_READ_BUFFER,
 		GL_COPY_WRITE_BUFFER,
 		GL_TEXTURE_BUFFER,
-		0, //storage texel
+		//0, //storage texel
 		GL_UNIFORM_BUFFER,
 		GL_SHADER_STORAGE_BUFFER,
 		GL_ELEMENT_ARRAY_BUFFER,
@@ -610,75 +630,6 @@ namespace Shit
 	GLenum MapExternalFormat(ShitFormat format)
 	{
 		return glFormatArray[static_cast<size_t>(format)][1];
-	}
-	GLenum MapDataTypeFromFormat(ShitFormat format)
-	{
-		switch (format)
-		{
-		case ShitFormat::R8_UNORM:
-		case ShitFormat::R8_SRGB:
-		case ShitFormat::R8_USCALED:
-		case ShitFormat::RG8_UNORM:
-		case ShitFormat::RG8_SRGB:
-		case ShitFormat::RG8_USCALED:
-		case ShitFormat::RGB8_UNORM:
-		case ShitFormat::RGB8_SRGB:
-		case ShitFormat::RGR8_USCALED:
-		case ShitFormat::BGR8_UNORM:
-		case ShitFormat::BGR8_SRGB:
-		case ShitFormat::BGR8_USCALED:
-		case ShitFormat::RGBA8_UNORM:
-		case ShitFormat::RGBA8_SRGB:
-		case ShitFormat::RGBA8_USCALED:
-		case ShitFormat::BGRA8_UNORM:
-		case ShitFormat::BGRA8_SRGB:
-		case ShitFormat::BGRA8_USCALED:
-			return GL_UNSIGNED_BYTE;
-
-		case ShitFormat::R8_SSCALED:
-		case ShitFormat::RG8_SSCALED:
-		case ShitFormat::RGR8_SSCALED:
-		case ShitFormat::BGR8_SSCALED:
-		case ShitFormat::RGBA8_SSCALED:
-		case ShitFormat::BGRA8_SSCALED:
-			return GL_BYTE;
-
-		case ShitFormat::R16_UNORM:
-		case ShitFormat::R16_USCALED:
-		case ShitFormat::RG16_UNORM:
-		case ShitFormat::RG16_USCALED:
-		case ShitFormat::RGB16_UNORM:
-		case ShitFormat::RGB16_USCALED:
-		case ShitFormat::RGBA16_UNORM:
-		case ShitFormat::RGBA16_USCALED:
-			return GL_UNSIGNED_SHORT;
-
-		case ShitFormat::R16_SSCALED:
-		case ShitFormat::RG16_SSCALED:
-		case ShitFormat::RGB16_SSCALED:
-		case ShitFormat::RGBA16_SSCALED:
-			return GL_SHORT;
-
-		case ShitFormat::R16_SFLOAT:
-		case ShitFormat::RG16_SFLOAT:
-		case ShitFormat::RGB16_SFLOAT:
-		case ShitFormat::RGBA16_SFLOAT:
-			return GL_HALF_FLOAT;
-
-		case ShitFormat::D24_UNORM_S8_UINT:
-			return GL_UNSIGNED_INT;
-
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-
-		case ShitFormat::R32_SFLOAT:
-		case ShitFormat::RG32_SFLOAT:
-		case ShitFormat::RGB32_SFLOAT:
-		case ShitFormat::RGBA32_SFLOAT:
-			return GL_FLOAT;
-		default:
-			return GL_UNSIGNED_BYTE;
-		}
 	}
 	GLenum Map(BufferMutableStorageUsage usage)
 	{

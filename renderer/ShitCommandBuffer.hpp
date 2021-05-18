@@ -53,10 +53,16 @@ namespace Shit
 		virtual void DrawIndexedIndirect(const DrawIndirectInfo &info) = 0;
 		virtual void DrawIndexedIndirectCount(const DrawIndirectCountInfo &info) = 0;
 
-		virtual void PipeplineBarrier(const PipelineBarrierInfo& info)=0;
-		virtual void PushConstants(const PushConstantUpdateInfo& info)=0;
+		virtual void PipeplineBarrier(const PipelineBarrierInfo &info) = 0;
+		virtual void PushConstants(const PushConstantInfo &info) = 0;
 
 		virtual void Dispatch(const DispatchInfo &info) = 0;
 		virtual void DispatchIndirect(const DispatchIndirectInfo &info) = 0;
+
+		virtual void BindTransformFeedbackBuffers(const BindTransformFeedbackBuffersInfo &info) = 0;
+		virtual void BeginTransformFeedback(const BeginTransformFeedbackInfo &info) = 0;
+		virtual void EndTransformFeedback(const EndTransformFeedbackInfo &info) = 0;
+		virtual void SetViewport(const SetViewPortInfo &info) = 0;
+		virtual void SetScissor(const SetScissorInfo &info) = 0;
 	};
 }

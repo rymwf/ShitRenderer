@@ -25,7 +25,7 @@ static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Ref.hd
 //static const char *cubemapImagePath = IMAGE_PATH "Mt-Washington-Cave-Room_Bg.jpg";
 //static const char *cubemapImagePath = IMAGE_PATH "3DTotal_free_sample_2_Bg.jpg";
 
-static glm::vec3 ambientColor = glm::vec3(0.0);
+static glm::vec3 ambientColor = glm::vec3(0.2);
 
 void Node::Update()
 {
@@ -116,7 +116,7 @@ void Scene::Destroy(Model *pModel)
 AppBase::AppBase(uint32_t width, uint32_t height) : _width(width), _height(height)
 {
 	initRenderSystem();
-	createSwapchains();
+	createSwapchain();
 	createDepthResources();
 	createColorResources();
 	createRenderPasses();
@@ -134,11 +134,12 @@ void AppBase::initRenderSystem()
 	renderSystem = LoadRenderSystem(renderSystemCreateInfo);
 	//1. create window
 	WindowCreateInfo windowCreateInfo{
-		{WindowCreateFlagBits::FIXED_SIZE},
+		{},
 		__FILE__,
 		{{80, 40},
 		 {_width, _height}},
-		std::make_shared<std::function<void(const Event &)>>(std::bind(&AppBase::processBaseEvent, this, std::placeholders::_1))};
+	};
+	//		std::make_shared<std::function<void(const Event &)>>(std::bind(&AppBase::processBaseEvent, this, std::placeholders::_1))};
 	window = renderSystem->CreateRenderWindow(windowCreateInfo);
 	//1.5 choose phyiscal device
 	//2. create device of a physical device
@@ -167,7 +168,7 @@ void AppBase::initRenderSystem()
 	if (!transferQueueFamilyIndex.has_value())
 		THROW("failed to find a transfer queue");
 }
-void AppBase::createSwapchains()
+void AppBase::createSwapchain()
 {
 	auto swapchainFormat = chooseSwapchainFormat(
 		{
@@ -195,6 +196,8 @@ void AppBase::createSwapchains()
 		window->WaitEvents();
 		window->GetFramebufferSize(swapchainCreateInfo.imageExtent.width, swapchainCreateInfo.imageExtent.height);
 	}
+	//set imgui
+
 	swapchain = device->Create(swapchainCreateInfo, window);
 	swapchain->GetImages(swapchainImages);
 	ImageViewCreateInfo imageViewCreateInfo{
@@ -320,12 +323,12 @@ void AppBase::createRenderPasses()
 		attachmentDescriptions,
 		subPasses};
 
-	renderPass = device->Create(renderPassCreateInfo);
+	defaultRenderPass = device->Create(renderPassCreateInfo);
 }
 void AppBase::createFramebuffers()
 {
 	FramebufferCreateInfo framebufferCreateInfo{
-		renderPass,
+		defaultRenderPass,
 		{},											//attachments
 		swapchain->GetCreateInfoPtr()->imageExtent, //extent2D
 		1											//layers
@@ -337,6 +340,30 @@ void AppBase::createFramebuffers()
 		framebufferCreateInfo.attachments = {colorImageView, swapchainImageViews[count], depthImageView};
 		framebuffers[count] = device->Create(framebufferCreateInfo);
 	}
+}
+void AppBase::destroyWindowResouces()
+{
+	device->Destroy(colorImageView);
+	device->Destroy(colorImage);
+	device->Destroy(depthImageView);
+	device->Destroy(depthImage);
+	device->Destroy(defaultRenderPass);
+	for (uint32_t i = 0; i < swapchainImages.size(); ++i)
+	{
+		device->Destroy(framebuffers[i]);
+		device->Destroy(swapchainImageViews[i]);
+		device->Destroy(swapchainImages[i]);
+	}
+	device->Destroy(swapchain);
+}
+void AppBase::recreateSwapchain()
+{
+	destroyWindowResouces();
+	createSwapchain();
+	createDepthResources();
+	createColorResources();
+	createRenderPasses();
+	createFramebuffers();
 }
 void AppBase::createSyncObjects()
 {
@@ -358,6 +385,7 @@ void AppBase::createSampler()
 		SamplerWrapMode::CLAMP_TO_EDGE,
 		0,
 		false,
+		1.,
 		false,
 		{},
 		0.f,
@@ -367,6 +395,7 @@ void AppBase::createSampler()
 void AppBase::processBaseEvent(const Event &ev)
 {
 	static bool mouseFlagL;
+	ImGuiIO &io = ImGui::GetIO();
 	std::visit(overloaded{
 				   [&](const KeyEvent &value) {
 					   if (value.keyCode == KeyCode::KEY_ESCAPE)
@@ -374,20 +403,28 @@ void AppBase::processBaseEvent(const Event &ev)
 					   if (value.keyCode == KeyCode::KEY_P && value.action == PressAction::DOWN)
 						   startScreenshot = true;
 				   },
+				   [&](const CharEvent &value) {
+					   io.AddInputCharacter(value.codepoint);
+				   },
 				   [](auto &&) {},
-				   [&](const WindowResizeEvent &value) {},
+				   [&](const WindowResizeEvent &value) {
+					   uint32_t width, height;
+					   ev.pWindow->GetFramebufferSize(width, height);
+					   io.DisplaySize.x = width;
+					   io.DisplaySize.y = height;
+				   },
 				   [&](const MouseButtonEvent &value) {
-					   if (value.button == MouseButton::MOUSE_L)
-					   {
-						   if (value.action == PressAction::DOWN)
-						   {
-							   mouseFlagL = true;
-						   }
-					   }
+					   mouseFlagL = io.MouseDown[0] = value.button == MouseButton::MOUSE_L && value.action == PressAction::DOWN;
+					   io.MouseDown[1] = value.button == MouseButton::MOUSE_R && value.action == PressAction::DOWN;
+					   io.MouseDown[1] = value.button == MouseButton::MOUSE_M && value.action == PressAction::DOWN;
 				   },
 				   [&](const MouseMoveEvent &value) {
-					   if (static_cast<bool>(ev.modifier & EventModifierBits::BUTTONL))
+					   //imgui
+					   io.MousePos.x = value.xpos;
+					   io.MousePos.y = value.ypos;
+					   if (!io.WantCaptureMouse && static_cast<bool>(ev.modifier & EventModifierBits::BUTTONL))
 					   {
+						   //modify camera
 						   static int pre_x, pre_y;
 						   if (mouseFlagL)
 						   {
@@ -409,8 +446,14 @@ void AppBase::processBaseEvent(const Event &ev)
 					   }
 				   },
 				   [&](const MouseWheelEvent &value) {
-					   mainCamera->eye.translation *= (1 + double(-value.yoffset) / 10.);
-					   mainCamera->Update();
+					   //imgui
+					   io.MouseWheelH += value.xoffset;
+					   io.MouseWheel += value.yoffset;
+					   if (!io.WantCaptureMouse)
+					   {
+						   mainCamera->eye.translation *= (1 + double(-value.yoffset) / 10.);
+						   mainCamera->Update();
+					   }
 				   },
 			   },
 			   ev.value);
@@ -437,7 +480,7 @@ void AppBase::mainloop()
 		if (ret == Result::SHIT_ERROR_OUT_OF_DATE)
 		{
 			presentQueue->WaitIdle();
-			//recreateSwapchain();
+			recreateSwapchain();
 		}
 		else if (ret != Result::SUCCESS)
 		{
@@ -445,19 +488,20 @@ void AppBase::mainloop()
 		}
 		//=======================================
 		updateDefaultBuffers(imageIndex);
+		std::vector<CommandBuffer *> tempCmdBuffers;
+		drawFrame(imageIndex, tempCmdBuffers);
+		drawUI(imageIndex);
 
-		std::vector<CommandBuffer *> otherPrimaryCommandBuffers;
-		drawFrame(imageIndex, otherPrimaryCommandBuffers);
+		recordBackgroundSecondaryCommandBuffers(imageIndex);
+		recordDefaultCommandBuffers(imageIndex, frameSecondaryCommandBuffers[imageIndex]);
 
-		static std::vector<CommandBuffer *> commandBuffers;
-		commandBuffers = {defaultCommandBuffers[imageIndex]};
-		commandBuffers.insert(commandBuffers.end(), otherPrimaryCommandBuffers.begin(), otherPrimaryCommandBuffers.end());
+		tempCmdBuffers.emplace_back(defaultCommandBuffers[imageIndex]);
 		//====================
 		inFlightFences[currentFrame]->Reset();
 
 		std::vector<SubmitInfo> submitInfos{
 			{{imageAvailableSemaphores[currentFrame]},
-			 commandBuffers,
+			 tempCmdBuffers,
 			 {renderFinishedSemaphores[currentFrame]}}};
 		graphicsQueue->Submit(submitInfos, inFlightFences[currentFrame]);
 
@@ -469,7 +513,7 @@ void AppBase::mainloop()
 		if (res == Result::SHIT_ERROR_OUT_OF_DATE)
 		{
 			presentQueue->WaitIdle();
-			//recreateSwapchain();
+			recreateSwapchain();
 		}
 		else if (res != Result::SUCCESS)
 		{
@@ -505,6 +549,8 @@ void AppBase::run()
 	rootNode->Update();
 
 	createDefaultCommandPool();
+	createDefaultCommandBuffers();
+
 	createUBOFrameBuffers();
 	createDefaultDescriptorSets();
 	createSampler();
@@ -512,125 +558,119 @@ void AppBase::run()
 	prepareBackground();
 	prepare();
 
-	createDefaultCommandBuffers();
+	prepareImGui();
+
+	//add event listener
+	window->AddEventListener(std::make_shared<std::function<void(const Event &)>>(std::bind(&AppBase::processBaseEvent, this, std::placeholders::_1)));
+
 	//example
 	mainloop();
-}
-void AppBase::createDefaultCommandPool()
-{
-	CommandPoolCreateInfo commandPoolCreateInfo{
-		{},
-		graphicsQueueFamilyIndex->index};
-	defaultCommandPool = device->Create(commandPoolCreateInfo);
-
-	frameSecondaryCommandBuffers.resize(swapchainImages.size());
-
-	defaultCommandPool->CreateCommandBuffers(
-		CommandBufferCreateInfo{CommandBufferLevel::SECONDARY, static_cast<uint32_t>(swapchainImages.size())},
-		backgroundSecondaryCommandBuffers);
 }
 void AppBase::prepareBackground()
 {
 	prepareSkybox();
-
 	prepareAxis();
+}
+void AppBase::recordBackgroundSecondaryCommandBuffers(uint32_t imageIndex)
+{
+	backgroundSecondaryCommandBuffers[imageIndex]->Begin(
+		{CommandBufferUsageFlagBits::ONE_TIME_SUBMIT_BIT,
+		 CommandBufferInheritanceInfo{defaultRenderPass, 0, framebuffers[imageIndex]}});
 
-	auto count = swapchainImages.size();
-	backgroundSecondaryCommandBuffers.resize(count);
-	for (size_t i = 0; i < count; ++i)
-	{
-		backgroundSecondaryCommandBuffers[i]->Begin({{}, CommandBufferInheritanceInfo{renderPass, 0, framebuffers[i]}});
+	Viewport viewport{0, 0, swapchain->GetCreateInfoPtr()->imageExtent.width, swapchain->GetCreateInfoPtr()->imageExtent.height, 0, 1};
+	backgroundSecondaryCommandBuffers[imageIndex]->SetViewport(SetViewPortInfo{0, 1, &viewport});
+	Rect2D scissor{{}, swapchain->GetCreateInfoPtr()->imageExtent};
+	backgroundSecondaryCommandBuffers[imageIndex]->SetScissor(SetScissorInfo{0, 1, &scissor});
 
-		//render axis
-		backgroundSecondaryCommandBuffers[i]->BindDescriptorSets(
-			BindDescriptorSetsInfo{
-				PipelineBindPoint::GRAPHICS,
-				pipelineLayoutAxis,
-				DESCRIPTORSET_ID_FRAME,
-				1,
-				&defaultDescriptorSetsUboFrame[i]});
+	//render axis
+	backgroundSecondaryCommandBuffers[imageIndex]->BindDescriptorSets(
+		BindDescriptorSetsInfo{
+			PipelineBindPoint::GRAPHICS,
+			pipelineLayoutAxis,
+			DESCRIPTORSET_ID_FRAME,
+			1,
+			&defaultDescriptorSetsUboFrame[imageIndex]});
 
-		backgroundSecondaryCommandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipelineAxis});
-		backgroundSecondaryCommandBuffers[i]->DrawIndirect({drawIndirectCmdBufferAxis,
-															0,
-															1,
-															sizeof(DrawIndirectCommand)});
+	backgroundSecondaryCommandBuffers[imageIndex]->BindPipeline({PipelineBindPoint::GRAPHICS, pipelineAxis});
+	backgroundSecondaryCommandBuffers[imageIndex]->DrawIndirect({drawIndirectCmdBufferAxis,
+																 0,
+																 1,
+																 sizeof(DrawIndirectCommand)});
 
-		//draw cubemap
-		backgroundSecondaryCommandBuffers[i]->BindDescriptorSets(
-			BindDescriptorSetsInfo{
-				PipelineBindPoint::GRAPHICS,
-				skyboxPipelineLayout,
-				DESCRIPTORSET_ID_FRAME,
-				1,
-				&defaultDescriptorSetsUboFrame[i]});
-		backgroundSecondaryCommandBuffers[i]->BindDescriptorSets(
-			BindDescriptorSetsInfo{
-				PipelineBindPoint::GRAPHICS,
-				skyboxPipelineLayout,
-				1,
-				1,
-				&skyboxDescriptorSets[0]});
-		backgroundSecondaryCommandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, skyboxPipeline});
-		backgroundSecondaryCommandBuffers[i]->DrawIndirect({skyboxIndirectDrawCmdBuffer,
-															0,
-															1,
-															sizeof(DrawIndirectCommand)});
+	//draw cubemap
+	backgroundSecondaryCommandBuffers[imageIndex]->BindDescriptorSets(
+		BindDescriptorSetsInfo{
+			PipelineBindPoint::GRAPHICS,
+			skyboxPipelineLayout,
+			DESCRIPTORSET_ID_FRAME,
+			1,
+			&defaultDescriptorSetsUboFrame[imageIndex]});
+	backgroundSecondaryCommandBuffers[imageIndex]->BindDescriptorSets(
+		BindDescriptorSetsInfo{
+			PipelineBindPoint::GRAPHICS,
+			skyboxPipelineLayout,
+			1,
+			1,
+			&skyboxDescriptorSets[0]});
+	backgroundSecondaryCommandBuffers[imageIndex]->BindPipeline({PipelineBindPoint::GRAPHICS, skyboxPipeline});
+	backgroundSecondaryCommandBuffers[imageIndex]->DrawIndirect({skyboxIndirectDrawCmdBuffer,
+																 0,
+																 1,
+																 sizeof(DrawIndirectCommand)});
 
-		backgroundSecondaryCommandBuffers[i]->End();
-		frameSecondaryCommandBuffers[i].emplace_back(backgroundSecondaryCommandBuffers[i]);
-	}
+	backgroundSecondaryCommandBuffers[imageIndex]->End();
+}
+void AppBase::createDefaultCommandPool()
+{
+	defaultLongLiveCommandPool = device->Create(CommandPoolCreateInfo{{}, graphicsQueueFamilyIndex->index});
+
+	defaultShortLiveCommandPool = device->Create(
+		CommandPoolCreateInfo{CommandPoolCreateFlagBits::TRANSIENT_BIT | CommandPoolCreateFlagBits::RESET_COMMAND_BUFFER_BIT,
+							  graphicsQueueFamilyIndex->index});
 }
 void AppBase::createDefaultCommandBuffers()
 {
-	for (auto e : defaultCommandBuffers)
-	{
-		defaultCommandPool->DestroyCommandBuffer(e);
-	}
+	defaultShortLiveCommandPool->CreateCommandBuffers(
+		CommandBufferCreateInfo{CommandBufferLevel::SECONDARY, static_cast<uint32_t>(swapchainImages.size())},
+		backgroundSecondaryCommandBuffers);
+
 	uint32_t count = static_cast<uint32_t>(swapchainImageViews.size());
 	CommandBufferCreateInfo cmdBufferCreateInfo{CommandBufferLevel::PRIMARY, count};
 
-	defaultCommandPool->CreateCommandBuffers(cmdBufferCreateInfo, defaultCommandBuffers);
+	defaultShortLiveCommandPool->CreateCommandBuffers(cmdBufferCreateInfo, defaultCommandBuffers);
+	frameSecondaryCommandBuffers.resize(count);
+	for (uint32_t i = 0; i < count; ++i)
+	{
+		frameSecondaryCommandBuffers[i].emplace_back(backgroundSecondaryCommandBuffers[i]);
+	}
+}
+void AppBase::recordDefaultCommandBuffers(uint32_t imageIndex, const std::vector<CommandBuffer *> &secondaryCommandBuffers)
+{
 	//record commnadbuffer
-	CommandBufferBeginInfo cmdBufferBeginInfo{};
-
 	std::vector<ClearValue> clearValues{
 		std::array<float, 4>{ambientColor.x, ambientColor.y, ambientColor.z, 1.f},
 		std::array<float, 4>{ambientColor.x, ambientColor.y, ambientColor.z, 1.f},
 		ClearDepthStencilValue{1.f, 0},
 	};
 
-	RenderPassBeginInfo renderPassBeginInfo{
-		renderPass,
-		nullptr,
+	defaultCommandBuffers[imageIndex]->Begin({CommandBufferUsageFlagBits::ONE_TIME_SUBMIT_BIT});
+	//secondary commandBuffers
+	defaultCommandBuffers[imageIndex]->BeginRenderPass(RenderPassBeginInfo{
+		defaultRenderPass,
+		framebuffers[imageIndex],
 		Rect2D{
 			{},
 			swapchain->GetCreateInfoPtr()->imageExtent},
 		static_cast<uint32_t>(clearValues.size()),
 		clearValues.data(),
-		SubpassContents::INLINE};
-
-	for (uint32_t i = 0; i < swapchainImages.size(); ++i)
-	{
-		renderPassBeginInfo.pFramebuffer = framebuffers[i];
-		defaultCommandBuffers[i]->Begin(cmdBufferBeginInfo);
-		//secondary commandBuffers
-		defaultCommandBuffers[i]->BeginRenderPass(RenderPassBeginInfo{
-			renderPass,
-			framebuffers[i],
-			Rect2D{
-				{},
-				swapchain->GetCreateInfoPtr()->imageExtent},
-			static_cast<uint32_t>(clearValues.size()),
-			clearValues.data(),
-			SubpassContents::SECONDARY_COMMAND_BUFFERS});
-		defaultCommandBuffers[i]->ExecuteSecondaryCommandBuffer(
-			{static_cast<uint32_t>(frameSecondaryCommandBuffers[i].size()),
-			 frameSecondaryCommandBuffers[i].data()});
-		defaultCommandBuffers[i]->EndRenderPass();
-		defaultCommandBuffers[i]->End();
-	}
+		SubpassContents::SECONDARY_COMMAND_BUFFERS});
+	defaultCommandBuffers[imageIndex]->ExecuteSecondaryCommandBuffer(
+		{static_cast<uint32_t>(secondaryCommandBuffers.size()),
+		 secondaryCommandBuffers.data()});
+	defaultCommandBuffers[imageIndex]->EndRenderPass();
+	defaultCommandBuffers[imageIndex]->End();
 }
+
 void AppBase::createUBOFrameBuffers()
 {
 	BufferCreateInfo bufferCreateInfo{
@@ -717,8 +757,11 @@ void AppBase::prepareAxis()
 	std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, rendererVersion);
 	std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, rendererVersion);
 
-	Shader *axisVertShader = device->Create(ShaderCreateInfo{readFile(axisVertShaderPath.c_str())});
-	Shader *axisFragShader = device->Create(ShaderCreateInfo{readFile(axisFragShaderPath.c_str())});
+	auto vertSource = readFile(axisVertShaderPath.c_str());
+	auto fragSource = readFile(axisFragShaderPath.c_str());
+
+	Shader *axisVertShader = device->Create(ShaderCreateInfo{vertSource.size(), vertSource.data()});
+	Shader *axisFragShader = device->Create(ShaderCreateInfo{fragSource.size(), fragSource.data()});
 
 	//create pipeline layout
 	pipelineLayoutAxis = device->Create(PipelineLayoutCreateInfo{{defaultDescriptorSetLayouts[0]}});
@@ -781,6 +824,11 @@ void AppBase::prepareAxis()
 		LogicOp::COPY,
 		{colorBlendAttachmentstate},
 	};
+	PipelineDynamicStateCreateInfo dynamicStateInfo{
+		{
+			DynamicState::VIEWPORT,
+			DynamicState::SCISSOR,
+		}};
 
 	VertexInputStateCreateInfo vertexInputStateCreateInfo{};
 	pipelineAxis = device->Create(GraphicsPipelineCreateInfo{
@@ -793,9 +841,9 @@ void AppBase::prepareAxis()
 		multisampleState,
 		depthStencilState,
 		colorBlendState,
-		{},
+		dynamicStateInfo,
 		pipelineLayoutAxis,
-		renderPass,
+		defaultRenderPass,
 		0});
 
 	//axis draw command buffer
@@ -910,8 +958,11 @@ void AppBase::prepareSkybox()
 	std::string vertShaderPath = buildShaderPath(cubemapVertShaderName, rendererVersion);
 	std::string fragShaderPath = buildShaderPath(cubemapFragShaderName, rendererVersion);
 
-	Shader *cubemapVertShader = device->Create(ShaderCreateInfo{readFile(vertShaderPath.c_str())});
-	Shader *cubemapFragShader = device->Create(ShaderCreateInfo{readFile(fragShaderPath.c_str())});
+	auto vertSource = readFile(vertShaderPath.c_str());
+	auto fragSource = readFile(fragShaderPath.c_str());
+
+	Shader *cubemapVertShader = device->Create(ShaderCreateInfo{vertSource.size(), vertSource.data()});
+	Shader *cubemapFragShader = device->Create(ShaderCreateInfo{fragSource.size(), fragSource.data()});
 
 	//cubemap pipeline
 	std::vector<PipelineShaderStageCreateInfo> cubemapShaderStageCreateInfos{
@@ -968,7 +1019,11 @@ void AppBase::prepareSkybox()
 		LogicOp::COPY,
 		{colorBlendAttachmentstate},
 	};
-
+	PipelineDynamicStateCreateInfo dynamicStateInfo{
+		{
+			DynamicState::VIEWPORT,
+			DynamicState::SCISSOR,
+		}};
 	VertexInputStateCreateInfo vertexInputStateCreateInfo{};
 	skyboxPipeline = device->Create(GraphicsPipelineCreateInfo{
 		cubemapShaderStageCreateInfos,
@@ -980,9 +1035,9 @@ void AppBase::prepareSkybox()
 		multisampleState,
 		depthStencilState,
 		colorBlendState,
-		{},
+		dynamicStateInfo,
 		skyboxPipelineLayout,
-		renderPass,
+		defaultRenderPass,
 		0});
 	//create draw command buffer
 	std::vector<DrawIndirectCommand> drawIndirectCmds{{36, 1, 0, 0}};
@@ -1009,4 +1064,110 @@ void AppBase::removeSecondaryCommandBuffer(uint32_t imageIndex, const CommandBuf
 		[pCommandBuffer](auto e) {
 			return e == pCommandBuffer;
 		}));
+}
+void AppBase::prepareImGui()
+{
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO &io = ImGui::GetIO();
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.DisplaySize.x = swapchain->GetCreateInfoPtr()->imageExtent.width;
+	io.DisplaySize.y = swapchain->GetCreateInfoPtr()->imageExtent.height;
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsClassic();
+
+	defaultShortLiveCommandPool->CreateCommandBuffers(
+		CommandBufferCreateInfo{
+			CommandBufferLevel::SECONDARY,
+			static_cast<uint32_t>(swapchain->GetImageNum())},
+		imguiCommandBuffers);
+	//add imgui commandbuffers to the end
+	for (uint32_t i = 0; i < swapchain->GetImageNum(); ++i)
+	{
+		addSecondaryCommandBuffers(i, {imguiCommandBuffers[i]});
+	}
+	ImGui_ImplShitRenderer_InitInfo imguiInitInfo{
+		renderSystem,
+		device,
+		imguiCommandBuffers,
+		swapchain->GetImageNum(),
+		SAMPLE_COUNT};
+	ImGui_ImplShitRenderer_Init(&imguiInitInfo, defaultRenderPass, 0);
+
+	executeOneTimeCommands(device, QueueFlagBits::TRANSFER_BIT, 0, [](CommandBuffer *commandBuffer) {
+		ImGui_ImplShitRenderer_CreateFontsTexture(commandBuffer);
+	});
+	ImGui_ImplShitRenderer_DestroyFontUploadObjects();
+}
+void AppBase::drawUI(uint32_t imageIndex)
+{
+	static bool show_demo_window = true;
+	ImGui_ImplShitRenderer_NewFrame();
+	ImGui::NewFrame();
+	//=======================================
+
+	static bool demoWindow = false;
+	static bool windowSkybox = false;
+
+	//main menu bar
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("Exit"))
+			{
+				window->Close();
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("GameObject"))
+		{
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Component"))
+		{
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Window"))
+		{
+			if (ImGui::MenuItem("DemoWindow"))
+			{
+				demoWindow = true;
+			}
+			if (ImGui::MenuItem("skybox"))
+			{
+				windowSkybox = true;
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Help"))
+		{
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+
+	//==========================
+	if (demoWindow)
+		ImGui::ShowDemoWindow(&demoWindow);
+	if (windowSkybox)
+	{
+		ImGui::Begin("skybox inspector", &windowSkybox);
+		ImGui::Text("TODO");
+		ImGui::End();
+	}
+
+	//============================
+	drawImGui();
+	//=======================================
+	ImGui::Render();
+	ImGui_ImplShitRenderer_RecordCommandBuffer(imageIndex, defaultRenderPass, 0, framebuffers[imageIndex]);
 }

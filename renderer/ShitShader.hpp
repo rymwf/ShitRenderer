@@ -9,17 +9,26 @@
  */
 #pragma once
 #include "ShitRendererPrerequisites.hpp"
+#include "ShitNonCopyable.hpp"
 
 namespace Shit
 {
-	class Shader
+	class Shader : public NonCopyable
 	{
 	protected:
 		ShaderCreateInfo mCreateInfo;
 
 	public:
-		Shader(const ShaderCreateInfo &createInfo) : mCreateInfo(createInfo) {}
-		virtual ~Shader() {}
+		Shader(const ShaderCreateInfo &createInfo)
+		{
+			mCreateInfo.size = createInfo.size;
+			mCreateInfo.code = new char[mCreateInfo.size];
+			memcpy(mCreateInfo.code, createInfo.code, mCreateInfo.size);
+		}
+		virtual ~Shader()
+		{
+			delete[] mCreateInfo.code;
+		}
 		constexpr const ShaderCreateInfo *GetCreateInfoPtr() const
 		{
 			return &mCreateInfo;

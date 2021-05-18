@@ -96,7 +96,7 @@ namespace Shit
 			vertexAttributes[i] = {
 				attrib.location,
 				attrib.binding,
-				GetFormat(attrib.dataType, attrib.components, attrib.normalized),
+				Map(attrib.format),
 				attrib.offset,
 			};
 		}
@@ -212,12 +212,10 @@ namespace Shit
 		};
 		memcpy(colorBlendStateCreateInfo.blendConstants, createInfo.colorBlendState.blendConstants.data(), sizeof(float) * 4);
 
-		std::vector<VkDynamicState> dynamicStates;
-		dynamicStates.reserve(createInfo.dynamicState.dynamicStates.size());
-		for (auto &&e : createInfo.dynamicState.dynamicStates)
-		{
-			dynamicStates.emplace_back(Map(e));
-		}
+		std::vector<VkDynamicState> dynamicStates(createInfo.dynamicState.dynamicStates.size());
+		std::transform(createInfo.dynamicState.dynamicStates.begin(), createInfo.dynamicState.dynamicStates.end(), dynamicStates.begin(), [](auto &&e) {
+			return Map(e);
+		});
 		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{
 			VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 			nullptr,

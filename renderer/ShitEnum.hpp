@@ -301,7 +301,28 @@ namespace Shit
 		//INT_2_10_10_10_REV,
 		//UNSIGNED_INT_2_10_10_10_REV,
 		//UNSIGNED_INT_10F_11F_11F_REV
+		UNSIGNED_INT_24_8,
 	};
+	static uint32_t dataTypeSizeArray[]{
+		1, //BYTE,
+		1, //UNSIGNED_BYTE,
+		2, //SHORT,
+		2, //UNSIGNED_SHORT,
+		4, //INT,
+		4, //UNSIGNED_INT,
+		4, //FLOAT,
+		2, //FLOAT_HALF,
+		8, //DOUBLE,
+		//1,////INT_2_10_10_10_REV,
+		//1,////UNSIGNED_INT_2_10_10_10_REV,
+		//1,////UNSIGNED_INT_10F_11F_11F_REV
+		5, //UNSIGNED_INT_24_8,
+	};
+
+	inline uint32_t GetDataTypeSize(DataType type)
+	{
+		return dataTypeSizeArray[static_cast<size_t>(type)];
+	}
 
 	enum class ShadingLanguage
 	{
@@ -388,7 +409,7 @@ namespace Shit
 
 	enum class RendererVersion
 	{
-		GL = (0x10000),			  //!< OpenGL lastest.
+		GL = (0x10000),				//!< OpenGL lastest.
 		GL_110 = (0x10000 | 0x110), //!< OpenGL 1.1.	1997
 		GL_120 = (0x10000 | 0x120), //!< OpenGL 1.2.	1998
 		GL_121 = (0x10000 | 0x121), //!< OpenGL 1.2.1	1998
@@ -409,14 +430,14 @@ namespace Shit
 		GL_450 = (0x10000 | 0x450), //!< OpenGL 4.5.	2014
 		GL_460 = (0x10000 | 0x460), //!< OpenGL 4.6.	2017
 
-		GLES = (0x20000),			//!< OpenGL ES lastest
+		GLES = (0x20000),			  //!< OpenGL ES lastest
 		GLES_100 = (0x20000 | 0x100), //!< OpenGL ES 1.0.
 		GLES_120 = (0x20000 | 0x200), //!< OpenGL ES 2.0.
 		GLES_300 = (0x20000 | 0x300), //!< OpenGL ES 3.0.
 		GLES_310 = (0x20000 | 0x310), //!< OpenGL ES 3.1.
 		GLES_320 = (0x20000 | 0x320), //!< OpenGL ES 3.2.
 
-		VULKAN = (0x30000),			  //!< Vulkan lastest
+		VULKAN = (0x30000),				//!< Vulkan lastest
 		VULKAN_100 = (0x30000 | 0x100), //!< Vulkan 1.0
 		VULKAN_110 = (0x30000 | 0x110), //!< Vulkan 1.1
 		VULKAN_120 = (0x30000 | 0x120), //!< Vulkan 1.2
@@ -452,52 +473,70 @@ namespace Shit
 		UNDEFINED, //!< not supported in opengl
 
 		R8_UNORM,
+		R8_SNORM,
 		R8_SRGB,
-		R8_USCALED,
-		R8_SSCALED,
+		R8_UI,
+		R8_SI,
 
 		RG8_UNORM,
+		RG8_SNORM,
 		RG8_SRGB,
-		RG8_USCALED,
-		RG8_SSCALED,
+		RG8_UI,
+		RG8_SI,
 
 		RGB8_UNORM,
+		RGB8_SNORM,
 		RGB8_SRGB,
-		RGR8_USCALED,
-		RGR8_SSCALED,
+		RGB8_UI,
+		RGB8_SI,
 		BGR8_UNORM,
 		BGR8_SRGB,
-		BGR8_USCALED,
-		BGR8_SSCALED,
+		BGR8_UI,
+		BGR8_SI,
 
 		RGBA8_UNORM,
+		RGBA8_SNORM,
 		RGBA8_SRGB,
-		RGBA8_USCALED,
-		RGBA8_SSCALED,
+		RGBA8_UI,
+		RGBA8_SI,
 		BGRA8_UNORM,
 		BGRA8_SRGB,
-		BGRA8_USCALED,
-		BGRA8_SSCALED,
+		BGRA8_UI,
+		BGRA8_SI,
 
 		R16_UNORM,
-		R16_USCALED,
-		R16_SSCALED,
+		R16_SNORM,
+		R16_UI,
+		R16_SI,
 		R16_SFLOAT,
 
 		RG16_UNORM,
-		RG16_USCALED,
-		RG16_SSCALED,
+		RG16_SNORM,
+		RG16_UI,
+		RG16_SI,
 		RG16_SFLOAT,
 
 		RGB16_UNORM,
-		RGB16_USCALED,
-		RGB16_SSCALED,
+		RGB16_SNORM,
+		RGB16_UI,
+		RGB16_SI,
 		RGB16_SFLOAT,
 
 		RGBA16_UNORM,
-		RGBA16_USCALED,
-		RGBA16_SSCALED,
+		RGBA16_SNORM,
+		RGBA16_UI,
+		RGBA16_SI,
 		RGBA16_SFLOAT,
+
+		R32_UI,
+		RG32_UI,
+		RGB32_UI,
+		RGBA32_UI,
+
+		R32_SI,
+		RG32_SI,
+		RGB32_SI,
+		RGBA32_SI,
 
 		R32_SFLOAT,
 		RG32_SFLOAT,
@@ -513,101 +552,107 @@ namespace Shit
 		Num
 	};
 
-	/**
-	 * @brief Get the Format Size in bytes
-	 * 
-	 * @param format 
-	 * @return uint32_t 
-	 */
-	inline uint32_t GetFormatSize(ShitFormat format)
+	struct ShitFormatAttribute
 	{
-		switch (format)
-		{
-		case ShitFormat::R8_UNORM:
-		case ShitFormat::R8_SRGB:
-		case ShitFormat::R8_USCALED:
-		case ShitFormat::R8_SSCALED:
-		case ShitFormat::S8_UINT:
-			return 1;
-		case ShitFormat::RG8_UNORM:
-		case ShitFormat::RG8_SRGB:
-		case ShitFormat::RG8_USCALED:
-		case ShitFormat::RG8_SSCALED:
-		case ShitFormat::R16_UNORM:
-		case ShitFormat::R16_USCALED:
-		case ShitFormat::R16_SSCALED:
-		case ShitFormat::R16_SFLOAT:
-		case ShitFormat::D16_UNORM:
-			return 2;
+		DataType dataType;
+		uint32_t componentNum;
+		bool normalized;
+	};
 
-		case ShitFormat::RGB8_UNORM:
-		case ShitFormat::RGB8_SRGB:
-		case ShitFormat::RGR8_USCALED:
-		case ShitFormat::RGR8_SSCALED:
-		case ShitFormat::BGR8_UNORM:
-		case ShitFormat::BGR8_SRGB:
-		case ShitFormat::BGR8_USCALED:
-		case ShitFormat::BGR8_SSCALED:
-		case ShitFormat::D24_UNORM:
-			return 3;
+	//component num, component size, normalized
+	static ShitFormatAttribute ShitFormatAttributeArray[]{
+		{}, //UNDEFINED, //!< not supported in opengl
 
-		case ShitFormat::RGBA8_UNORM:
-		case ShitFormat::RGBA8_SRGB:
-		case ShitFormat::RGBA8_USCALED:
-		case ShitFormat::RGBA8_SSCALED:
-		case ShitFormat::BGRA8_UNORM:
-		case ShitFormat::BGRA8_SRGB:
-		case ShitFormat::BGRA8_USCALED:
-		case ShitFormat::BGRA8_SSCALED:
-		case ShitFormat::RG16_UNORM:
-		case ShitFormat::RG16_USCALED:
-		case ShitFormat::RG16_SSCALED:
-		case ShitFormat::RG16_SFLOAT:
-		case ShitFormat::R32_SFLOAT:
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D24_UNORM_S8_UINT:
-			return 4;
+		{DataType::UNSIGNED_BYTE, 1, true},	 //R8_UNORM,
+		{DataType::BYTE, 1, true},			 //R8_SNORM,
+		{DataType::UNSIGNED_BYTE, 1, true},	 //R8_SRGB,
+		{DataType::UNSIGNED_BYTE, 1, false}, //R8_UI,
+		{DataType::BYTE, 1, false},			 //R8_SI,
 
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-			return 5;
-		case ShitFormat::RGB16_UNORM:
-		case ShitFormat::RGB16_USCALED:
-		case ShitFormat::RGB16_SSCALED:
-		case ShitFormat::RGB16_SFLOAT:
-			return 6;
+		{DataType::UNSIGNED_BYTE, 2, true},	 //RG8_UNORM,
+		{DataType::BYTE, 2, true},			 //RG8_SNORM,
+		{DataType::UNSIGNED_BYTE, 2, true},	 //RG8_SRGB,
+		{DataType::UNSIGNED_BYTE, 2, false}, //RG8_UI,
+		{DataType::BYTE, 2, false},			 //RG8_SI,
 
-		case ShitFormat::RGBA16_UNORM:
-		case ShitFormat::RGBA16_USCALED:
-		case ShitFormat::RGBA16_SSCALED:
-		case ShitFormat::RGBA16_SFLOAT:
-		case ShitFormat::RG32_SFLOAT:
-			return 8;
+		{DataType::UNSIGNED_BYTE, 3, true},	 //RGB8_UNORM,
+		{DataType::BYTE, 3, true},			 //RGB8_SNORM,
+		{DataType::UNSIGNED_BYTE, 3, true},	 //RGB8_SRGB,
+		{DataType::UNSIGNED_BYTE, 3, false}, //RGR8_UI,
+		{DataType::BYTE, 3, false},			 //RGR8_SI,
+		{DataType::UNSIGNED_BYTE, 3, true},	 //BGR8_UNORM,
+		{DataType::UNSIGNED_BYTE, 3, true},	 //BGR8_SRGB,
+		{DataType::UNSIGNED_BYTE, 3, false}, //BGR8_UI,
+		{DataType::BYTE, 3, false},			 //BGR8_SI,
 
-		case ShitFormat::RGB32_SFLOAT:
-			return 12;
-		case ShitFormat::RGBA32_SFLOAT:
-			return 16;
-		default:
-			return 0;
-		}
+		{DataType::UNSIGNED_BYTE, 4, true},	 //RGBA8_UNORM,
+		{DataType::BYTE, 4, true},			 //RGBA8_SNORM,
+		{DataType::UNSIGNED_BYTE, 4, true},	 //RGBA8_SRGB,
+		{DataType::UNSIGNED_BYTE, 4, false}, //RGBA8_UI,
+		{DataType::BYTE, 4, false},			 //RGBA8_SI,
+		{DataType::UNSIGNED_BYTE, 4, true},	 //BGRA8_UNORM,
+		{DataType::BYTE, 4, true},			 //BGRA8_SRGB,
+		{DataType::UNSIGNED_BYTE, 4, false}, //BGRA8_UI,
+		{DataType::BYTE, 4, false},			 //BGRA8_SI,
+
+		{DataType::UNSIGNED_SHORT, 1, true},  //R16_UNORM,
+		{DataType::SHORT, 1, true},			  //R16_SNORM,
+		{DataType::UNSIGNED_SHORT, 1, false}, //R16_UI,
+		{DataType::SHORT, 1, false},		  //R16_SI,
+		{DataType::FLOAT_HALF, 1, true},	  //R16_SFLOAT,
+
+		{DataType::UNSIGNED_SHORT, 2, true},  //RG16_UNORM,
+		{DataType::SHORT, 2, true},			  //RG16_SNORM,
+		{DataType::UNSIGNED_SHORT, 2, false}, //RG16_UI,
+		{DataType::SHORT, 2, false},		  //RG16_SI,
+		{DataType::FLOAT_HALF, 2, true},	  //RG16_SFLOAT,
+
+		{DataType::UNSIGNED_SHORT, 3, true},  //RGB16_UNORM,
+		{DataType::SHORT, 3, true},			  //RGB16_SNORM,
+		{DataType::UNSIGNED_SHORT, 3, false}, //RGB16_UI,
+		{DataType::SHORT, 3, false},		  //RGB16_SI,
+		{DataType::FLOAT_HALF, 3, true},	  //RGB16_SFLOAT,
+
+		{DataType::UNSIGNED_SHORT, 4, true},  //RGBA16_UNORM,
+		{DataType::SHORT, 4, true},			  //RGBA16_SNORM,
+		{DataType::UNSIGNED_SHORT, 4, false}, //RGBA16_UI,
+		{DataType::SHORT, 4, false},		  //RGBA16_SI,
+		{DataType::FLOAT_HALF, 4, true},	  //RGBA16_SFLOAT,
+
+		{DataType::UNSIGNED_INT, 1, false}, //R32_UI,
+		{DataType::UNSIGNED_INT, 2, false}, //RG32_UI,
+		{DataType::UNSIGNED_INT, 3, false}, //RGB32_UI,
+		{DataType::UNSIGNED_INT, 4, false}, //RGBA32_UI,
+
+		{DataType::INT, 1, false}, //R32_SI,
+		{DataType::INT, 2, false}, //RG32_SI,
+		{DataType::INT, 3, false}, //RGB32_SI,
+		{DataType::INT, 4, false}, //RGBA32_SI,
+
+		{DataType::FLOAT, 1, false}, //R32_SFLOAT,
+		{DataType::FLOAT, 2, false}, //RG32_SFLOAT,
+		{DataType::FLOAT, 3, false}, //RGB32_SFLOAT,
+		{DataType::FLOAT, 4, false}, //RGBA32_SFLOAT,
+
+		{DataType::UNSIGNED_SHORT, 1, true},	 //D16_UNORM,
+		{DataType::BYTE, 3, true},				 //D24_UNORM,
+		{DataType::FLOAT, 1, false},			 //D32_SFLOAT,
+		{DataType::UNSIGNED_INT_24_8, 1, false}, //D24_UNORM_S8_UINT,
+		{DataType::BYTE, 5, false},				 //D32_SFLOAT_S8_UINT,	//??????
+		{DataType::UNSIGNED_BYTE, 1, false},	 //S8_UINT,
+	};
+
+	inline DataType GetFormatDataType(ShitFormat format)
+	{
+		return ShitFormatAttributeArray[static_cast<size_t>(format)].dataType;
 	}
-	inline bool IsFormatNormalized(ShitFormat format)
+	inline uint32_t GetFormatComponentNum(ShitFormat format)
 	{
-		switch (format)
-		{
-		case ShitFormat::R8_SRGB:
-		case ShitFormat::S8_UINT:
-		case ShitFormat::RG8_SRGB:
-		case ShitFormat::RGB8_SRGB:
-		case ShitFormat::BGR8_SRGB:
-		case ShitFormat::RGBA8_SRGB:
-		case ShitFormat::BGRA8_SRGB:
-		case ShitFormat::D32_SFLOAT:
-		case ShitFormat::D32_SFLOAT_S8_UINT:
-			return true;
-		default:
-			return false;
-		}
+		return ShitFormatAttributeArray[static_cast<size_t>(format)].componentNum;
+	}
+	inline bool GetFormatNormalized(ShitFormat format)
+	{
+		return ShitFormatAttributeArray[static_cast<size_t>(format)].normalized;
 	}
 
 	enum class PresentMode
@@ -635,7 +680,7 @@ namespace Shit
 		STORAGE_BUFFER_DYNAMIC,
 		INPUT_ATTACHMENT0,
 		Num,
-		None=0xFFFF,
+		None = 0xFFFF,
 	};
 
 	enum class BufferUsageFlagBits
@@ -908,6 +953,21 @@ namespace Shit
 		UINT16,
 		UINT32,
 	};
+
+	inline uint32_t GetIndexTypeSize(IndexType type)
+	{
+		switch (type)
+		{
+		case IndexType::UINT8:
+			return 1;
+		case IndexType::UINT16:
+		default:
+			return 2;
+		case IndexType::UINT32:
+			return 4;
+		}
+	}
+
 	enum class CommandBufferResetFlatBits
 	{
 		RELEASE_RESOURCES_BIT = 0x1,
@@ -1044,6 +1104,7 @@ namespace Shit
 		DEPTH_BOUNDS_TEST_ENABLE,
 		STENCIL_TEST_ENABLE,
 		STENCIL_OP,
+		Num,
 	};
 
 	enum class FenceCreateFlagBits
@@ -1064,8 +1125,8 @@ namespace Shit
 		INT_OPAQUE_BLACK,
 		FLOAT_OPAQUE_WHITE,
 		INT_OPAQUE_WHITE,
-//		FLOAT_CUSTOM_EXT,
-//		INT_CUSTOM_EXT,
+		//		FLOAT_CUSTOM_EXT,
+		//		INT_CUSTOM_EXT,
 	};
 	//same as vulkan
 	enum class PipelineStageFlagBits
@@ -1100,9 +1161,9 @@ namespace Shit
 	ENABLE_BITMASK_OPERATORS(PipelineStageFlagBits);
 	enum class DependencyFlagBits
 	{
-    	BY_REGION_BIT = 0x00000001,
-    	VIEW_LOCAL_BIT = 0x00000002,
-    	DEVICE_GROUP_BIT = 0x00000004,
+		BY_REGION_BIT = 0x00000001,
+		VIEW_LOCAL_BIT = 0x00000002,
+		DEVICE_GROUP_BIT = 0x00000004,
 	};
 	ENABLE_BITMASK_OPERATORS(DependencyFlagBits);
 	enum class AccessFlagBits

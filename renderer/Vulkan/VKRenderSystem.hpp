@@ -26,11 +26,15 @@ namespace Shit
 
 		std::unique_ptr<Surface> CreateSurface([[maybe_unused]] const SurfaceCreateInfo &createInfo, ShitWindow *pWindow) override;
 
+		void LoadInstantceExtensionFunctions();
+
 	public:
 		VKRenderSystem(const RenderSystemCreateInfo &createInfo);
 
 		~VKRenderSystem() override;
 
 		Device *CreateDevice(const DeviceCreateInfo &createInfo) override;
+
+		PFN_vkVoidFunction GetInstanceProcAddr(const char *pName);
 	};
 }

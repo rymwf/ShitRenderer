@@ -28,16 +28,19 @@ namespace Shit
 		if (vkCreateBuffer(mDevice, &info, nullptr, &mHandle) != VK_SUCCESS)
 			THROW("failed to create vertex buffer");
 
-		VkMemoryRequirements vertexBufferMemoryRequirements;
-		vkGetBufferMemoryRequirements(mDevice, mHandle, &vertexBufferMemoryRequirements);
+		VkMemoryRequirements bufferMemoryRequirements;
+		vkGetBufferMemoryRequirements(mDevice, mHandle, &bufferMemoryRequirements);
 
-//		LOG_VAR(vertexBufferMemoryRequirements.size);
-//		LOG_VAR(vertexBufferMemoryRequirements.alignment);
-//		LOG_VAR(vertexBufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
+//		LOG_VAR(bufferMemoryRequirements.size);
+//		LOG_VAR(bufferMemoryRequirements.alignment);
+//		LOG_VAR(bufferMemoryRequirements.memoryTypeBits); //typebits is the memorytype indices in physical memory properties
 
-		auto memoryTypeIndex = VK::findMemoryTypeIndex(physicalDevice, vertexBufferMemoryRequirements.memoryTypeBits, Map(createInfo.memoryPropertyFlags)); //the index of memory type
+		auto memoryTypeIndex = VK::findMemoryTypeIndex(physicalDevice, bufferMemoryRequirements.memoryTypeBits, Map(createInfo.memoryPropertyFlags)); //the index of memory type
 
-		mMemory= VK::allocateMemory(mDevice, vertexBufferMemoryRequirements.size, memoryTypeIndex);
+		mMemory= VK::allocateMemory(mDevice, bufferMemoryRequirements.size, memoryTypeIndex);
+
+		//update createInfo buffer size
+		//mCreateInfo.size = bufferMemoryRequirements.size;
 
 		vkBindBufferMemory(mDevice, mHandle, mMemory, 0);
 	}

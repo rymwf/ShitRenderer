@@ -161,6 +161,11 @@ namespace Shit
 		: Device(createInfo), mRenderSystemCreateInfo(renderSystemCreateInfo)
 	{
 	}
+	Result GLDevice::WaitIdle()
+	{
+		glFinish();
+		return Result::SUCCESS;
+	}
 	CommandPool *GLDevice::Create(const CommandPoolCreateInfo &createInfo)
 	{
 		mCommandPools.emplace_back(std::make_unique<GLCommandPool>(&mStateManager, createInfo));
@@ -253,7 +258,7 @@ namespace Shit
 		mSwapchains.emplace_back(std::make_unique<GLSwapchain>(this, &mStateManager, createInfo));
 		auto pSwapchain = mSwapchains.back().get();
 		pWindow->SetSwapchain(pSwapchain);
-		pWindow->AddEventListener(static_cast<GLSwapchain *>(pSwapchain)->GetProcessWindowEventCallable());
+		pWindow->AddEventListener(static_cast<const GLSwapchain *>(pSwapchain)->GetProcessWindowEventCallable());
 		return pSwapchain;
 	}
 	void GLDevice::UpdateDescriptorSets(const std::vector<WriteDescriptorSet> &descriptorWrites, [[maybe_unused]] const std::vector<CopyDescriptorSet> &descriptorCopies)
@@ -271,16 +276,6 @@ namespace Shit
 						});
 						static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, imageViews);
 					},
-					//[&](const std::vector<DescriptorBufferInfo> &buffersInfo) {
-					//	std::vector<DescriptorBufferInfo> info(buffersInfo.size() - write.dstArrayElement);
-					//	std::copy(buffersInfo.begin() + write.dstArrayElement, buffersInfo.end(), info.begin());
-					//	static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, info);
-					//},
-					//[](const std::vector<BufferView *> &bufferViews) {
-					//	std::vector<DescriptorBufferInfo> info(buffersInfo.size() - write.dstArrayElement);
-					//	std::copy(buffersInfo.begin() + write.dstArrayElement, buffersInfo.end(), info.begin());
-					//	static_cast<GLDescriptorSet *>(write.pDstSet)->Set(write.descriptorType, write.dstBinding, info);
-					//},
 					[&](auto &&e) {
 						std::decay_t<decltype(e)> info(e.size() - write.dstArrayElement);
 						std::copy(e.begin() + write.dstArrayElement, e.end(), info.begin());

@@ -24,8 +24,8 @@ def compileShader(srcfileFullName, target):
 		dstPath += "/Vulkan"
 	if not os.path.exists(dstPath):
 		os.mkdir(dstPath)
-	os.system('cmd /c "glslc ' + srcfileFullName + " -o " + dstPath+"/" +
-	          os.path.basename(srcfileFullName)+".spv" + '" --target-env='+target)
+	os.system('cmd /c "glslangValidator -Os' + " -o " + dstPath+"/" +
+	          os.path.basename(srcfileFullName)+".spv" + '" --target-env '+target + " " + srcfileFullName)
 
 def processSrcFiles(filelist, target):
 	subpath = "glsl/"

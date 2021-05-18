@@ -102,7 +102,7 @@ vec3 Llm(ivec2 lm){
 		float Ylm=SH_Ylm(L,lm.x,lm.y);
 		vec2 st=CubeTexCoord2EquirectangularUV(L.xzy);
 		float pdf=sinTheta/(4*PI);
-		float lod=max(l-0.5*log2(pdf),0.);
+		float lod=l-0.5*log2(pdf);
 		col+=textureLod(inImage,st,l).rgb*Ylm; 
 	}
 	col*=4./float(SAMPLENUM);;

@@ -153,7 +153,8 @@ void saveImage(const char *dstPath, Device *pDevice, Image *pImage, ImageLayout 
 	auto layers = pImage->GetCreateInfoPtr()->arrayLayers;
 	auto component = Shit::GetFormatComponentNum(pImage->GetCreateInfoPtr()->format);
 
-	auto formatSize = Shit::GetFormatSize(pImage->GetCreateInfoPtr()->format);
+	auto format=pImage->GetCreateInfoPtr()->format;
+	auto formatSize = Shit::GetDataTypeSize(Shit::GetFormatDataType(format)) * Shit::GetFormatComponentNum(format);
 	auto levels = pImage->GetCreateInfoPtr()->mipLevels;
 
 	//if constexpr (0 && static_cast<bool>(pImage->GetCreateInfoPtr()->memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))
@@ -505,9 +506,10 @@ void convert2DToCubemap(
 		SamplerWrapMode::CLAMP_TO_EDGE,
 		0,
 		false,
+		1.f,
 		false,
 		{},
-		0.f,
+		-30.f,
 		30.f,
 	});
 
@@ -578,7 +580,8 @@ void convert2DToCubemap(
 	//equirectangular2cube shader
 	static const char *compShaderNameGenerateCubemap = "equirectangular2cube.comp.spv";
 	std::string compShaderPath = buildShaderPath(compShaderNameGenerateCubemap, rendererVersion);
-	Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+	auto compSource = readFile(compShaderPath.c_str());
+	Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{compSource.size(), compSource.data()});
 
 	//generate cubemap pipeline
 	std::vector<uint32_t> constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
@@ -734,9 +737,10 @@ void generateIrradianceMap(
 		SamplerWrapMode::CLAMP_TO_EDGE,
 		0,
 		false,
+		1.f,
 		false,
 		{},
-		0.f,
+		-30.f,
 		30.f,
 	});
 	//create image view
@@ -805,7 +809,8 @@ void generateIrradianceMap(
 	//shader
 	const char *compShaderNameGenerateCubemap = "irradiance.comp.spv";
 	std::string compShaderPath = buildShaderPath(compShaderNameGenerateCubemap, rendererVersion);
-	Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+	auto compSource = readFile(compShaderPath.c_str());
+	Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{compSource.size(), compSource.data()});
 
 	//generate cubemap pipeline
 	std::vector<uint32_t> constantIDs = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X, 3};
@@ -942,9 +947,10 @@ void generateIrradianceMapSH(
 		SamplerWrapMode::CLAMP_TO_EDGE,
 		0,
 		false,
+		1.f,
 		false,
 		{},
-		0.f,
+		-30.f,
 		30.f,
 	});
 	//create image view
@@ -1055,8 +1061,10 @@ void generateIrradianceMapSH(
 	static const char *shCompShaderName = "irradianceSH.comp.spv";
 	std::string llmShaderPath = buildShaderPath(llmCompShaderName, rendererVersion);
 	std::string shShaderPath = buildShaderPath(shCompShaderName, rendererVersion);
-	Shader *llmShader = pDevice->Create(ShaderCreateInfo{readFile(llmShaderPath.c_str())});
-	Shader *shShader = pDevice->Create(ShaderCreateInfo{readFile(shShaderPath.c_str())});
+	auto llmSource = readFile(llmShaderPath.c_str());
+	auto shSource = readFile(shShaderPath.c_str());
+	Shader *llmShader = pDevice->Create(ShaderCreateInfo{llmSource.size(), llmSource.data()});
+	Shader *shShader = pDevice->Create(ShaderCreateInfo{shSource.size(), shSource.data()});
 
 	//create llm pipeline
 	Pipeline *llmPipeline = pDevice->Create(ComputePipelineCreateInfo{
@@ -1250,9 +1258,10 @@ void generateReflectionEnvMap(
 		SamplerWrapMode::CLAMP_TO_EDGE,
 		0,
 		false,
+		1.f,
 		false,
 		{},
-		0.f,
+		-30.f,
 		30.f,
 	});
 	//=============================================
@@ -1300,7 +1309,8 @@ void generateReflectionEnvMap(
 	// create shader module
 	const char *prefilterShaderName = "reflectionEnv.comp.spv";
 	std::string prefilterShaderPath = buildShaderPath(prefilterShaderName, rendererVersion);
-	Shader *prefilterShader = pDevice->Create(ShaderCreateInfo{readFile(prefilterShaderPath.c_str())});
+	auto shaderSource=readFile(prefilterShaderPath.c_str());
+	Shader *prefilterShader = pDevice->Create(ShaderCreateInfo{shaderSource.size(), shaderSource.data()});
 
 	std::vector<Pipeline *> pipelines(maxLevelNum);
 	uint32_t width = pDstImageCube->GetCreateInfoPtr()->extent.width;
@@ -1317,7 +1327,8 @@ void generateReflectionEnvMap(
 			//equirectangular2cube shader
 			static const char *compShaderNameGenerateCubemap = "equirectangular2cube.comp.spv";
 			std::string compShaderPath = buildShaderPath(compShaderNameGenerateCubemap, rendererVersion);
-			Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+			auto compShaderSource = readFile(compShaderPath.c_str());
+			Shader *compShaderGenerateCubemap = pDevice->Create(ShaderCreateInfo{compShaderSource.size(), compShaderSource.data()});
 
 			//generate cubemap pipeline
 			std::vector<uint32_t> constantIDs0 = {COSTANT_ID_COMPUTE_LOCAL_SIZE_X};
@@ -1509,8 +1520,9 @@ void generateEnvBRDFMap(Device *pDevice, Image *&envBRDFImage, ImageLayout final
 
 	//create pipeline
 	static const char *shaderName = "envBRDF.comp.spv";
-	auto shaderPath=buildShaderPath(shaderName,rendererVersion);
-	auto shader = pDevice->Create(ShaderCreateInfo{readFile(shaderPath.c_str())});
+	auto shaderPath = buildShaderPath(shaderName, rendererVersion);
+	auto shaderSource = readFile(shaderPath.c_str());
+	auto shader = pDevice->Create(ShaderCreateInfo{shaderSource.size(), shaderSource.data()});
 
 	auto pipeline = pDevice->Create(ComputePipelineCreateInfo{
 		PipelineShaderStageCreateInfo{

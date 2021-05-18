@@ -11,6 +11,8 @@
 #include <renderer/ShitRendererPrerequisites.hpp>
 #include <algorithm>
 
+//#define VK_NO_PROTOTYPES
+
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -32,11 +34,11 @@ namespace Shit
 {
 	class VKDevice;
 
-	extern VkInstance vk_instance;
+	extern VkInstance g_vk_instance;
 
 	static inline void destroyVkSurface(VkSurfaceKHR surface)
 	{
-		vkDestroySurfaceKHR(vk_instance, surface, nullptr);
+		vkDestroySurfaceKHR(g_vk_instance, surface, nullptr);
 	}
 
 	namespace VK
@@ -124,5 +126,4 @@ namespace Shit
 	VkCommandBufferLevel Map(CommandBufferLevel level);
 	VkQueueFlags Map(QueueFlagBits flag);
 	VkImageAspectFlags GetImageAspectFromFormat(ShitFormat format);
-	VkFormat GetFormat(DataType dataType, uint32_t components, bool normalized);
 }

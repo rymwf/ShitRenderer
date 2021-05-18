@@ -188,7 +188,7 @@ public:
 		};
 		graphicsQueue = device->Create(queueCreateInfo);
 
-		createSwapchains();
+		createSwapchain();
 		createDepthResources();
 		createColorResources();
 		createRenderPasses();
@@ -335,7 +335,7 @@ public:
 	void recreateSwapchain()
 	{
 		cleanupSwapchain();
-		createSwapchains();
+		createSwapchain();
 		createDepthResources();
 		createColorResources();
 		createRenderPasses();
@@ -420,7 +420,7 @@ public:
 		}
 		if (startScreenshot)
 		{
-			takeScreenshot(device, swapchainImages[imageIndex]);
+			takeScreenshot(device, swapchainImages[imageIndex], ImageLayout::PRESENT_SRC);
 			startScreenshot = false;
 		}
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -433,20 +433,29 @@ public:
 		std::string tescShaderPath = buildShaderPath(tescShaderName, rendererVersion);
 		std::string teseShaderPath = buildShaderPath(teseShaderName, rendererVersion);
 
-		vertShader = device->Create(ShaderCreateInfo{readFile(vertShaderPath.c_str())});
-		fragShader = device->Create(ShaderCreateInfo{readFile(fragShaderPath.c_str())});
-		tescShader = device->Create(ShaderCreateInfo{readFile(tescShaderPath.c_str())});
-		teseShader = device->Create(ShaderCreateInfo{readFile(teseShaderPath.c_str())});
+		std::string vertCode = readFile(vertShaderPath.c_str());
+		std::string fragCode = readFile(fragShaderPath.c_str());
+		std::string tescCode = readFile(tescShaderPath.c_str());
+		std::string teseCode = readFile(teseShaderPath.c_str());
+
+
+		vertShader = device->Create(ShaderCreateInfo{vertCode.size(),vertCode.data()});
+		fragShader = device->Create(ShaderCreateInfo{fragCode.size(),fragCode.data()});
+		tescShader = device->Create(ShaderCreateInfo{tescCode.size(),tescCode.data()});
+		teseShader = device->Create(ShaderCreateInfo{teseCode.size(),teseCode.data()});
 
 		//-----------
 		std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, rendererVersion);
 		std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, rendererVersion);
 
-		axisVertShader = device->Create(ShaderCreateInfo{readFile(axisVertShaderPath.c_str())});
-		axisFragShader = device->Create(ShaderCreateInfo{readFile(axisFragShaderPath.c_str())});
+		std::string axisVertCode = readFile(axisVertShaderPath.c_str());
+		std::string axisFragCode = readFile(axisFragShaderPath.c_str());
+
+		axisVertShader = device->Create(ShaderCreateInfo{axisVertCode.size(), axisVertCode.data()});
+		axisFragShader = device->Create(ShaderCreateInfo{axisFragCode.size(), axisFragCode.data()});
 	}
 
-	void createSwapchains()
+	void createSwapchain()
 	{
 		auto swapchainFormat = chooseSwapchainFormat(
 			{
@@ -699,20 +708,19 @@ public:
 				{LOCATION_INSTANCE_COLOR_FACTOR, sizeof(InstanceAttribute), 1},
 			},
 			{
-
-				{LOCATION_POSITION, LOCATION_POSITION, 3, DataType::FLOAT, false, 0},
-				{LOCATION_NORMAL, LOCATION_NORMAL, 3, DataType::FLOAT, false, 0},
-				{LOCATION_TANGENT, LOCATION_TANGENT, 4, DataType::FLOAT, false, 0},
-				{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
-				{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, 2, DataType::FLOAT, false, 0},
-				{LOCATION_COLOR0, LOCATION_COLOR0, 4, DataType::FLOAT, false, 0},
-				{LOCATION_JOINTS0, LOCATION_JOINTS0, 4, DataType::FLOAT, false, 0},
-				{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, 4, DataType::FLOAT, false, 0},
-				{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 0},
-				{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 16},
-				{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 32},
-				{LOCATION_INSTANCE_MATRIX + 2, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 48},
-				{LOCATION_INSTANCE_MATRIX + 3, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 64},
+				{LOCATION_POSITION, LOCATION_POSITION, ShitFormat::RGB32_SFLOAT, 0},
+				{LOCATION_NORMAL, LOCATION_NORMAL, ShitFormat::RGB32_SFLOAT, 0},
+				{LOCATION_TANGENT, LOCATION_TANGENT, ShitFormat::RGBA32_SFLOAT, 0},
+				{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, ShitFormat::RG32_SFLOAT, 0},
+				{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, ShitFormat::RG32_SFLOAT, 0},
+				{LOCATION_COLOR0, LOCATION_COLOR0, ShitFormat::RGBA32_SFLOAT, 0},
+				{LOCATION_JOINTS0, LOCATION_JOINTS0, ShitFormat::RGBA32_UI, 0},
+				{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, ShitFormat::RGBA32_SFLOAT, 0},
+				{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 0},
+				{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 16},
+				{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 32},
+				{LOCATION_INSTANCE_MATRIX + 2, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 48},
+				{LOCATION_INSTANCE_MATRIX + 3, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 64},
 			}};
 
 		GraphicsPipelineCreateInfo pipelineCreateInfo{

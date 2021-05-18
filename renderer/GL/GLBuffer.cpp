@@ -38,6 +38,7 @@ namespace Shit
 		}
 		mpStateManager->PopBuffer();
 	}
+
 	void GLBuffer::MapMemory(uint64_t offset, uint64_t size, void **ppData)
 	{
 		//mpStateManager->PushBuffer(GL_ARRAY_BUFFER, mHandle);
@@ -57,8 +58,9 @@ namespace Shit
 	}
 	void GLBuffer::FlushMappedMemoryRange(uint64_t offset, uint64_t size)
 	{
-		mpStateManager->PushBuffer(GL_ARRAY_BUFFER, mHandle);
-		glFlushMappedBufferRange(GL_ARRAY_BUFFER, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size));
-		mpStateManager->PopBuffer();
+		//mpStateManager->PushBuffer(GL_ARRAY_BUFFER, mHandle);
+		//glFlushMappedBufferRange(GL_ARRAY_BUFFER, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size));
+		//mpStateManager->PopBuffer();
+		glFlushMappedNamedBufferRange(mHandle, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size));
 	}
 }

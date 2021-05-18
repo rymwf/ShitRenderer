@@ -35,6 +35,7 @@ layout(binding=14 SET(2)) uniform UBOMaterial{
 }uboMaterial;
 
 struct Light{
+	vec3 pos;
 	vec4 color;
 	vec4 intensity;
 	vec2 lim_r; //the attenuation distance limit,r.x: min dist(sphere light radius), r.y: max dist
@@ -49,7 +50,7 @@ layout(binding=12 SET(0)) uniform UBOFrame{
 	vec3 ambientColor;
 };
 
-layout(constant_id=0) const int maxRoughnessLevel=7;
+layout(constant_id=3) const int maxRoughnessLevel=7;
 
 mat3 surfaceTBN(vec3 N)
 {

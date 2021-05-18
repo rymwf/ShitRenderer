@@ -194,7 +194,7 @@ public:
 		};
 		graphicsQueue = device->Create(queueCreateInfo);
 
-		createSwapchains();
+		createSwapchain();
 		createDepthResources();
 		createColorResources();
 		createRenderPasses();
@@ -341,7 +341,7 @@ public:
 	void recreateSwapchain()
 	{
 		cleanupSwapchain();
-		createSwapchains();
+		createSwapchain();
 		createDepthResources();
 		createColorResources();
 		createRenderPasses();
@@ -440,8 +440,8 @@ public:
 		std::string vertCode = readFile(vertShaderPath.c_str());
 		std::string fragCode = readFile(fragShaderPath.c_str());
 
-		ShaderCreateInfo vertShaderCreateInfo{vertCode};
-		ShaderCreateInfo fragShaderCreateInfo{fragCode};
+		ShaderCreateInfo vertShaderCreateInfo{vertCode.size(), vertCode.data()};
+		ShaderCreateInfo fragShaderCreateInfo{fragCode.size(), fragCode.data()};
 
 		vertShader = device->Create(vertShaderCreateInfo);
 		fragShader = device->Create(fragShaderCreateInfo);
@@ -450,11 +450,14 @@ public:
 		std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, rendererVersion);
 		std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, rendererVersion);
 
-		axisVertShader = device->Create(ShaderCreateInfo{readFile(axisVertShaderPath.c_str())});
-		axisFragShader = device->Create(ShaderCreateInfo{readFile(axisFragShaderPath.c_str())});
+		std::string axisVertCode = readFile(axisVertShaderPath.c_str());
+		std::string axisFragCode = readFile(axisFragShaderPath.c_str());
+
+		axisVertShader = device->Create(ShaderCreateInfo{axisVertCode.size(), axisVertCode.data()});
+		axisFragShader = device->Create(ShaderCreateInfo{axisFragCode.size(), axisFragCode.data()});
 	}
 
-	void createSwapchains()
+	void createSwapchain()
 	{
 		auto swapchainFormat = chooseSwapchainFormat(
 			{

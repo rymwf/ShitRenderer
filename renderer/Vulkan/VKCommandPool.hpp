@@ -25,7 +25,7 @@ namespace Shit
 				VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 				nullptr,
 				Map(mCreateInfo.flags),
-				mCreateInfo.queueFamilyIndex.index};
+				mCreateInfo.queueFamilyIndex};
 			if (vkCreateCommandPool(mDevice, &commandPoolCreateInfo, nullptr, &mHandle) != VK_SUCCESS)
 				THROW("failed to create command pool");
 		}

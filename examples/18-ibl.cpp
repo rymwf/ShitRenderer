@@ -2,8 +2,8 @@
 
 #define MODEL_SIZE 1.
 
-const char *vertShaderName = "17.vert.spv";
-const char *fragShaderName = "17.frag.spv";
+const char *vertShaderName = "18.vert.spv";
+const char *fragShaderName = "18.frag.spv";
 
 static const char *envBRDFImagePath = IMAGE_PATH "envBRDF.hdr";
 static const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf";
@@ -22,7 +22,6 @@ class HelloApp : public AppBase
 	Pipeline *pipeline;
 	std::vector<DescriptorSet *> descriptorSets;
 
-	CommandPool *commandPool;
 	std::vector<CommandBuffer *> commandBuffers;
 
 	Image *reflectionEnvMap;
@@ -127,8 +126,11 @@ public:
 		std::string vertShaderPath = buildShaderPath(vertShaderName, rendererVersion);
 		std::string fragShaderPath = buildShaderPath(fragShaderName, rendererVersion);
 
-		Shader *vertShader = device->Create(ShaderCreateInfo{readFile(vertShaderPath.c_str())});
-		Shader *fragShader = device->Create(ShaderCreateInfo{readFile(fragShaderPath.c_str())});
+		auto vertSource=readFile(vertShaderPath.c_str());
+		auto fragSource=readFile(fragShaderPath.c_str());
+
+		Shader *vertShader = device->Create(ShaderCreateInfo{vertSource.size(), vertSource.data()});
+		Shader *fragShader = device->Create(ShaderCreateInfo{fragSource.size(), fragSource.data()});
 
 		//create pipeline
 
@@ -198,6 +200,11 @@ public:
 			LogicOp::COPY,
 			{colorBlendAttachmentstate},
 		};
+		PipelineDynamicStateCreateInfo dynamicStateInfo{
+			{
+				DynamicState::VIEWPORT,
+				DynamicState::SCISSOR,
+			}};
 
 		GraphicsPipelineCreateInfo pipelineCreateInfo{
 			shaderStageCreateInfos,
@@ -209,9 +216,9 @@ public:
 			multisampleState,
 			depthStencilState,
 			colorBlendState,
-			{},
+			dynamicStateInfo,
 			pipelineLayout,
-			renderPass,
+			defaultRenderPass,
 			0};
 
 		pipeline = device->Create(pipelineCreateInfo);
@@ -219,35 +226,44 @@ public:
 	void createCommandBuffers()
 	{
 		uint32_t count = swapchainImages.size();
-		commandPool->CreateCommandBuffers(CommandBufferCreateInfo{CommandBufferLevel::SECONDARY, count},
-										  commandBuffers);
+		defaultShortLiveCommandPool->CreateCommandBuffers(CommandBufferCreateInfo{CommandBufferLevel::SECONDARY, count},
+														  commandBuffers);
 
 		for (size_t i = 0; i < count; ++i)
 		{
-			commandBuffers[i]->Begin({{},
-									  CommandBufferInheritanceInfo{
-										  renderPass,
-										  0,
-										  framebuffers[i]}});
-			commandBuffers[i]->BindDescriptorSets(
-				BindDescriptorSetsInfo{
-					PipelineBindPoint::GRAPHICS,
-					pipelineLayout,
-					DESCRIPTORSET_ID_FRAME,
-					1,
-					&defaultDescriptorSetsUboFrame[i]});
-			commandBuffers[i]->BindDescriptorSets(
-				BindDescriptorSetsInfo{
-					PipelineBindPoint::GRAPHICS,
-					pipelineLayout,
-					DESCRIPTORSET_ID_OTHER,
-					1,
-					&descriptorSets[0]});
-			commandBuffers[i]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
-			testModel->DrawModel(device, commandBuffers[i], i);
-			commandBuffers[i]->End();
 			addSecondaryCommandBuffers(i, {commandBuffers[i]});
 		}
+	}
+	void recordCommandBuffers(uint32_t imageIndex)
+	{
+		commandBuffers[imageIndex]->Begin({CommandBufferUsageFlagBits::ONE_TIME_SUBMIT_BIT,
+										   CommandBufferInheritanceInfo{
+											   defaultRenderPass,
+											   0,
+											   framebuffers[imageIndex]}});
+
+		Viewport viewport{0, 0, swapchain->GetCreateInfoPtr()->imageExtent.width, swapchain->GetCreateInfoPtr()->imageExtent.height, 0, 1};
+		commandBuffers[imageIndex]->SetViewport(SetViewPortInfo{0, 1, &viewport});
+		Rect2D scissor{{}, swapchain->GetCreateInfoPtr()->imageExtent};
+		commandBuffers[imageIndex]->SetScissor(SetScissorInfo{0, 1, &scissor});
+
+		commandBuffers[imageIndex]->BindDescriptorSets(
+			BindDescriptorSetsInfo{
+				PipelineBindPoint::GRAPHICS,
+				pipelineLayout,
+				DESCRIPTORSET_ID_FRAME,
+				1,
+				&defaultDescriptorSetsUboFrame[imageIndex]});
+		commandBuffers[imageIndex]->BindDescriptorSets(
+			BindDescriptorSetsInfo{
+				PipelineBindPoint::GRAPHICS,
+				pipelineLayout,
+				DESCRIPTORSET_ID_OTHER,
+				1,
+				&descriptorSets[0]});
+		commandBuffers[imageIndex]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
+		testModel->DrawModel(device, commandBuffers[imageIndex], imageIndex);
+		commandBuffers[imageIndex]->End();
 	}
 	void setScene()
 	{
@@ -270,7 +286,6 @@ public:
 										   });
 
 		createPipeline();
-		createCommandBuffers();
 	}
 	void prepare() override
 	{
@@ -281,10 +296,6 @@ public:
 		createPrefilteredEnvMap();
 		//takeScreenshot(device, irradianceImageCube, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-		commandPool = device->Create(CommandPoolCreateInfo{
-			{},
-			graphicsQueueFamilyIndex->index});
-
 		createUniformBuffers();
 		createDescriptorSets();
 
@@ -292,35 +303,26 @@ public:
 		testModelViews.resize(2);
 		testModelViews[0] = scene.CreateNode<ModelView>(rootNode);
 		setScene();
-
+		createCommandBuffers();
 	}
 	void createUniformBuffers()
-	{
-	}
-	void update(uint32_t imageIndex)
 	{
 	}
 	void drawFrame(uint32_t imageIndex, std::vector<CommandBuffer *> &primaryCommandBuffers) override
 	{
 		//========================================
 		//std::this_thread::sleep_for(std::chrono::milliseconds(5));
-		update(imageIndex);
 		if (tempModel)
 		{
 			presentQueue->WaitIdle();
 			//destroy old model
 			scene.Destroy(testModel);
-			for (size_t i = 0; i < swapchainImages.size(); ++i)
-				removeSecondaryCommandBuffer(i, commandBuffers[i]);
-			for (auto &&e : commandBuffers)
-				commandPool->DestroyCommandBuffer(e);
 			device->Destroy(pipeline);
 
 			//download new model
 			testModel = tempModel;
 			setScene();
 			tempModel = nullptr;
-			createDefaultCommandBuffers();
 		}
 		if (testModel->GetAnimationNum() > 0)
 		{
@@ -330,6 +332,8 @@ public:
 			auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(curTime - animationStartTime).count();
 			testModel->UpdateAnimation(animationIndex, elapsedTime, imageIndex);
 		}
+		recordCommandBuffers(imageIndex);
+		drawImGui();
 	}
 	void createPrefilteredEnvMap()
 	{
@@ -394,6 +398,9 @@ public:
 	{
 		generateEnvBRDFMap(device, envBRDFImage, ImageLayout::SHADER_READ_ONLY_OPTIMAL, envBRDFImageView);
 		testModel = scene.LoadModel(testModelPath);
+	}
+	void drawImGui() override
+	{
 	}
 };
 

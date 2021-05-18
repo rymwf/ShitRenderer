@@ -17,6 +17,173 @@
 #define JSON_NOEXCEPTION
 #include <tiny_gltf.h>
 
+ShitFormat getFormat(uint32_t dataType, uint32_t components, bool normalized)
+{
+	if (normalized)
+	{
+		switch (components)
+		{
+		case 0:
+		case 1:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::R8_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::R8_UNORM;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::R16_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::R16_UNORM;
+			default:
+				break;
+			}
+			break;
+		case 2:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::RG8_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::RG8_UNORM;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::RG16_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::RG16_UNORM;
+			default:
+				break;
+			}
+			break;
+		case 3:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::RGB8_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::RGB8_UNORM;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::RGB16_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::RGB16_UNORM;
+			default:
+				break;
+			}
+			break;
+		case 4:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::RGBA8_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::RGBA8_UNORM;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::RGBA16_SNORM;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::RGBA16_UNORM;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	else
+	{
+		switch (components)
+		{
+		case 0:
+		case 1:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::R8_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::R8_UI;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::R16_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::R16_UI;
+			case TINYGLTF_COMPONENT_TYPE_INT:
+				return ShitFormat::R32_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+				return ShitFormat::R32_UI;
+			case TINYGLTF_COMPONENT_TYPE_FLOAT:
+				return ShitFormat::R32_SFLOAT;
+			default:
+				break;
+			}
+			break;
+		case 2:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::RG8_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::RG8_UI;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::RG16_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::RG16_UI;
+			case TINYGLTF_COMPONENT_TYPE_INT:
+				return ShitFormat::RG32_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+				return ShitFormat::RG32_UI;
+			case TINYGLTF_COMPONENT_TYPE_FLOAT:
+				return ShitFormat::RG32_SFLOAT;
+			default:
+				break;
+			}
+			break;
+		case 3:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::RGB8_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::RGB8_UI;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::RGB16_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::RGB16_UI;
+			case TINYGLTF_COMPONENT_TYPE_INT:
+				return ShitFormat::RGB32_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+				return ShitFormat::RGB32_UI;
+			case TINYGLTF_COMPONENT_TYPE_FLOAT:
+				return ShitFormat::RGB32_SFLOAT;
+			default:
+				break;
+			}
+			break;
+		case 4:
+			switch (dataType)
+			{
+			case TINYGLTF_COMPONENT_TYPE_BYTE:
+				return ShitFormat::RGBA8_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+				return ShitFormat::RGBA8_UI;
+			case TINYGLTF_COMPONENT_TYPE_SHORT:
+				return ShitFormat::RGBA16_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+				return ShitFormat::RGBA16_UI;
+			case TINYGLTF_COMPONENT_TYPE_INT:
+				return ShitFormat::RGBA32_SI;
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+				return ShitFormat::RGBA32_UI;
+			case TINYGLTF_COMPONENT_TYPE_FLOAT:
+				return ShitFormat::RGBA32_SFLOAT;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	THROW("failed to faind appropriate format");
+}
+
 bool loadModel(tinygltf::Model &model, const char *filename)
 {
 	tinygltf::TinyGLTF loader;
@@ -118,19 +285,19 @@ void Model::CreateVertexInputStateInfo()
 {
 	//init vertexInputStateInfo
 	mVertexInputStateCreateInfo.vertexAttributeDescriptions = {
-		{LOCATION_POSITION, LOCATION_POSITION, 3, DataType::FLOAT, false, 0},
-		{LOCATION_NORMAL, LOCATION_NORMAL, 3, DataType::FLOAT, false, 0},
-		{LOCATION_TANGENT, LOCATION_TANGENT, 4, DataType::FLOAT, false, 0},
-		{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, 2, DataType::FLOAT, false, 0},
-		{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, 2, DataType::FLOAT, false, 0},
-		{LOCATION_COLOR0, LOCATION_COLOR0, 4, DataType::FLOAT, false, 0},
-		{LOCATION_JOINTS0, LOCATION_JOINTS0, 4, DataType::UNSIGNED_INT, false, 0},
-		{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, 4, DataType::FLOAT, false, 0},
-		{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 0},
-		{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 16},
-		{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 32},
-		{LOCATION_INSTANCE_MATRIX + 2, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 48},
-		{LOCATION_INSTANCE_MATRIX + 3, LOCATION_INSTANCE_COLOR_FACTOR, 4, DataType::FLOAT, false, 64},
+		{LOCATION_POSITION, LOCATION_POSITION, ShitFormat::RGB32_SFLOAT, 0},
+		{LOCATION_NORMAL, LOCATION_NORMAL, ShitFormat::RGB32_SFLOAT, 0},
+		{LOCATION_TANGENT, LOCATION_TANGENT, ShitFormat::RGBA32_SFLOAT, 0},
+		{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, ShitFormat::RG32_SFLOAT, 0},
+		{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, ShitFormat::RG32_SFLOAT, 0},
+		{LOCATION_COLOR0, LOCATION_COLOR0, ShitFormat::RGBA32_SFLOAT, 0},
+		{LOCATION_JOINTS0, LOCATION_JOINTS0, ShitFormat::RGBA32_UI, 0},
+		{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, ShitFormat::RGBA32_SFLOAT, 0},
+		{LOCATION_INSTANCE_COLOR_FACTOR, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 0},
+		{LOCATION_INSTANCE_MATRIX + 0, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 16},
+		{LOCATION_INSTANCE_MATRIX + 1, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 32},
+		{LOCATION_INSTANCE_MATRIX + 2, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 48},
+		{LOCATION_INSTANCE_MATRIX + 3, LOCATION_INSTANCE_COLOR_FACTOR, ShitFormat::RGBA32_SFLOAT, 64},
 	};
 
 	mVertexInputStateCreateInfo.vertexBindingDescriptions =
@@ -173,9 +340,10 @@ void Model::CreateVertexInputStateInfo()
 
 			//location equals to binding
 			mVertexInputStateCreateInfo.vertexBindingDescriptions[location].stride = stride;
-			mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].components = componentNum;
-			mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].dataType = getComponentDataType(accessor.componentType);
-			mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].normalized = accessor.normalized;
+			mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].format = getFormat(accessor.componentType, componentNum, accessor.normalized);
+			//mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].components = componentNum;
+			//mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].dataType = getComponentDataType(accessor.componentType);
+			//mVertexInputStateCreateInfo.vertexAttributeDescriptions[location].normalized = accessor.normalized;
 		}
 	}
 }
@@ -407,6 +575,7 @@ void Model::LoadImages()
 		SamplerWrapMode::REPEAT,
 		0,	   //load bias
 		false, //anistropy
+		1.f,
 		false, //compare
 		CompareOp::ALWAYS,
 		0,
@@ -686,7 +855,7 @@ void Model::DrawModel(
 	if (mModelAssets[mpCurDevice].primitivesDrawIndirectInfo.empty())
 		CreateDrawCommandInfo();
 
-	LOG_VAR(mpModel->scenes[sceneIndex].name)
+	//LOG_VAR(mpModel->scenes[sceneIndex].name)
 	for (auto &&nodeIndex : mpModel->scenes[sceneIndex].nodes)
 	{
 		DrawNode(nodeIndex);
@@ -694,7 +863,7 @@ void Model::DrawModel(
 }
 void Model::DrawNode(uint32_t nodeIndex)
 {
-	//	mpCurCommandBuffer->PushConstants(PushConstantUpdateInfo{
+	//	mpCurCommandBuffer->PushConstants(PushConstantInfo{
 	//		mpCurPipelineLayout,
 	//		ShaderStageFlagBits::VERTEX_BIT,
 	//		0,

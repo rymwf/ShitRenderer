@@ -10,6 +10,20 @@
 #include "GLPipeline.hpp"
 namespace Shit
 {
+	GLPipeline::GLPipeline(GLStateManager *pStateManager, PipelineLayout *pPipelineLayout)
+		: mpStateManager(pStateManager)
+	{
+		//create push constant buffers
+		for (auto &&e : pPipelineLayout->GetCreateInfoPtr()->pushConstantRanges)
+		{
+			GLuint buffer{};
+			glGenBuffers(1, &buffer);
+			mpStateManager->PushBuffer(GL_UNIFORM_BUFFER, buffer);
+			mPushConstantBuffers[e.binding] = {buffer, e.size};
+			glBufferStorage(GL_UNIFORM_BUFFER, e.size, nullptr, GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
+			mpStateManager->PopBuffer();
+		}
+	}
 	void GLGraphicsPipeline::CreateVertexArray(const VertexInputStateCreateInfo &vertexInputStateCreateInfo)
 	{
 		glGenVertexArrays(1, &mVAO);
@@ -25,9 +39,9 @@ namespace Shit
 		{
 			glVertexAttribFormat(
 				attrib.location,
-				attrib.components,
-				Map(attrib.dataType),
-				attrib.normalized,
+				GetFormatComponentNum(attrib.format),
+				Map(GetFormatDataType(attrib.format)),
+				GetFormatNormalized(attrib.format),
 				attrib.offset);
 			glVertexAttribBinding(attrib.location, attrib.binding);
 			glVertexBindingDivisor(attrib.binding, bindingTable[attrib.binding].second);
@@ -40,8 +54,8 @@ namespace Shit
 		if (shader)
 		{
 			glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V,
-						   shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.data(),
-						   static_cast<GLsizei>(shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code.size()));
+						   shaderStageCreateInfo.pShader->GetCreateInfoPtr()->code,
+						   static_cast<GLsizei>(shaderStageCreateInfo.pShader->GetCreateInfoPtr()->size));
 			GLint a;
 			glGetShaderiv(shader,GL_SPIR_V_BINARY,&a);
 			if (!a)
@@ -79,7 +93,7 @@ namespace Shit
 		return shader;
 	}
 	GLGraphicsPipeline::GLGraphicsPipeline(GLStateManager *pStateManager, const GraphicsPipelineCreateInfo &createInfo)
-		: GraphicsPipeline(createInfo), GLPipeline(pStateManager)
+		: GraphicsPipeline(createInfo), GLPipeline(pStateManager, createInfo.pLayout)
 	{
 		ShaderStageFlagBits stageFlags{};
 		for (auto &&e : createInfo.stages)
@@ -183,7 +197,7 @@ namespace Shit
 	//======================================
 
 	GLComputePipeline::GLComputePipeline(GLStateManager *pStateManager, const ComputePipelineCreateInfo &createInfo)
-		: ComputePipeline(createInfo), GLPipeline(pStateManager)
+		: ComputePipeline(createInfo), GLPipeline(pStateManager, createInfo.pLayout)
 	{
 		mShaders.emplace_back(CreateShader(createInfo.stage));
 		mProgram = CreateProgram(mShaders, true, false);

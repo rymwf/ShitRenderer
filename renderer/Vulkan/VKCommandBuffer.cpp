@@ -65,7 +65,7 @@ namespace Shit
 	{
 		std::vector<VkCommandBuffer> cmdBuffers;
 		for (uint32_t i = 0; i < secondaryCommandBufferInfo.count; ++i)
-			cmdBuffers.emplace_back(static_cast<VKCommandBuffer *>(secondaryCommandBufferInfo.pCommandBuffers[i])->GetHandle());
+			cmdBuffers.emplace_back(static_cast<const VKCommandBuffer *>(secondaryCommandBufferInfo.pCommandBuffers[i])->GetHandle());
 		vkCmdExecuteCommands(mHandle,
 							 static_cast<uint32_t>(cmdBuffers.size()),
 							 cmdBuffers.data());
@@ -452,7 +452,7 @@ namespace Shit
 			static_cast<uint32_t>(imageMemoryBarriers.size()),
 			imageMemoryBarriers.data());
 	}
-	void VKCommandBuffer::PushConstants(const PushConstantUpdateInfo &info)
+	void VKCommandBuffer::PushConstants(const PushConstantInfo &info)
 	{
 		vkCmdPushConstants(
 			mHandle,
@@ -468,6 +468,85 @@ namespace Shit
 	}
 	void VKCommandBuffer::DispatchIndirect(const DispatchIndirectInfo &info)
 	{
-		vkCmdDispatchIndirect(mHandle, static_cast<VKBuffer *>(info.pBuffer)->GetHandle(), info.offset);
+		vkCmdDispatchIndirect(mHandle, static_cast<const VKBuffer *>(info.pBuffer)->GetHandle(), info.offset);
+	}
+	void VKCommandBuffer::BindTransformFeedbackBuffers(const BindTransformFeedbackBuffersInfo &info)
+	{
+		std::vector<VkBuffer> buffers(info.bindingCount);
+		for (uint32_t i = 0; i < info.bindingCount; ++i)
+		{
+			buffers[i] = static_cast<const VKBuffer *>(info.ppBuffers[i])->GetHandle();
+		}
+		//vkCmdBindTransformFeedbackBuffersEXT(
+		//	mHandle,
+		//	info.firstBinding,
+		//	info.bindingCount,
+		//	buffers.data(),
+		//	info.pOffsets,
+		//	info.pSizes);
+	}
+	void VKCommandBuffer::BeginTransformFeedback(const BeginTransformFeedbackInfo &info)
+	{
+		std::vector<VkBuffer> buffers(info.counterBufferCount);
+		for (uint32_t i = 0; i < info.counterBufferCount; ++i)
+		{
+			buffers[i] = static_cast<const VKBuffer *>(info.ppCounterBuffers[i])->GetHandle();
+		}
+		//vkCmdBeginTransformFeedbackEXT(
+		//	mHandle,
+		//	info.firstCounterBuffer,
+		//	info.counterBufferCount,
+		//	buffers.data(),
+		//	info.pCounterBufferOffsets);
+	}
+	void VKCommandBuffer::EndTransformFeedback(const EndTransformFeedbackInfo &info)
+	{
+		std::vector<VkBuffer> buffers(info.counterBufferCount);
+		for (uint32_t i = 0; i < info.counterBufferCount; ++i)
+		{
+			buffers[i] = static_cast<const VKBuffer *>(info.ppCounterBuffers[i])->GetHandle();
+		}
+		//vkCmdEndTransformFeedbackEXT(
+		//	mHandle,
+		//	info.firstCounterBuffer,
+		//	info.counterBufferCount,
+		//	buffers.data(),
+		//	info.pCounterBufferOffsets);
+	}
+	void VKCommandBuffer::SetViewport(const SetViewPortInfo &info)
+	{
+		std::vector<VkViewport> viewports(info.viewportCount);
+		for (uint32_t i = 0; i < info.viewportCount; ++i)
+		{
+			viewports[i] = VkViewport{
+				info.pViewports[i].x,
+				info.pViewports[i].y,
+				info.pViewports[i].width,
+				info.pViewports[i].height,
+				info.pViewports[i].minDepth,
+				info.pViewports[i].maxDepth,
+			};
+		}
+		vkCmdSetViewport(
+			mHandle,
+			info.firstViewport,
+			info.viewportCount,
+			viewports.data());
+	}
+	void VKCommandBuffer::SetScissor(const SetScissorInfo &info)
+	{
+		std::vector<VkRect2D> rects(info.scissorCount);
+		for (uint32_t i = 0; i < info.scissorCount; ++i)
+		{
+			rects[i].offset.x = info.pScissors[i].offset.x;
+			rects[i].offset.y = info.pScissors[i].offset.y;
+			rects[i].extent.width = info.pScissors[i].extent.width;
+			rects[i].extent.height = info.pScissors[i].extent.height;
+		}
+		vkCmdSetScissor(
+			mHandle,
+			info.firstScissor,
+			info.scissorCount,
+			rects.data());
 	}
 } // namespace Shi

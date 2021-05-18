@@ -37,6 +37,8 @@ namespace Shit
 	public:
 		GLDevice(const DeviceCreateInfo &createInfo, const RenderSystemCreateInfo &renderSystemCreateInfo);
 
+		Result WaitIdle() override;
+
 		constexpr GLStateManager *GetStateManager()
 		{
 			return &mStateManager;

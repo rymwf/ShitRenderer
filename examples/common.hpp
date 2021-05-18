@@ -188,11 +188,11 @@ struct InstanceAttribute
 	static std::vector<VertexAttributeDescription> getVertexAttributeDescription(uint32_t startLocation, uint32_t binding)
 	{
 		return {
-			{startLocation + 0, binding, 4, DataType::FLOAT, false, 0},
-			{startLocation + 1, binding, 4, DataType::FLOAT, false, 16},
-			{startLocation + 2, binding, 4, DataType::FLOAT, false, 32},
-			{startLocation + 3, binding, 4, DataType::FLOAT, false, 48},
-			{startLocation + 4, binding, 4, DataType::FLOAT, false, 64},
+			{startLocation + 0, binding, ShitFormat::RGBA32_SFLOAT, 0},
+			{startLocation + 1, binding, ShitFormat::RGBA32_SFLOAT, 16},
+			{startLocation + 2, binding, ShitFormat::RGBA32_SFLOAT, 32},
+			{startLocation + 3, binding, ShitFormat::RGBA32_SFLOAT, 48},
+			{startLocation + 4, binding, ShitFormat::RGBA32_SFLOAT, 64},
 		};
 	}
 	static uint32_t getLocationCount()

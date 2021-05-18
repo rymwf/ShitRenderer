@@ -110,7 +110,8 @@ public:
 	void createShaders()
 	{
 		std::string compShaderPath = buildShaderPath(compShaderName, rendererVersion);
-		compShader = device->Create(ShaderCreateInfo{readFile(compShaderPath.c_str())});
+		auto compCode = readFile(compShaderPath.c_str());
+		compShader = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 	}
 
 	void createDescriptorSets()
@@ -228,6 +229,7 @@ public:
 			SamplerWrapMode::CLAMP_TO_EDGE,
 			0,
 			false,
+			1.f,
 			false,
 			{},
 			0.f,

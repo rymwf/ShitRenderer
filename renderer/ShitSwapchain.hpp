@@ -41,6 +41,10 @@ namespace Shit
 		{
 			return mImages[index].get();
 		}
+		size_t GetImageNum() const
+		{
+			return mImages.size();
+		}
 		virtual Result GetNextImage(const GetNextImageInfo &info, uint32_t& index) = 0;
 	};
 } // namespace Shit

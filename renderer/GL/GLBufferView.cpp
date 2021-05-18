@@ -14,7 +14,10 @@ namespace Shit
 	GLBufferView::GLBufferView(GLStateManager *pStateManager, const BufferViewCreateInfo &createInfo)
 		: BufferView(createInfo), mpStateManager(pStateManager)
 	{
-		//		mHandle = static_cast<GLBuffer *>(createInfo.pBuffer)->GetHandle();
-		LOG("not implemented yet");
+		auto buffer = static_cast<const GLBuffer *>(createInfo.pBuffer)->GetHandle();
+		glGenTextures(1, &mHandle);
+		mpStateManager->BindTextureUnit(0, GL_TEXTURE_BUFFER, mHandle);
+		glTexBufferRange(GL_TEXTURE_BUFFER, MapInternalFormat(mCreateInfo.format), buffer, mCreateInfo.offset, mCreateInfo.range);
+		mpStateManager->PopBuffer();
 	}
 }
