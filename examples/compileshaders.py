@@ -2,6 +2,7 @@ import os
 import sys
 import getopt
 import argparse
+import traceback
 
 
 parser = argparse.ArgumentParser("call glslc to compile glsl to spirv")
@@ -40,5 +41,9 @@ def processSrcFiles(filelist, target):
 
 
 if __name__ == "__main__":
-	args = parser.parse_args()
-	processSrcFiles(args.S, args.T)
+	try:
+		args = parser.parse_args()
+		processSrcFiles(args.S, args.T)
+	except Exception as e:
+		print(e)
+		traceback.print_exc()

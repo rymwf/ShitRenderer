@@ -64,7 +64,7 @@ public:
 	{
 		startTime = std::chrono::system_clock::now();
 		RenderSystemCreateInfo renderSystemCreateInfo{
-			.version = rendererVersion,
+			.version = g_RendererVersion,
 			.flags = RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT,
 		};
 
@@ -79,7 +79,7 @@ public:
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
 		DeviceCreateInfo deviceCreateInfo{};
-		if ((rendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
+		if ((g_RendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
 			deviceCreateInfo = {window};
 
 		device = renderSystem->CreateDevice(deviceCreateInfo);
@@ -107,15 +107,15 @@ public:
 
 	void createShaders()
 	{
-		std::string compShaderPath = buildShaderPath(compShaderNameGrayScale, rendererVersion);
+		std::string compShaderPath = buildShaderPath(compShaderNameGrayScale, g_RendererVersion);
 		auto compCode = readFile(compShaderPath.c_str());
 		compShaderGrayscale = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 
-		compShaderPath = buildShaderPath(compShaderName, rendererVersion);
+		compShaderPath = buildShaderPath(compShaderName, g_RendererVersion);
 		compCode = readFile(compShaderPath.c_str());
 		compShader = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 
-		compShaderPath = buildShaderPath(compShaderNameFilter, rendererVersion);
+		compShaderPath = buildShaderPath(compShaderNameFilter, g_RendererVersion);
 		compCode = readFile(compShaderPath.c_str());
 		compShaderFilter = device->Create(ShaderCreateInfo{compCode.size(), compCode.data()});
 	}

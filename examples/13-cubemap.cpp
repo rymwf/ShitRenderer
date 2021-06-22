@@ -1,42 +1,18 @@
 #include "appbase.hpp"
 
-#define MODEL_SIZE 1.
+static const char *testModelPath;
 
-const char *vertShaderName = "13.vert.spv";
-const char *fragShaderName = "13.frag.spv";
-
-//static const char *testModelPath = ASSET_PATH "models/geosphere.gltf";
-static const char *testModelPath = ASSET_PATH "models/teapot.gltf";
-
-int animationIndex = 0;
-
-class HelloApp : public AppBase
+class HelloScene : public Scene
 {
-	Model *testModel;
-	Model *tempModel{};
-	std::vector<ModelView *> testModelViews;
 
-	PipelineLayout *pipelineLayout;
-	Pipeline *pipeline;
-	std::vector<DescriptorSet *> descriptorSets;
+	std::unique_ptr<Material> *ppMaterial;
 
-	std::vector<CommandBuffer *> commandBuffers;
-
-public:
-	HelloApp(uint32_t width, uint32_t height) : AppBase(width, height) {}
-
-	void processEvent(const Event &ev) override
+	void createMaterials()
 	{
-		std::visit(overloaded{
-					   [&](const DropEvent &value) {
-						   LOG(value.paths[0]);
-						   tempModel = scene.LoadModel(value.paths[0]);
-					   },
-					   [](auto &&) {}},
-				   ev.value);
-	}
-	void createDescriptorSets()
-	{
+		ppMaterial = AddMaterial(MATERIAL_CUSTOM);
+		auto material = (*ppMaterial).get();
+		material->_name = "cubemap";
+
 		std::vector<DescriptorSetLayoutBinding> frameBindings{
 			DescriptorSetLayoutBinding{UNIFORM_BINDING_FRAME, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT | ShaderStageFlagBits::FRAGMENT_BIT}, //UBO PV
 		};
@@ -55,78 +31,84 @@ public:
 		std::vector<DescriptorSetLayoutBinding> jointMatrixBindings{
 			DescriptorSetLayoutBinding{UNIFORM_BINDING_JOINTMATRIX, DescriptorType::UNIFORM_BUFFER, 1, ShaderStageFlagBits::VERTEX_BIT},
 		};
-		std::vector<DescriptorSetLayoutBinding> cubemapBindings{
-			DescriptorSetLayoutBinding{0, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
-		};
 		std::vector<DescriptorSetLayoutBinding> otherBindings{
-			DescriptorSetLayoutBinding{TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT}, //transparency
+			DescriptorSetLayoutBinding{TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
+			//	DescriptorSetLayoutBinding{TEXTURE_BINDING_IRRADIANCE_ENV_CUBEMAP, DescriptorType::COMBINED_IMAGE_SAMPLER, 1, ShaderStageFlagBits::FRAGMENT_BIT},
 		};
-		std::vector<DescriptorSetLayout *> setLayouts(5);
-		setLayouts[DESCRIPTORSET_ID_FRAME] = (device->Create(DescriptorSetLayoutCreateInfo{frameBindings}));
-		setLayouts[DESCRIPTORSET_ID_NODE] = (device->Create(DescriptorSetLayoutCreateInfo{nodeBindings}));
-		setLayouts[DESCRIPTORSET_ID_MATERIAL] = (device->Create(DescriptorSetLayoutCreateInfo{materialBindings}));
-		setLayouts[DESCRIPTORSET_ID_JOINTMATRIX] = (device->Create(DescriptorSetLayoutCreateInfo{jointMatrixBindings}));
-		setLayouts[DESCRIPTORSET_ID_OTHER] = (device->Create(DescriptorSetLayoutCreateInfo{otherBindings}));
-
-		pipelineLayout = device->Create(PipelineLayoutCreateInfo{setLayouts});
-
-		std::vector<DescriptorPoolSize> poolsizes{
-			{DescriptorType::COMBINED_IMAGE_SAMPLER, 1},
+		auto device = g_App->getDevice();
+		std::vector<DescriptorSetLayout *> setLayouts{
+			device->Create(DescriptorSetLayoutCreateInfo{frameBindings}),
+			device->Create(DescriptorSetLayoutCreateInfo{nodeBindings}),
+			device->Create(DescriptorSetLayoutCreateInfo{materialBindings}),
+			device->Create(DescriptorSetLayoutCreateInfo{jointMatrixBindings}),
+			device->Create(DescriptorSetLayoutCreateInfo{otherBindings}),
 		};
+		//pipeline layout
+		material->_pipelineLayout = device->Create(PipelineLayoutCreateInfo{setLayouts});
 
-		DescriptorPool *descriptorPool = device->Create(DescriptorPoolCreateInfo{1, poolsizes});
-		DescriptorSetAllocateInfo allocInfo{{setLayouts[DESCRIPTORSET_ID_OTHER]}};
-		descriptorPool->Allocate(allocInfo, descriptorSets);
+		std::vector<DescriptorPoolSize> poolSizes;
+		for (auto &&e : otherBindings)
+			poolSizes.emplace_back(e.descriptorType, e.descriptorCount);
+
+		//create descriptor pool
+		DescriptorPoolCreateInfo descriptorPoolCreateInfo{1, poolSizes};
+		auto descriptorPool = device->Create(descriptorPoolCreateInfo);
+
+		//deacriptor sets
+		descriptorPool->Allocate(DescriptorSetAllocateInfo{{setLayouts[DESCRIPTORSET_ID_OTHER]}}, material->_descriptorSets);
+		material->_descriptorSetIDs = {DESCRIPTORSET_ID_OTHER};
 
 		//update descriptor sets
 		std::vector<WriteDescriptorSet> writes{
-			{descriptorSets[0],
+			{material->_descriptorSets[0],
 			 TEXTURE_BINDING_REFLECTION_ENV_CUBEMAP,
 			 0,
 			 DescriptorType::COMBINED_IMAGE_SAMPLER,
 			 std::vector<DescriptorImageInfo>{
-				 {linearSampler,
-				  skyboxImageViewCube,
-				  ImageLayout::GENERAL}}}};
+				 {material->_linearSampler,
+				  static_cast<MaterialSkybox *>(_skyboxMaterial->get())->imageViewCube,
+				  ImageLayout::SHADER_READ_ONLY_OPTIMAL},
+			 }},
+		};
 		device->UpdateDescriptorSets(writes, {});
-	}
-	void createPipeline()
-	{
-		//load shaders
-		std::string vertShaderPath = buildShaderPath(vertShaderName, rendererVersion);
-		std::string fragShaderPath = buildShaderPath(fragShaderName, rendererVersion);
 
-		auto vertSource = readFile(vertShaderPath.c_str());
-		auto fragSource = readFile(fragShaderPath.c_str());
+		//=================================
+		//shaders
+		material->_vertShaderName = "standard.vert.spv";
+		material->_fragShaderName = "13.frag.spv";
 
-		Shader *vertShader = device->Create(ShaderCreateInfo{vertSource.size(), vertSource.data()});
-		Shader *fragShader = device->Create(ShaderCreateInfo{fragSource.size(), fragSource.data()});
+		auto vertShaderPath = buildShaderPath(material->_vertShaderName.c_str(), g_RendererVersion);
+		auto fragShaderPath = buildShaderPath(material->_fragShaderName.c_str(), g_RendererVersion);
 
-		//create pipeline
+		auto vertCode = readFile(vertShaderPath.c_str());
+		auto fragCode = readFile(fragShaderPath.c_str());
 
-		uint32_t jointMatrixNum = testModel->GetJointMatrixMaxNum();
-		std::vector<uint32_t> constantIDs{CONSTANT_ID_JOINTNUM};
-		std::vector<uint32_t> constantValues{jointMatrixNum};
+		auto vertShader = device->Create(ShaderCreateInfo{vertCode.size(), vertCode.data()});
+		auto fragShader = device->Create(ShaderCreateInfo{fragCode.size(), fragCode.data()});
 
+		//pipeline
 		std::vector<PipelineShaderStageCreateInfo>
 			shaderStageCreateInfos{
 				PipelineShaderStageCreateInfo{
 					ShaderStageFlagBits::VERTEX_BIT,
 					vertShader,
 					"main",
-					{constantIDs, constantValues}},
+				},
 				PipelineShaderStageCreateInfo{
 					ShaderStageFlagBits::FRAGMENT_BIT,
 					fragShader,
 					"main",
 				},
 			};
+
 		PipelineInputAssemblyStateCreateInfo inputAssemblyState{
 			PrimitiveTopology::TRIANGLE_LIST,
 		};
+		uint32_t frameWidth, frameHeight;
+		g_App->getWindow()->GetFramebufferSize(frameWidth, frameHeight);
 		PipelineViewportStateCreateInfo viewportStateCreateInfo{
-			{{0, 0, static_cast<float>(swapchain->GetCreateInfoPtr()->imageExtent.width), static_cast<float>(swapchain->GetCreateInfoPtr()->imageExtent.height), 0, 1}},
-			{{{0, 0}, swapchain->GetCreateInfoPtr()->imageExtent}}};
+			{{0, 0, static_cast<float>(frameWidth), static_cast<float>(frameHeight), 0, 1}},
+			{{{0, 0}, {frameWidth, frameHeight}}}};
 		PipelineTessellationStateCreateInfo tessellationState{};
 		PipelineRasterizationStateCreateInfo rasterizationState{
 			false,
@@ -149,7 +131,7 @@ public:
 		PipelineDepthStencilStateCreateInfo depthStencilState{
 			.depthTestEnable = true,
 			.depthWriteEnable = true,
-			.depthCompareOp = CompareOp::LESS_OR_EQUAL,
+			.depthCompareOp = CompareOp::LESS,
 		};
 
 		PipelineColorBlendAttachmentState colorBlendAttachmentstate{
@@ -166,15 +148,15 @@ public:
 			LogicOp::COPY,
 			{colorBlendAttachmentstate},
 		};
-		PipelineDynamicStateCreateInfo dynamicStateInfo{
+		PipelineDynamicStateCreateInfo dynamicStates{
 			{
 				DynamicState::VIEWPORT,
 				DynamicState::SCISSOR,
-			}};
-
+			},
+		};
 		GraphicsPipelineCreateInfo pipelineCreateInfo{
 			shaderStageCreateInfos,
-			*testModel->GetVertexInputStateCreateInfoPtr(),
+			Vertex::getVertexInputStateCreateInfo(),
 			inputAssemblyState,
 			viewportStateCreateInfo,
 			tessellationState,
@@ -182,127 +164,27 @@ public:
 			multisampleState,
 			depthStencilState,
 			colorBlendState,
-			dynamicStateInfo,
-			pipelineLayout,
-			defaultRenderPass,
-			0};
-
-		pipeline = device->Create(pipelineCreateInfo);
-	};
-	void createCommandBuffers()
-	{
-		uint32_t count = swapchainImages.size();
-		defaultShortLiveCommandPool->CreateCommandBuffers(CommandBufferCreateInfo{CommandBufferLevel::SECONDARY, count},
-														  commandBuffers);
-
-		for (size_t i = 0; i < count; ++i)
-		{
-			addSecondaryCommandBuffers(i, {commandBuffers[i]});
-		}
+			dynamicStates,
+			material->_pipelineLayout,
+			g_App->getDefaultRenderPass(),
+			g_App->getDefaultSubpass()};
+		material->_pipeline = g_App->getDevice()->Create(pipelineCreateInfo);
 	}
-	void recordCommandBuffers(uint32_t imageIndex)
+
+public:
+	HelloScene() {}
+	void Prepare() override
 	{
-		commandBuffers[imageIndex]->Begin({CommandBufferUsageFlagBits::ONE_TIME_SUBMIT_BIT,
-										   CommandBufferInheritanceInfo{
-											   defaultRenderPass,
-											   0,
-											   framebuffers[imageIndex]}});
+		auto sphere = CreateModelView(ModelType::SPHERE, nullptr, "sphere");
+		//auto cube = CreateModelView(ModelType::CUBE, nullptr, "cube");
+		//auto rock = CreateModelView(ModelType::ROCK, nullptr, "rock");
+		//auto teapot = CreateModelView(ModelType::TEAPOT, nullptr, "teapot");
+		//auto torusknot = CreateModelView(ModelType::TORUSKNOT, nullptr, "torusknot");
+		//auto cylinder = CreateModelView(ModelType::TUNNEL_CYLINDER, nullptr, "cylinder");
 
-		Viewport viewport{0, 0, swapchain->GetCreateInfoPtr()->imageExtent.width, swapchain->GetCreateInfoPtr()->imageExtent.height, 0, 1};
-		commandBuffers[imageIndex]->SetViewport(SetViewPortInfo{0, 1, &viewport});
-		Rect2D scissor{{}, swapchain->GetCreateInfoPtr()->imageExtent};
-		commandBuffers[imageIndex]->SetScissor(SetScissorInfo{0, 1, &scissor});
-
-		commandBuffers[imageIndex]->BindDescriptorSets(
-			BindDescriptorSetsInfo{
-				PipelineBindPoint::GRAPHICS,
-				pipelineLayout,
-				DESCRIPTORSET_ID_FRAME,
-				1,
-				&defaultDescriptorSetsUboFrame[imageIndex]});
-		commandBuffers[imageIndex]->BindDescriptorSets(
-			BindDescriptorSetsInfo{
-				PipelineBindPoint::GRAPHICS,
-				pipelineLayout,
-				DESCRIPTORSET_ID_OTHER,
-				1,
-				&descriptorSets[0]});
-		commandBuffers[imageIndex]->BindPipeline({PipelineBindPoint::GRAPHICS, pipeline});
-		testModel->DrawModel(device, commandBuffers[imageIndex], imageIndex);
-		commandBuffers[imageIndex]->End();
-	}
-	void setScene()
-	{
-		testModel->DownloadModel(device, pipelineLayout, swapchainImages.size());
-
-		auto boundingBox = testModel->GetModelBoundingVolumePtr()->box;
-		glm::dvec3 scaleFactor{1. / (boundingBox.aabb.maxValue.y - boundingBox.aabb.center.y)};
-		glm::dvec3 translation = glm::dvec3(0., -boundingBox.aabb.minValue.y, 0.) * scaleFactor;
-
-		//////create ModelView
-		testModelViews[0]->pModel = testModel;
-		testModelViews[0]->translation = translation;
-		testModelViews[0]->scale = scaleFactor;
-
-		testModelViews[1]->pModel = testModel;
-		testModelViews[1]->translation = translation + glm::dvec3(3, 0, 0);
-		testModelViews[1]->scale = scaleFactor;
-
-		mainCamera->translation = translation;
-
-		rootNode->Update();
-		testModel->AssignInstances(device, {
-											   {{}, testModelViews[0]->globalMatrix},
-											   {{}, testModelViews[1]->globalMatrix},
-										   });
-
-		createPipeline();
-	}
-	void prepare() override
-	{
-		createUniformBuffers();
-		createDescriptorSets();
-
-		//load assets
-		testModel = scene.LoadModel(testModelPath);
-		testModelViews.resize(2);
-		testModelViews[0] = scene.CreateNode<ModelView>(rootNode);
-		testModelViews[1] = scene.CreateNode<ModelView>(rootNode);
-		setScene();
-		createCommandBuffers();
-	}
-	void createUniformBuffers()
-	{
-	}
-	void drawFrame(uint32_t imageIndex, std::vector<CommandBuffer *> &primaryCommandBuffers) override
-	{
-		//========================================
-		//std::this_thread::sleep_for(std::chrono::milliseconds(5));
-		if (tempModel)
-		{
-			presentQueue->WaitIdle();
-			//destroy old model
-			scene.Destroy(testModel);
-			device->Destroy(pipeline);
-
-			//download new model
-			testModel = tempModel;
-			setScene();
-			tempModel = nullptr;
-		}
-		if (testModel->GetAnimationNum() > 0)
-		{
-			//update model animation
-			static auto animationStartTime = curTime;
-			static float cycleTime = -1; //ms
-			auto elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(curTime - animationStartTime).count();
-			testModel->UpdateAnimation(animationIndex, elapsedTime, imageIndex);
-		}
-		recordCommandBuffers(imageIndex);
-	}
-	void drawImGui() override
-	{
+		createMaterials();
+		ApplyMaterialToNode(ppMaterial, sphere);
 	}
 };
 
-CREATE_APP(HelloApp)
+CREATE_SCENE(HelloScene)

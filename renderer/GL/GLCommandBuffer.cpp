@@ -118,6 +118,7 @@ namespace Shit
 						dynamicFlags[static_cast<size_t>(e)] = true;
 					}
 
+					//TODO: bind vao will also bind vbo and ibo at the same time, try not bind vbo and ibo again 
 					mpStateManager->BindVertexArray(pGraphicsPipeline->GetVertexArray());
 
 					//primitive
@@ -568,7 +569,6 @@ namespace Shit
 				auto regions = reinterpret_cast<const BufferImageCopy *>(&cmd->regionCount + 1);
 				for (uint32_t i = 0; i < cmd->regionCount; ++i)
 				{
-					//int32_t offset[] = {static_cast<int32_t>(regions[i].bufferOffset)};
 					glReadPixels(
 						regions[i].imageOffset.x,
 						regions[i].imageOffset.y,
@@ -576,8 +576,7 @@ namespace Shit
 						regions[i].imageExtent.height,
 						externalformat,
 						type,
-						0 //TODO: offset??
-					);
+						(void *)(GLintptr)(regions[i]).bufferOffset);
 				}
 				mpStateManager->NotifyReleasedFramebuffer(fbo);
 				glDeleteFramebuffers(1, &fbo);
@@ -648,7 +647,6 @@ namespace Shit
 			auto cmd = reinterpret_cast<const DrawIndirectInfo *>(pCur);
 			mpStateManager->BindBuffer(GL_DRAW_INDIRECT_BUFFER, static_cast<GLBuffer *>(cmd->pBuffer)->GetHandle());
 			//opengl 4.3
-			//TODO: offset
 #if 1
 			glMultiDrawArraysIndirect(
 				mpStateManager->GetPrimitiveTopology(),
@@ -717,7 +715,7 @@ namespace Shit
 			glMultiDrawElementsIndirect(
 				mpStateManager->GetPrimitiveTopology(),
 				mpStateManager->GetIndexType(),
-				nullptr,	//offset of drawcount drawelementsindirectcommand buffer
+				(void *)(GLintptr)(cmd->offset), //offset of drawcount drawelementsindirectcommand buffer
 				cmd->drawCount,
 				cmd->stride);
 			return sizeof(*cmd);
@@ -732,8 +730,7 @@ namespace Shit
 			glMultiDrawElementsIndirectCount(
 				mpStateManager->GetPrimitiveTopology(),
 				mpStateManager->GetIndexType(),
-				//&cmd->offset,
-				nullptr,
+				(void *)(GLintptr)cmd->offset,
 				static_cast<GLintptr>(cmd->countBufferOffset),
 				cmd->maxDrawCount,
 				cmd->stride);
@@ -789,11 +786,13 @@ namespace Shit
 		}
 		case GLCommandCode::PushConstants:
 		{
+			//TODO: how to optimize
 			auto cmd = reinterpret_cast<const PushConstantInfo *>(pCur);
 			auto buffer = dynamic_cast<GLGraphicsPipeline *>(mCurPipeline)->GetPushConstantBuffer(cmd->binding);
 
-			mpStateManager->BindBuffer(GL_UNIFORM_BUFFER, buffer.first);
 			mpStateManager->BindBufferRange(GL_UNIFORM_BUFFER, cmd->binding, buffer.first, 0, buffer.second);
+
+			mpStateManager->BindBuffer(GL_UNIFORM_BUFFER, buffer.first);
 			void *data = glMapBufferRange(GL_UNIFORM_BUFFER, cmd->offset, cmd->size, GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
 			memcpy(data, &cmd->pValues, cmd->size);
 			glUnmapBuffer(GL_UNIFORM_BUFFER);
@@ -1014,8 +1013,9 @@ namespace Shit
 		if (mCurIndexOffset > 0)
 		{
 			//TODO: will repeat some times, how to fix?
-			GLuint stageBuffer;
-			glGenBuffers(1, &stageBuffer);
+			static GLuint stageBuffer{};
+			if (!stageBuffer)
+				glGenBuffers(1, &stageBuffer);
 			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, stageBuffer);
 			glBufferStorage(GL_COPY_WRITE_BUFFER, sizeof(DrawIndexedIndirectCommand), nullptr, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
 			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, static_cast<GLBuffer *>(info.pBuffer)->GetHandle());
@@ -1030,8 +1030,9 @@ namespace Shit
 			mpStateManager->BindBuffer(GL_COPY_READ_BUFFER, stageBuffer);
 			mpStateManager->BindBuffer(GL_COPY_WRITE_BUFFER, static_cast<GLBuffer *>(info.pBuffer)->GetHandle());
 			glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(DrawIndexedIndirectCommand));
-			glDeleteBuffers(1, &stageBuffer);
-			mpStateManager->NotifyReleaseBuffer(stageBuffer);
+
+			//glDeleteBuffers(1, &stageBuffer);
+			//mpStateManager->NotifyReleaseBuffer(stageBuffer);
 		}
 		memcpy(AllocateCommand<DrawIndirectInfo>(GLCommandCode::DrawIndexedIndirect), &info, sizeof(DrawIndirectInfo));
 	}

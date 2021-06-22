@@ -53,6 +53,9 @@ namespace Shit
 		if (!f)
 			THROW("failed to find rendersystem load function");
 		static std::unique_ptr<RenderSystem, decltype(&DeleteRenderSystem)> sRenderSystem(f(createInfo), &DeleteRenderSystem);
+
+		InitEvent();
+
 		return sRenderSystem.get();
 	}
 

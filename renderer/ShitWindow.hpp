@@ -1,7 +1,7 @@
 /**
  * @file ShitWindow.hpp
  * @author yangzs
- * @brief 
+ * @brief TODO: remove this module out of renderer
  * @version 0.1
  * 
  * @copyright Copyright (c) 2021
@@ -14,7 +14,6 @@
 
 namespace Shit
 {
-	//TODO: should destroy swapchain when closed
 	class ShitWindow
 	{
 	protected:

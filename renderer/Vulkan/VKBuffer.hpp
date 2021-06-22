@@ -34,5 +34,4 @@ namespace Shit
 		void UnMapMemory() override;
 		void FlushMappedMemoryRange(uint64_t offset, uint64_t size) override;
 	};
-
 }

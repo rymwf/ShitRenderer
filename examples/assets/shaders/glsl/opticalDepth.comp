@@ -1,0 +1,59 @@
+#version 460
+
+/*
+u is height 
+v is cos(theta) theta [0, 90]
+
+*/
+
+layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+layout(local_size_y_id=1)in;
+layout(local_size_z_id=2)in;
+
+layout(rgba32f,binding=0) uniform image2D outImage;
+
+#define PI 3.1415926535897932384626433832795
+#define SAMPLENUM 1000
+
+const vec3 lamdba=vec3(0.7,0.5461,0.4358); //wave length  um
+const double n_air=1.00029;	//index of refraction (1.00028685,1.00028898,1.00029215)
+const double H=50;	//atmosphereThickness km
+const double H0=8;//km  scale height molecule
+const double Ns=25.04;	//2.504*10^25, molecular number density of standard atmosphere
+const double earthR=6400;	//km
+
+//const dvec3 beta=8.*PI*PI*PI*pow(n_air*n_air-1.,2.)/(3.*Ns*pow(lamdba,vec3(4.)));	//attenuation coefficient beta
+const dvec3 beta=dvec3(4.62779155e-06,1.24933021e-05,3.08047044e-05);
+
+void main()
+{
+	const ivec2 ij=ivec2(gl_LocalInvocationID.x,gl_WorkGroupID.x);
+	const ivec2 texSize=ivec2(gl_WorkGroupSize.x,gl_NumWorkGroups.x);
+
+	const double costheta=double(ij.x)/texSize.x*1.2-0.2;	//[-0.2,1]
+	const double h=double(ij.y)/texSize.y*H;	//km
+	const double costheta2=costheta*costheta;
+	const double sintheta2=1.-costheta2;
+	const double a=H+earthR;
+	const double b=h+earthR;
+
+	const double s=sqrt(a*a-b*b*(1.-costheta2))-b*costheta;//km
+	const double ds=s/SAMPLENUM;
+	double rho=0.;	//density ratio
+	dvec3 opticalDepth=dvec3(0.);
+	for(int i=1;i<SAMPLENUM;++i)
+	{
+		double s1=i*ds;
+		double p=(s1*costheta+earthR+h);
+		double hs=sqrt(s1*s1*sintheta2+p*p)-earthR;
+		rho=exp(float(-hs/H0));
+		//trapezoidal rule
+		opticalDepth+=2.*rho;
+	}
+	opticalDepth+=1.367879441;
+	opticalDepth*=500*s*beta/SAMPLENUM;
+
+	vec4 col=vec4(opticalDepth,1.);
+	imageStore(outImage,ij,col);
+}

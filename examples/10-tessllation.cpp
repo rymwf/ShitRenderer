@@ -4,24 +4,24 @@
 #define MODEL_SIZE 1.
 #define PERSPECTIVE 1
 
-uint32_t WIDTH = 800, HEIGHT = 600;
+static uint32_t WIDTH = 800, HEIGHT = 600;
 
-constexpr SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
+constexpr static SampleCountFlagBits SAMPLE_COUNT = SampleCountFlagBits::BIT_4;
 
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+constexpr static int MAX_FRAMES_IN_FLIGHT = 2;
 
-int animationIndex = 0;
-glm::vec3 ambientColor = glm::vec3(0.0);
+static int animationIndex = 0;
+static const glm::vec3 envColor = glm::vec3(0.0);
 
-const char *vertShaderName = "10.vert.spv";
-const char *tescShaderName = "10.tesc.spv";
-const char *teseShaderName = "10.tese.spv";
-const char *fragShaderName = "10.frag.spv";
+static const char *vertShaderName = "10.vert.spv";
+static const char *tescShaderName = "10.tesc.spv";
+static const char *teseShaderName = "10.tese.spv";
+static const char *fragShaderName = "10.frag.spv";
 
-const char *axisVertShaderName = "axis.vert.spv";
-const char *axisFragShaderName = "axis.frag.spv";
+static const char *axisVertShaderName = "axis.vert.spv";
+static const char *axisFragShaderName = "axis.frag.spv";
 
-const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Triangle/glTF/Triangle.gltf";
+static const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/Triangle/glTF/Triangle.gltf";
 //const char *testModelPath = ASSET_PATH "glTF-Sample-Models/2.0/TwoSidedPlane/glTF/TwoSidedPlane.gltf";
 
 struct Light
@@ -146,7 +146,7 @@ public:
 	{
 		startTime = std::chrono::system_clock::now();
 		RenderSystemCreateInfo renderSystemCreateInfo{
-			.version = rendererVersion,
+			.version = g_RendererVersion,
 			.flags = RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT,
 		};
 
@@ -162,7 +162,7 @@ public:
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
 		DeviceCreateInfo deviceCreateInfo{};
-		if ((rendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
+		if ((g_RendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
 			deviceCreateInfo = {window};
 
 		device = renderSystem->CreateDevice(deviceCreateInfo);
@@ -428,10 +428,10 @@ public:
 
 	void createShaders()
 	{
-		std::string vertShaderPath = buildShaderPath(vertShaderName, rendererVersion);
-		std::string fragShaderPath = buildShaderPath(fragShaderName, rendererVersion);
-		std::string tescShaderPath = buildShaderPath(tescShaderName, rendererVersion);
-		std::string teseShaderPath = buildShaderPath(teseShaderName, rendererVersion);
+		std::string vertShaderPath = buildShaderPath(vertShaderName, g_RendererVersion);
+		std::string fragShaderPath = buildShaderPath(fragShaderName, g_RendererVersion);
+		std::string tescShaderPath = buildShaderPath(tescShaderName, g_RendererVersion);
+		std::string teseShaderPath = buildShaderPath(teseShaderName, g_RendererVersion);
 
 		std::string vertCode = readFile(vertShaderPath.c_str());
 		std::string fragCode = readFile(fragShaderPath.c_str());
@@ -445,8 +445,8 @@ public:
 		teseShader = device->Create(ShaderCreateInfo{teseCode.size(),teseCode.data()});
 
 		//-----------
-		std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, rendererVersion);
-		std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, rendererVersion);
+		std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, g_RendererVersion);
+		std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, g_RendererVersion);
 
 		std::string axisVertCode = readFile(axisVertShaderPath.c_str());
 		std::string axisFragCode = readFile(axisFragShaderPath.c_str());
@@ -701,7 +701,6 @@ public:
 				{LOCATION_NORMAL},
 				{LOCATION_TANGENT},
 				{LOCATION_TEXCOORD0},
-				{LOCATION_TEXCOORD1},
 				{LOCATION_COLOR0},
 				{LOCATION_JOINTS0},
 				{LOCATION_WEIGHTS0},
@@ -712,7 +711,6 @@ public:
 				{LOCATION_NORMAL, LOCATION_NORMAL, ShitFormat::RGB32_SFLOAT, 0},
 				{LOCATION_TANGENT, LOCATION_TANGENT, ShitFormat::RGBA32_SFLOAT, 0},
 				{LOCATION_TEXCOORD0, LOCATION_TEXCOORD0, ShitFormat::RG32_SFLOAT, 0},
-				{LOCATION_TEXCOORD1, LOCATION_TEXCOORD1, ShitFormat::RG32_SFLOAT, 0},
 				{LOCATION_COLOR0, LOCATION_COLOR0, ShitFormat::RGBA32_SFLOAT, 0},
 				{LOCATION_JOINTS0, LOCATION_JOINTS0, ShitFormat::RGBA32_UI, 0},
 				{LOCATION_WEIGHTS0, LOCATION_WEIGHTS0, ShitFormat::RGBA32_SFLOAT, 0},
@@ -796,8 +794,8 @@ public:
 		CommandBufferBeginInfo cmdBufferBeginInfo{};
 
 		std::vector<ClearValue> clearValues{
-			std::array<float, 4>{ambientColor.x, ambientColor.y, ambientColor.z, 1.f},
-			std::array<float, 4>{ambientColor.x, ambientColor.y, ambientColor.z, 1.f},
+			std::array<float, 4>{envColor.x, envColor.y, envColor.z, 1.f},
+			std::array<float, 4>{envColor.x, envColor.y, envColor.z, 1.f},
 			ClearDepthStencilValue{1.f, 0},
 		};
 
@@ -862,7 +860,7 @@ public:
 							  glm::vec2(1, 100),
 							  glm::vec3(-1),
 						  },
-						  ambientColor};
+						  envColor};
 		//move model to origin
 		BufferCreateInfo bufferCreateInfo{
 			.size = sizeof(UBOFrame),

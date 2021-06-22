@@ -89,7 +89,11 @@ namespace Shit
 			UpdateSubData(0,
 						  tempLayout,
 						  mCreateInfo.initialLayout,
-						  {{}, mCreateInfo.extent}, pData);
+						  {{},
+						   {mCreateInfo.extent.width,
+							mCreateInfo.extent.height,
+							(std::max)(mCreateInfo.extent.depth, mCreateInfo.arrayLayers)}},
+						  pData);
 		}
 		else if (mCreateInfo.initialLayout != ImageLayout::UNDEFINED && mCreateInfo.initialLayout != ImageLayout::PREINITIALIZED)
 		{
@@ -236,21 +240,25 @@ namespace Shit
 							 0, nullptr,						//buffer memory barriers
 							 1, &barrier);						//image memory barriers
 		//2. copy image
-		VkBufferImageCopy bufferImageCopy{
-			0,																				  //buffer offset
-			0,																				  //buffer row length
-			0,																				  //buffer image height
-			{aspectFlags, mipLevel, static_cast<uint32_t>(rect.offset.z), rect.extent.depth}, //image subresource
-			{rect.offset.x, rect.offset.y, rect.offset.z},									  //image offset
-			{rect.extent.width, rect.extent.height, rect.extent.depth}						  //image extent
-		};
+		std::vector<VkBufferImageCopy> bufferImageCopies{rect.extent.depth};
+		for (uint32_t i = 0; i < rect.extent.depth; ++i)
+		{
+			bufferImageCopies[i] = VkBufferImageCopy{
+				0,																				  //buffer offset
+				0,																				  //buffer row length
+				0,																				  //buffer image height
+				{aspectFlags, mipLevel, static_cast<uint32_t>(rect.offset.z), rect.extent.depth}, //image subresource
+				{rect.offset.x, rect.offset.y, static_cast<int32_t>(i)},						  //image offset
+				{rect.extent.width, rect.extent.height, 1}										  //image extent
+			};
+		}
 		vkCmdCopyBufferToImage(
 			commandBuffer,
 			stagingbuffer.GetHandle(),
 			mHandle,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1,
-			&bufferImageCopy);
+			bufferImageCopies.data());
 		////3. transfer layout
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;

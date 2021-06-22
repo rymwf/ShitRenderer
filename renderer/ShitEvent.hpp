@@ -118,6 +118,7 @@ namespace Shit
 		EventType value;
 	};
 
+	void InitEvent();
 	uint32_t MapKey(KeyCode keycode);
 	KeyCode MapKey(uint32_t keycode);
 	EventModifierBits MapKeyModifier(uint32_t mods);

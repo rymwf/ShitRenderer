@@ -16,6 +16,7 @@
 #include "VKDevice.hpp"
 #include "VKQueue.hpp"
 #include "VKBuffer.hpp"
+#include "VKBufferView.hpp"
 #include "VKImage.hpp"
 #include "VKDescriptor.hpp"
 #include "VKSampler.hpp"
@@ -172,6 +173,7 @@ namespace Shit
 		mBuffers.emplace_back(std::make_unique<VKBuffer>(mDevice, GetPhysicalDevice(), createInfo));
 		VKBuffer *buffer = static_cast<VKBuffer *>(mBuffers.back().get());
 
+		//TODO: move this to buffer
 		if (pData)
 		{
 			if (static_cast<bool>(createInfo.memoryPropertyFlags & MemoryPropertyFlagBits::HOST_VISIBLE_BIT))
@@ -340,7 +342,9 @@ namespace Shit
 					},
 					[&a](const std::vector<BufferView *> &val) {
 						a.texelBufferViews.resize(val.size());
-						//TODO: buffer views
+						std::transform(std::execution::par, val.begin(), val.end(), a.texelBufferViews.begin(), [](auto &&bufferView) {
+							return static_cast<VKBufferView *>(bufferView)->GetHandle();
+						});
 					},
 				},
 				e.values);

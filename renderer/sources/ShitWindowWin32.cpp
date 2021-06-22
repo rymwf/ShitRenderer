@@ -146,18 +146,32 @@ namespace Shit
 			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
 			pThis->mListener.notify(ev);
 			break;
+		case WM_MBUTTONDOWN:
+			ev.value = Event::EventType{MouseButtonEvent{MouseButton::MOUSE_M, PressAction::DOWN}};
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			pThis->mListener.notify(ev);
+			break;
+		case WM_MBUTTONUP:
+			ev.value = Event::EventType{MouseButtonEvent{MouseButton::MOUSE_M, PressAction::UP}};
+			ev.modifier = MapKeyModifier(static_cast<uint32_t>(wParam));
+			pThis->mListener.notify(ev);
+			break;
 		case WM_KEYDOWN:
+		{
 			if ((lParam >> 29) && 1)
-				ev.modifier = EventModifierBits::ALTR;
+				ev.modifier |= EventModifierBits::ALTR;
 			ev.value = Event::EventType{KeyEvent{MapKey(static_cast<uint32_t>(wParam)), PressAction::DOWN}};
 			pThis->mListener.notify(ev);
 			break;
+		}
 		case WM_KEYUP:
+		{
 			if ((lParam >> 29) && 1)
-				ev.modifier = EventModifierBits::ALTR;
+				ev.modifier |= EventModifierBits::ALTR;
 			ev.value = Event::EventType{KeyEvent{MapKey(static_cast<uint32_t>(wParam)), PressAction::UP}};
 			pThis->mListener.notify(ev);
 			break;
+		}
 		case WM_CHAR:
 			ev.value = Event::EventType{CharEvent{static_cast<uint32_t>(wParam)}};
 			pThis->mListener.notify(ev);

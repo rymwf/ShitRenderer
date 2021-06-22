@@ -53,6 +53,8 @@
 #define SHIT_ATTACHMENT_UNUSED (~0U)
 #define SHIT_QUEUE_FAMILY_IGNORED (~0U)
 
+//TODO: redefine object as object_T and define object_T* as object
+
 namespace Shit
 {
 	class RenderSystem;

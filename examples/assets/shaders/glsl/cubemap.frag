@@ -15,8 +15,15 @@ layout(location = 0) in VS_OUT {
 
 layout(binding=0 SET(1)) uniform samplerCube texCube;
 
+layout(binding=0 SET(2)) uniform UBOAA
+{
+	vec4 tintColor;
+	float exposure;
+};
+
 void main()
 {
-	outColor=texture(texCube,fs_in.texCoord);
+	//outColor=texture(texCube,fs_in.texCoord);
+	outColor=vec4(texture(texCube,fs_in.texCoord).rgb*exposure,1)*(tintColor*2);
 	//outColor=vec4(fs_in.texCoord,1);
 }

@@ -138,23 +138,55 @@ set_target_properties(VKRenderer PROPERTIES
 add_dependencies(VKRenderer ShitRenderer)
 endif()
 
-#===================
+#########################
 if(EXAMPLES)
+#===================
+## find 3rdparty package 
 #find_package(Boost REQUIRED COMPONENTS program_options)
 find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+
+#===================
+## create common library 
+file(GLOB exampleCommonFiles
+examples/common/*.hpp
+examples/common/*.cpp
+)
+add_library(exampleCommon ${exampleCommonFiles})
+
+target_include_directories(exampleCommon PRIVATE 
+${CMAKE_SOURCE_DIR}
+${CMAKE_SOURCE_DIR}/examples/common
+${CMAKE_BINARY_DIR} 
+${TINYGLTF_INCLUDE_DIRS}
+${RAPIDJSON_INCLUDE_DIRS}/rapidjson
+${IMGUI_INCLUDE_DIRS}
+)
+
+if(MSVC)
+target_link_libraries(exampleCommon PRIVATE
+glm
+)
+else()
+target_link_libraries(exampleCommon PRIVATE
+glm::glm
+)
+endif()
+
+target_link_libraries(exampleCommon PRIVATE
+GLEW::GLEW
+ShitRenderer
+#Boost::program_options
+imgui::imgui
+)
+
+#===================
 #add examples
 function(newexample examplename)
 message(${examplename})
 
-add_executable(${examplename} 
-examples/${examplename}.cpp 
-examples/common.cpp 
-examples/model.cpp
-examples/appbase.cpp
-examples/imgui-impl.cpp
-)
+add_executable(${examplename} examples/${examplename}.cpp)
 
 set_target_properties(${examplename} PROPERTIES FOLDER examples
 #DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX}
@@ -163,7 +195,7 @@ COMPILE_FLAGS "/wd5054"
 
 target_include_directories(${examplename} PRIVATE 
 ${CMAKE_SOURCE_DIR}
-${CMAKE_SOURCE_DIR}/examples
+${CMAKE_SOURCE_DIR}/examples/common
 ${CMAKE_BINARY_DIR} 
 ${TINYGLTF_INCLUDE_DIRS}
 ${RAPIDJSON_INCLUDE_DIRS}/rapidjson
@@ -181,17 +213,18 @@ glm::glm
 endif()
 
 target_link_libraries(${examplename} PRIVATE
-GLEW::GLEW
 ShitRenderer
-#Boost::program_options
 imgui::imgui
+exampleCommon
 )
 
-add_dependencies(${examplename} ShitRenderer)
+add_dependencies(${examplename} ShitRenderer exampleCommon)
+
 #string(REGEX REPLACE "/" "\\\\" STR0 ${CMAKE_SOURCE_DIR}/3rdparty/assimp/build/bin/$(Configuration)/assimp-vc142-mt$<$<CONFIG:Debug>:d>.dll)
 #string(REGEX REPLACE "/" "\\\\" STR1 ${SHIT_OUTPUT_DIR}/)
 #add_custom_command(TARGET ${examplename} PRE_BUILD 
 #COMMAND copy /Y ${STR0} ${STR1}) 
+
 endfunction()
 
 #======================
@@ -209,14 +242,9 @@ newexample(10-tessllation)
 newexample(11-compute-filter)
 newexample(12-compute-edgedetection)
 newexample(13-cubemap)
-newexample(14-irradiance)
-newexample(15-irradianceSH)
-newexample(16-reflectionEnv)
-newexample(17-envBRDF)
-newexample(18-ibl)
-#newexample(19-ibl-imgui)
+newexample(14-envBRDF)
 endif()
-
+#########################
 
 
 

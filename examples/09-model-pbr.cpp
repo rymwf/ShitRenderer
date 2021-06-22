@@ -152,7 +152,7 @@ public:
 	{
 		startTime = std::chrono::system_clock::now();
 		RenderSystemCreateInfo renderSystemCreateInfo{
-			.version = rendererVersion,
+			.version = g_RendererVersion,
 			.flags = RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT,
 		};
 
@@ -168,7 +168,7 @@ public:
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
 		DeviceCreateInfo deviceCreateInfo{};
-		if ((rendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
+		if ((g_RendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
 			deviceCreateInfo = {window};
 
 		device = renderSystem->CreateDevice(deviceCreateInfo);
@@ -434,8 +434,8 @@ public:
 
 	void createShaders()
 	{
-		std::string vertShaderPath = buildShaderPath(vertShaderName, rendererVersion);
-		std::string fragShaderPath = buildShaderPath(fragShaderName, rendererVersion);
+		std::string vertShaderPath = buildShaderPath(vertShaderName, g_RendererVersion);
+		std::string fragShaderPath = buildShaderPath(fragShaderName, g_RendererVersion);
 
 		std::string vertCode = readFile(vertShaderPath.c_str());
 		std::string fragCode = readFile(fragShaderPath.c_str());
@@ -447,8 +447,8 @@ public:
 		fragShader = device->Create(fragShaderCreateInfo);
 
 		//-----------
-		std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, rendererVersion);
-		std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, rendererVersion);
+		std::string axisVertShaderPath = buildShaderPath(axisVertShaderName, g_RendererVersion);
+		std::string axisFragShaderPath = buildShaderPath(axisFragShaderName, g_RendererVersion);
 
 		std::string axisVertCode = readFile(axisVertShaderPath.c_str());
 		std::string axisFragCode = readFile(axisFragShaderPath.c_str());

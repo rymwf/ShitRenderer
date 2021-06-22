@@ -11,14 +11,13 @@ layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inTangent;
 layout(location = 3) in vec2 inTexCoord0;
-layout(location = 4) in vec2 inTexCoord1;
-layout(location = 5) in vec4 inColor0;
+layout(location = 4) in vec4 inColor0;
 #ifdef VULKAN
-layout(location = 6) in uvec4 inJoints0;
+layout(location = 5) in uvec4 inJoints0;
 #else
-layout(location = 6) in vec4 inJoints0;
+layout(location = 5) in vec4 inJoints0;
 #endif
-layout(location = 7) in vec4 inWeights0;
+layout(location = 6) in vec4 inWeights0;
 layout(location = 11) in vec4 inInstanceColorFactor;
 layout(location = 12) in mat4 inInstanceMatrix;
 

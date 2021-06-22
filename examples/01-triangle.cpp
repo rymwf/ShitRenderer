@@ -50,7 +50,7 @@ public:
 	void initRenderSystem()
 	{
 		RenderSystemCreateInfo renderSystemCreateInfo{
-			rendererVersion,
+			g_RendererVersion,
 			RenderSystemCreateFlagBits::SHIT_CONTEXT_DEBUG_BIT};
 
 		renderSystem = LoadRenderSystem(renderSystemCreateInfo);
@@ -65,7 +65,7 @@ public:
 		//1.5 choose phyiscal device
 		//2. create device of a physical device
 		DeviceCreateInfo deviceCreateInfo{};
-		if ((rendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
+		if ((g_RendererVersion & RendererVersion::TypeBitmask) == RendererVersion::GL)
 			deviceCreateInfo = {window};
 
 		device = renderSystem->CreateDevice(deviceCreateInfo);
@@ -208,8 +208,8 @@ public:
 
 	void createShaders()
 	{
-		vertShaderPath = buildShaderPath(vertShaderName, rendererVersion);
-		fragShaderPath = buildShaderPath(fragShaderName, rendererVersion);
+		vertShaderPath = buildShaderPath(vertShaderName, g_RendererVersion);
+		fragShaderPath = buildShaderPath(fragShaderName, g_RendererVersion);
 
 		std::string vertCode = readFile(vertShaderPath.c_str());
 		std::string fragCode = readFile(fragShaderPath.c_str());

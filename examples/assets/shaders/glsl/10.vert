@@ -8,11 +8,11 @@
 
 layout(location = 0) in vec3 inPos;
 #ifdef VULKAN
-layout(location = 6) in uvec4 inJoints0;
+layout(location = 5) in uvec4 inJoints0;
 #else
-layout(location = 6) in vec4 inJoints0;
+layout(location = 5) in vec4 inJoints0;
 #endif
-layout(location = 7) in vec4 inWeights0;
+layout(location = 6) in vec4 inWeights0;
 layout(location = 12) in mat4 inInstanceMatrix;
 
 struct Light{

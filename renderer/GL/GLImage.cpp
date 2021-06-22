@@ -168,7 +168,14 @@ namespace Shit
 			}
 			if (pData)
 			{
-				UpdateSubData(0, {}, {}, {{}, mCreateInfo.extent}, pData);
+				UpdateSubData(0,
+							  {},
+							  {},
+							  {{},
+							   {mCreateInfo.extent.width,
+								mCreateInfo.imageType == ImageType::TYPE_1D ? (std::max)(mCreateInfo.extent.height, mCreateInfo.arrayLayers) : mCreateInfo.extent.height,
+								mCreateInfo.imageType == ImageType::TYPE_2D ? (std::max)(mCreateInfo.extent.depth, mCreateInfo.arrayLayers) : mCreateInfo.extent.depth}},
+							  pData);
 			}
 			mpStateManager->PopTextureUnit();
 		}
