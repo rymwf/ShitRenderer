@@ -1,0 +1,127 @@
+#version 460
+
+layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+layout(local_size_y_id=1)in;
+layout(local_size_z_id=2)in;
+
+layout(rgba32f,binding=0) uniform image2D imgOut;
+
+#define PI 3.1415926535897932384626433832795
+#define SAMPLENUM 512
+
+#define WIDTH gl_WorkGroupSize.x
+//#define HEIGHT gl_NumWorkGroups.x
+
+//===========================
+//http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+float radicalInverse_VdC(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+vec2 hammersley2d(int i, int N) {
+	return vec2(float(i) / float(N), radicalInverse_VdC(uint(i)));
+}
+
+//================
+float G1_GGX(float NdotS, float alpha)
+{
+	//return NdotS;
+	return 2.*NdotS/(NdotS*(2.-alpha)+alpha);
+}
+float G2_GGX_Smith(float NdotL,float NdotV,float alpha)
+{
+	return G1_GGX(NdotL,alpha)*G1_GGX(NdotV,alpha);
+}
+float G2_GGX_Hammon(float NdotL,float NdotV,float alpha)
+{
+	return 0.5*mix(2*NdotL*NdotV,NdotL+NdotV,alpha);//=G2/(4*NdotV*NdotL)
+}
+float G2_GGX(float ui,float uo,float alpha)
+{
+	float alpha2=alpha*alpha;
+	return 0.5/(uo*sqrt(mix(ui*ui,1,alpha2))+ui*sqrt(mix(uo*uo,1,alpha2)));//=G2/(4*NdotV*NdotL)
+}
+
+//B. Walter, "Microfacet Models for Refraction through Rough Surfaces," Rendering Techniques 2007,Eurographics Association, pp. 195–206, 2007.
+vec3 importanceSample(vec2 xi,float alpha_g){
+	//GGX
+	//float a=(1.-xi.y)/((alpha_g*alpha_g-1.)*xi.y+1.);
+	//float cosTheta=sqrt(a);
+	//float sinTheta = sqrt(1.0 - a);
+
+	float alpha_g2=alpha_g*alpha_g;
+	float tanTheta2=alpha_g2*(xi.y/(1.-xi.y));
+	float cosTheta=sqrt(1./(tanTheta2+1.));//always >=0
+	float sinTheta=sqrt(tanTheta2/(tanTheta2+1));
+
+	float phi=2.*PI*xi.x;;  //[0,2*PI]
+
+	// from spherical coordinates to cartesian coordinates
+	return vec3(cos(phi) * sinTheta,sin(phi) * sinTheta,cosTheta);
+}
+
+shared float scan_area[64][64];
+shared float a;
+void main(){
+	ivec2 uv=ivec2(gl_LocalInvocationID.x,gl_WorkGroupID.x);
+
+	vec4 col=vec4(0);
+
+	float roughness=float(uv.y+1)/WIDTH;
+	float NdotV=float(uv.x)/(WIDTH-1);
+
+	vec3 N=vec3(0,0,1);
+	vec3 V;
+	V.x = sqrt( 1.0 - NdotV * NdotV ); // sin
+	V.y = 0.;
+	V.z = NdotV; // cos
+	float alpha=roughness*roughness;
+	// float alpha=pow((roughness+1.)/2.,2.);
+	float A=0.;
+	float B=0.;
+	float C=0;
+	
+	for(int i=0;i<SAMPLENUM;++i){
+		vec2 xi=hammersley2d(i,SAMPLENUM);
+		vec3 H=importanceSample(xi,alpha);
+
+		float HdotV=max(dot(H,V),0.);
+		vec3 L=reflect(-V,H);
+		float NdotL=L.z;
+		float NdotH=H.z;
+
+		if(NdotL>0)
+		{
+			//float G=G2_GGX_Smith(NdotL,NdotV,alpha)*HdotV/(NdotH*NdotV);      
+			float G=4*G2_GGX(NdotL,NdotV,alpha)*NdotL*(HdotV)/NdotH;      
+			float Fc=pow(1.-HdotV,5.);
+			A+=(1.-Fc)*G;
+			B+=Fc*G;
+			C+=G;
+		}
+	}
+	col.r=A/float(SAMPLENUM);
+	col.g=B/float(SAMPLENUM);
+	col.a=C/float(SAMPLENUM);
+
+    for(int i=0;i<WIDTH;++i){
+        float F0=float(i)/(WIDTH-1);
+        scan_area[i][uv.x]=(col.r*F0+col.g)*NdotV;
+    }
+    
+	memoryBarrierShared();
+    float Rsf_cos=0;
+    for(int i=0;i<WIDTH;++i){
+        Rsf_cos+=scan_area[i][uv.x];
+    }
+	Rsf_cos*=2.f/WIDTH;
+	col.b=Rsf_cos;
+	imageStore(imgOut,uv,vec4(col.rgb,1));
+}
+
+

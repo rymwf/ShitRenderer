@@ -1,0 +1,194 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "config ninja",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"-B",
+				"build",
+				"-G",
+				"Ninja Multi-Config",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build example msvc debug, active file",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Debug",
+				"--target",
+				"${fileBasenameNoExtension}",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build example msvc Release, active file",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Release",
+				"--target",
+				"${fileBasenameNoExtension}",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build all Debug",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Debug",
+				"--target",
+				"all",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build all Release",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Release",
+				"--target",
+				"all",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build GLRenderer Debug",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Debug",
+				"--target",
+				"GLRenderer",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build GLRenderer Release",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Release",
+				"--target",
+				"GLRenderer",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build VKRenderer Debug",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Debug",
+				"--target",
+				"VKRenderer",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: build VKRenderer Release",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Release",
+				"--target",
+				"VKRenderer",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: clean debug",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Debug",
+				"--target",
+				"clean",
+				"-v"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "C/C++: clean release",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"build",
+				"--config",
+				"Release",
+				"--target",
+				"clean",
+				"-v"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": "build",
+		},
+	]
+}

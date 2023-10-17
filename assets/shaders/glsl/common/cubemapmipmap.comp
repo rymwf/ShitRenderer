@@ -1,0 +1,52 @@
+#version 460
+#define PI 3.141592653
+
+/*
+cubemap level 1 width is define by gl_WorkGroupSize.x
+only support cubmapwidth<=2048
+inImage is cubemap level 0
+outImage is cubemap level 1-11
+*/
+layout(local_size_x=512,local_size_y=1,local_size_z=1)in;
+
+layout(binding=0) uniform samplerCube inImage;
+layout(rgba32f,binding=1) uniform writeonly imageCube outImage;
+
+vec3 getCubeTexCoordFromCubeMap(ivec3 st,uint width){
+	vec2 uv=vec2(st.xy+0.5)*2./float(width)-1.;
+	vec3 res;
+	switch(st.z){
+		case 0: //x+
+			res=vec3(1.,-uv.y,-uv.x);
+			break;  
+		case 1: //x-
+			res=vec3(-1.,-uv.y,uv.x);
+			break;
+		case 2: //y+
+			res=vec3(uv.x,1,uv.y);
+			break;
+		case 3: //y-
+			res=vec3(uv.x,-1,-uv.y);
+			break;
+		case 4: //z+
+			res=vec3(uv.x,-uv.y,1.);
+			break;
+		case 5: //z-
+			res=vec3(-uv.x,-uv.y,-1.);
+			break;
+	}
+	return normalize(res);
+	//return res;
+}
+void main()
+{
+	ivec3 ijk=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
+	uint cubemapWidth=gl_NumWorkGroups.x;
+	if(ijk.x>cubemapWidth)
+		return;
+
+	vec3 uv=getCubeTexCoordFromCubeMap(ijk,cubemapWidth);
+	imageStore(outImage,ijk,texture(inImage,uv));
+	//imageStore(outImage,ijk,vec4(uv,1));
+}
+

@@ -1,0 +1,128 @@
+#version 450
+
+#define PI 3.141592653
+
+#define SAMPLENUM 32
+
+//TODO: add windowing
+
+layout(local_size_x=18,local_size_y=1,local_size_z=1)in;
+
+layout(binding=0) uniform sampler2D inImage;
+layout(rgba32f,binding=1) uniform image1D outImage;	//32
+
+//===========================
+//http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+float radicalInverse_VdC(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+vec2 hammersley2d(int i, int N) {
+	return vec2(float(i) / float(N), radicalInverse_VdC(uint(i)));
+}
+
+mat3 surfaceTBN(vec3 N)
+{
+	vec3 up=abs(N.z)>0.999?vec3(1,0,0):vec3(0,0,1);
+	vec3 T=cross(up,N);
+	vec3 B=cross(N,T);
+	return mat3(T,B,N);
+}
+
+vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
+	vec2 uv;
+	uv.x=atan(cubeTexCoord.z,cubeTexCoord.x)/(2*PI)+0.5;//  //[0 1]
+	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
+	return uv;
+}
+//z
+float SH_ylm(vec3 N,int l,int m){
+	if(l==0&&m==0)return 0.28209479177387814;
+	else if(l==1){
+		switch(m){
+			case -1:return 0.4886025119029199*N.y; 
+			case 0:return 0.4886025119029199*N.z;
+			case 1:return 0.4886025119029199*N.x;
+		}	
+	}else if(l==2){
+		switch(m){
+			case -2:return 1.0925484305920792*N.x*N.y;
+			case -1:return 1.0925484305920792*N.y*N.z; 
+			case 0:return 0.31539156525252005*(3*N.z*N.z-1.);
+			case 1:return 1.0925484305920792*N.x*N.z;
+			case 2:return 0.5462742152960396*(N.x*N.x-N.y*N.y);
+		}
+	}
+	else if(l==3)
+	{
+		switch(m){
+			case -3:return 0.590043589926644*N.y*(3*N.x*N.x-N.y*N.y); 
+			case -2:return 2.890611442640554*N.y*N.x*N.z; 
+			case -1:return 0.457045799464466*N.y*(5*N.z*N.z-1); 
+			case 0:return 0.373176332590115*N.z*(5*N.z*N.z-3);
+			case 1:return 0.457045799464466*N.x*(5*N.z*N.z-1);
+			case 2:return 1.445305721320277*N.z*(N.x*N.x-N.y*N.y);
+			case 3:return 0.590043589926644*N.x*(N.x*N.x-3*N.y*N.y);
+		}
+	}
+	else if(l==4)
+	{
+		switch(m){
+			case -4:return 2.5033429417967046*N.y*N.x*(N.x*N.x-N.y*N.y); 
+			case -3:return 1.7701307697799304*N.y*N.z*(3*N.x*N.x-N.y*N.y); 
+			case -2:return 0.9461746957575601*N.y*N.x*(7*N.z*N.z-1); 
+			case -1:return 0.6690465435572892*N.y*N.z*(7*N.z*N.z-3); 
+			case 0:return 0.10578554691520431*(35.*pow(abs(N.z),4)-30.*N.z*N.z+3);
+			case 1:return 0.6690465435572892*N.x*N.z*(7*N.z*N.z-3);
+			case 2:return 0.47308734787878004*(N.x*N.x-N.y*N.y)*(7*N.z*N.z-1);
+			case 3:return 1.7701307697799304*N.x*N.z*(N.x*N.x-3*N.y*N.y);
+			case 4:return 0.6258357354491761*(pow(abs(N.x),4)-6*N.x*N.x*N.y*N.y+pow(abs(N.y),4));
+		}
+	}
+	return 0.;
+}
+
+//spherical 1 weighted
+vec3 Llm(ivec2 lm){
+	vec3 col=vec3(0.);
+
+	vec2 texSize=textureSize(inImage,0);
+	float l=0.5*log2(float(texSize.x*texSize.y)/SAMPLENUM);
+	for(int i=0;i<SAMPLENUM;++i){
+		vec2 xi=hammersley2d(i,SAMPLENUM);
+		//theta [0,pi], phi[0,2*pi]
+		float cosTheta=1.-2*xi.y;
+		float sinTheta=sqrt(1-cosTheta*cosTheta);
+		float phi=2.*PI*xi.x;
+		vec3 L=vec3(sinTheta*cos(phi),cosTheta,sinTheta*sin(phi));
+		float Ylm=SH_ylm(L.xzy,lm.x,lm.y);
+		vec2 st=CubeTexCoord2EquirectangularUV(L);
+		float pdf=sinTheta/(4*PI);
+		float lod=l-0.5*log2(pdf);
+		col+=textureLod(inImage,st,l).rgb*Ylm;
+	}
+	col*=4/float(SAMPLENUM);
+	return col;
+}
+
+//degree 0 1 2 4 
+ivec2 getlm(uint i){
+	if(i<1)
+		return ivec2(0,0);
+	else if(i<4)
+		return ivec2(1,i-2);
+	else if(i<9)
+		return ivec2(2,i-6);
+	else
+		return ivec2(4,i-13);
+}
+
+void main()
+{
+	ivec2 lm=getlm(gl_LocalInvocationID.x);
+	imageStore(outImage,int(gl_LocalInvocationID.x),vec4(Llm(lm),1.));
+}

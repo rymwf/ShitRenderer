@@ -1,0 +1,82 @@
+#version 460
+
+#ifdef VULKAN
+#define SET(x) set=x,
+#define PUSH_CONSTANT push_constant
+#else
+#define SET(x)
+#extension GL_EXT_scalar_block_layout: enable
+#define PUSH_CONSTANT std430,binding=2
+#endif
+
+#define PI 3.141592653
+
+shared int a;
+
+layout(local_size_x=1024,local_size_y=1,local_size_z=1)in;
+
+layout(binding=0) uniform sampler2D inImage;
+//layout(binding=0,rgba32f) uniform readonly image2D inImage;
+layout(binding=1,rgba32f) uniform writeonly image2D outImage;
+layout(binding=2) buffer mySSBO
+{
+	int mode;
+	int kernelRadius;
+	float kernel[];
+};
+vec3 f_filter(ivec2 xy)
+{
+	vec3 col=vec3(0);
+	int w=kernelRadius*2+1;
+	int l=w*w-1;
+	for(int i=-kernelRadius;i<=kernelRadius;++i)
+	{
+		for(int j=-kernelRadius;j<=kernelRadius;++j)
+		{
+			//col+=kernel[l-((i+kernelRadius)*w+j+kernelRadius)]*imageLoad(inImage,xy+ivec2(i,j)).rgb;
+			col+=kernel[l-((i+kernelRadius)*w+j+kernelRadius)]*texelFetch(inImage,xy+ivec2(i,j),0).rgb;
+		}
+	}
+	return col;
+}
+vec3 f_edegenhencement_sobel(ivec2 xy)
+{
+	vec3 col[9];
+	for(int i=-1;i<=1;++i)
+	{
+		for(int j=-1;j<=1;++j)
+		{
+			//col[(j+1)*3+i+1]=imageLoad(inImage,xy+ivec2(i,j)).rgb;			
+			col[(j+1)*3+i+1]=texelFetch(inImage,xy+ivec2(i,j),0).rgb;			
+		}
+	}
+	vec3 dx=col[2]+2*col[5]+col[8]-(col[0]+2*col[3]+col[6]);
+	vec3 dy=col[6]+2*col[7]+col[8]-(col[0]+2*col[1]+col[2]);
+	float gx=(dx.r+dx.g+dx.b)/3;
+	float gy=(dy.r+dy.g+dy.b)/3;
+	return vec3(sqrt(gx*gx+gy*gy));
+}
+void main()
+{
+	ivec2 imgSize=ivec2(textureSize(inImage,0).xy);
+	//ivec2 imgSize=imageSize(inImage).xy;
+	ivec2 xy=ivec2(gl_GlobalInvocationID.x%imgSize.x,gl_GlobalInvocationID.x/imgSize.x);
+	if(xy.x>=imgSize.x||xy.y>=imgSize.y)
+		return;
+
+	vec3 col=vec3(0);
+	switch(mode)
+	{
+	case 0:
+		//col=imageLoad(inImage,xy).rgb;
+		col=texelFetch(inImage,xy,0).rgb;
+		break;
+	case 1:
+		col=f_edegenhencement_sobel(xy);
+		break;
+	case 2:
+		col=f_filter(xy);
+		break;
+	}
+	imageStore(outImage,xy,vec4(col,1));
+}

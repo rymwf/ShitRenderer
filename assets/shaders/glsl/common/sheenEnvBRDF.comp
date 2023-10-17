@@ -1,0 +1,122 @@
+#version 460
+
+layout(local_size_x=1,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+layout(local_size_y_id=1)in;
+layout(local_size_z_id=2)in;
+
+layout(rgba32f,binding=0) uniform image2D imgOut;
+
+#define PI 3.1415926535897932384626433832795
+#define SAMPLENUM 512
+
+#define WIDTH gl_WorkGroupSize.x
+//#define HEIGHT gl_NumWorkGroups.x
+
+//===========================
+//http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+float radicalInverse_VdC(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+vec2 hammersley2d(int i, int N) {
+	return vec2(float(i) / float(N), radicalInverse_VdC(uint(i)));
+}
+
+//================
+float sheenL(float x,float alphaG)
+{
+	float oneMinusAlphaSq=(1.-alphaG)*(1.-alphaG);
+	float a=mix(21.5473,25.3245,oneMinusAlphaSq);
+	float b=mix(3.82987,3.32435,oneMinusAlphaSq);
+	float c=mix(.19823,.16801,oneMinusAlphaSq);
+	float d=mix(-1.97760,-1.27393,oneMinusAlphaSq);
+	float e=mix(-4.32054,-4.85967,oneMinusAlphaSq);
+	return a/(1.+b*pow(x,c))+d*x+e;
+}
+float sheenLambda(float cosTheta, float alphaG)
+{
+    return abs(cosTheta) < 0.5 ? exp(sheenL(cosTheta, alphaG)) : exp(2.0 * sheenL(0.5, alphaG) - sheenL(1.0 - cosTheta, alphaG));
+}
+float sheenLambda2(float cosTheta, float alphaG)
+{
+	return pow(sheenLambda(cosTheta,alphaG),1+2*pow(1-cosTheta,8));
+}
+float sheenG(float alphaG,float NdotV,float NdotL)
+{
+	NdotV=max(NdotV,0);
+	return 1./(1.+sheenLambda2(NdotV,alphaG)+sheenLambda2(NdotL,alphaG));
+}
+
+vec3 importanceSample(vec2 xi,float alpha_g){
+	//sheen
+	float sinTheta=pow(xi.y,alpha_g/(1+2*alpha_g));
+	float cosTheta=sqrt(1-sinTheta*sinTheta);
+	float phi=2.*PI*xi.x;;  //[0,2*PI]
+	// from spherical coordinates to cartesian coordinates
+	return vec3(cos(phi) * sinTheta,sin(phi) * sinTheta,cosTheta);
+}
+
+shared float scan_area[64][64];
+shared float a;
+void main(){
+	ivec2 uv=ivec2(gl_LocalInvocationID.x,gl_WorkGroupID.x);
+
+	vec4 col=vec4(0);
+
+	float roughness=float(uv.y+1)/WIDTH;
+	float NdotV=float(uv.x+1)/WIDTH;
+
+	vec3 N=vec3(0,0,1);
+	vec3 V;
+	V.x = sqrt( 1.0 - NdotV * NdotV ); // sin
+	V.y = 0.;
+	V.z = NdotV; // cos
+	float alpha=roughness*roughness;
+	// float alpha=pow((roughness+1.)/2.,2.);
+	float A=0.;
+	float B=0.;
+	float C=0;
+	
+	for(int i=0;i<SAMPLENUM;++i){
+		vec2 xi=hammersley2d(i,SAMPLENUM);
+		vec3 H=importanceSample(xi,alpha);
+
+		float HdotV=max(dot(H,V),0.);
+		vec3 L=reflect(-V,H);
+		float NdotL=L.z;
+		float NdotH=H.z;
+
+		if(NdotL>0)
+		{
+			float G=sheenG(alpha,NdotV,NdotL)*HdotV/(NdotH*NdotV);
+			float Fc=pow(1.-HdotV,5.);
+			A+=(1.-Fc)*G;
+			B+=Fc*G;
+			C+=G;
+		}
+	}
+	col.r=A/float(SAMPLENUM);
+	col.g=B/float(SAMPLENUM);
+	col.a=C/float(SAMPLENUM);
+
+    for(int i=0;i<WIDTH;++i){
+        float F0=float(i)/(WIDTH-1);
+        scan_area[i][uv.x]=(col.r*F0+col.g)*NdotV;
+    }
+    
+	memoryBarrierShared();
+    float Rsf_cos=0;
+    for(int i=0;i<WIDTH;++i){
+        Rsf_cos+=scan_area[i][uv.x];
+    }
+	Rsf_cos*=2.f/WIDTH;
+	col.b=Rsf_cos;
+	imageStore(imgOut,uv,vec4(col.rgb,1));
+}
+
+

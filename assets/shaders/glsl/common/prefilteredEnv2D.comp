@@ -1,0 +1,152 @@
+#version 450
+
+#define PI 3.141592653
+
+#ifdef VULKAN
+#define SET(x) set=x,
+#define PUSH_CONSTANT push_constant
+#else
+#define SET(x)
+#extension GL_EXT_scalar_block_layout: enable
+#define PUSH_CONSTANT std430,binding=2
+#endif
+
+/*
+//local_size_x is level 0 width
+cubemap level 1 width is define by gl_NumWorkGroup.x
+inImage is cubemap level 0
+outImage is cubemap level 1-7, represent alpha [1-7]/7
+*/
+layout(local_size_x=512,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+
+layout(binding=0) uniform sampler2D inImage;
+layout(rgba32f,binding=1) uniform imageCube outImage;
+layout(PUSH_CONSTANT) uniform uPushConstant
+{
+	float roughness;
+	int sampleNum;
+};
+
+
+//===========================
+//http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+float radicalInverse_VdC(uint bits) {
+	bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+vec2 hammersley2d(int i, int N) {
+	return vec2(float(i) / float(N), radicalInverse_VdC(uint(i)));
+}
+mat3 surfaceTBN(vec3 N)
+{
+	vec3 up=abs(N.z)>0.999?vec3(1,0,0):vec3(0,0,1);
+	vec3 T=normalize(cross(up,N));
+	vec3 B=cross(N,T);
+	return mat3(T,B,N);
+}
+vec3 getCubeTexCoordFromCubeMap(ivec3 st,uint width){
+	vec2 uv=vec2(st.xy+0.5)*2./float(width)-1.;
+	vec3 res;
+	switch(st.z){
+		case 0: //x+
+			res=vec3(1.,-uv.y,-uv.x);
+			break;  
+		case 1: //x-
+			res=vec3(-1.,-uv.y,uv.x);
+			break;
+		case 2: //y+
+			res=vec3(uv.x,1,uv.y);
+			break;
+		case 3: //y-
+			res=vec3(uv.x,-1,-uv.y);
+			break;
+		case 4: //z+
+			res=vec3(uv.x,-uv.y,1.);
+			break;
+		case 5: //z-
+			res=vec3(-uv.x,-uv.y,-1.);
+			break;
+	}
+	#ifndef VULKAN
+	res.y=-res.y;	
+	#endif
+	return normalize(res);
+}
+vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
+	vec2 uv;
+	uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
+	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
+	return uv;
+}
+float NDF_GGX(float alpha_g,float NdotH){
+    float alpha_g2=alpha_g*alpha_g;
+    float NdotH2=NdotH*NdotH;
+    float deno=1.+NdotH2*(alpha_g2-1.);
+    return step(0.,NdotH)*alpha_g2/(deno*deno*PI);
+}
+//B. Walter, "Microfacet Models for Refraction through Rough Surfaces," Rendering Techniques 2007,Eurographics Association, pp. 195–206, 2007.
+vec3 importanceSample(vec2 xi,float alpha_g){
+	//GGX
+	float alpha_g2=alpha_g*alpha_g;
+	float tanTheta2=alpha_g2*(xi.x/(1.-xi.x));
+	float cosTheta=sqrt(1./(tanTheta2+1.));//always >=0
+	float sinTheta=sqrt(tanTheta2/(tanTheta2+1));
+    float phi=2.*PI*xi.y;;  //[0,2*PI]
+    // from spherical coordinates to cartesian coordinates
+    return vec3(cos(phi) * sinTheta,sin(phi) * sinTheta,cosTheta);
+}
+void main()
+{
+	const ivec3 ijk=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
+	const int skyboxWidth0=1024;
+	int skyboxWidth=int(gl_NumWorkGroups.x);
+	if(ijk.x>skyboxWidth)
+		return;
+
+	float alpha=roughness*roughness;
+
+	vec3 N=normalize(getCubeTexCoordFromCubeMap(ijk,skyboxWidth));
+	mat3 TBN=surfaceTBN(N);	
+
+	vec3 col=vec3(0.);
+	vec3 V=N;
+
+	float totalWeights = 0;
+	//Colbert, Mark, and Jaroslav Kˇriv´anek, “GPU-Based Importance Sampling,” in Hubert Nguyen, ed., GPU Gems 3, Addison-Wesley, pp. 459–475, 2007. 
+	//https://developer.nvidia.com/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling
+	//float l=0.5*log2(float(skyboxWidth0*skyboxWidth0)/sampleNum)+1;//nvidia ,d(u)=1 add a bias 1
+	//float l=0.5*log2(float(6*skyboxWidth0*skyboxWidth0)/(sampleNum));//cubemap d(u)=2pi/3
+	vec2 eqTexSize=textureSize(inImage,0);
+	float l=0.5*log2(float(4*eqTexSize.x*eqTexSize.y)/(sampleNum));//equirectangular
+	for(int i=0;i<sampleNum;++i){
+		vec2 xi=hammersley2d(i,sampleNum);
+		vec3 H=TBN*importanceSample(xi,alpha);
+		float NdotH=dot(N,H);
+		vec3 L=normalize(reflect(-V,H));
+		float LdotH=dot(L,H);
+		float NdotL=dot(N,L);
+
+		float D=NDF_GGX(alpha,NdotH);
+		float pdf=D/4;//N==V,pdf=D*NdotH/(4*VdotH)
+		float lod=l-0.5*log2(pdf);
+		vec2 st=CubeTexCoord2EquirectangularUV(L);
+		//unreal found that multiply with NdotL provide better result, take NdotL as weight
+		if(NdotL>0)
+		{
+			#if 0
+			col+=textureLod(inImage,st,lod).rgb;
+			totalWeights+=1;
+			#else
+			col+=textureLod(inImage,st,lod).rgb*NdotL;
+			totalWeights+=NdotL;
+			#endif
+		}
+	}
+	col/=totalWeights;
+	imageStore(outImage,ijk,vec4(col,1.));
+}

@@ -1,0 +1,28 @@
+#version 460
+
+#ifdef VULKAN
+#define SET(x) set=x,
+#define PUSH_CONSTANT push_constant
+#else
+#define SET(x)
+#extension GL_EXT_scalar_block_layout: enable
+#define PUSH_CONSTANT std430,binding=2
+#endif
+
+#define PI 3.141592653
+
+shared int a;
+
+layout(local_size_x=1024,local_size_y=1,local_size_z=1)in;
+
+layout(binding=0,rgba32f) uniform image2D inImage;
+void main()
+{
+	ivec2 imgSize=imageSize(inImage).xy;
+	ivec2 xy=ivec2(gl_GlobalInvocationID.x%imgSize.x,gl_GlobalInvocationID.x/imgSize.x);
+	if(xy.x>=imgSize.x||xy.y>=imgSize.y)
+		return;
+	vec3 col=imageLoad(inImage,xy).rgb;
+	col=clamp(col-vec3(1.),0,2);
+	imageStore(inImage,xy,vec4(col,1));
+}

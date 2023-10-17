@@ -1,0 +1,4 @@
+#pragma once
+#define SHIT_SOURCE_DIR "${CMAKE_SOURCE_DIR}"
+#define SHIT_OUTPUT_DIR "${SHIT_OUTPUT_DIR}"
+#define SHIT_BINARY_DIR "${CMAKE_BINARY_DIR}"

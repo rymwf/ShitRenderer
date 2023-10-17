@@ -1,0 +1,62 @@
+#version 460
+#define PI 3.141592653
+
+layout(local_size_x=1024,local_size_y=1,local_size_z=1)in;
+layout(local_size_x_id=0)in;
+layout(local_size_y_id=1)in;
+layout(local_size_z_id=2)in;
+
+layout(binding=0) uniform sampler2D inImage;
+layout(rgba32f,binding=1) uniform imageCube outImage;
+
+vec3 getCubeTexCoordFromCubeMap(ivec3 st,int width){
+	vec2 uv=vec2(st.xy+0.5)*2./float(width)-1.;
+	vec3 res;
+	switch(st.z){
+		case 0: //x+
+			res=vec3(1.,-uv.y,-uv.x);
+			break;  
+		case 1: //x-
+			res=vec3(-1.,-uv.y,uv.x);
+			break;
+		case 2: //y+
+			res=vec3(uv.x,1,uv.y);
+			break;
+		case 3: //y-
+			res=vec3(uv.x,-1,-uv.y);
+			break;
+		case 4: //z+
+			res=vec3(uv.x,-uv.y,1.);
+			break;
+		case 5: //z-
+			res=vec3(-uv.x,-uv.y,-1.);
+			break;
+	}
+	#ifndef VULKAN
+	res.y=-res.y;	
+	#endif
+	return normalize(res);
+	//return res;
+}
+
+vec2 CubeTexCoord2EquirectangularUV(vec3 cubeTexCoord){
+	vec2 uv;
+	uv.x=(atan(cubeTexCoord.z,cubeTexCoord.x)+PI)/(2.*PI);  //[0 1]
+	uv.y=acos(cubeTexCoord.y)/PI;	//[0,1]
+	return uv;
+}
+
+void main()
+{
+	ivec3 st=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
+
+	int cubeTexWidth=int(gl_NumWorkGroups.x);
+
+	vec3 cubeTexCoord=getCubeTexCoordFromCubeMap(st,cubeTexWidth);
+	vec2 uv=CubeTexCoord2EquirectangularUV(cubeTexCoord);
+
+	imageStore(outImage,st,texture(inImage,uv));
+	//imageStore(outImage,st,vec4(cubeTexCoord,1));
+//	imageStore(outImage,st,vec4(1));
+}
+

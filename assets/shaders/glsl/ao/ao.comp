@@ -1,0 +1,223 @@
+#version 460
+
+#ifdef VULKAN
+#define SET(x)set=x,
+#define PUSH_CONSTANT push_constant
+#else
+#define SET(x)
+#extension GL_EXT_scalar_block_layout:enable
+#define PUSH_CONSTANT std430,binding=2
+#endif
+
+#define PI 3.1415926535897932384626433832795
+#define PI05 1.5707963267948966192313216916398
+
+layout(local_size_x=1024,local_size_y=1,local_size_z=1,
+	local_size_x_id=0,local_size_x_id=1,local_size_x_id=2
+)in;
+
+layout(binding=0)uniform sampler2D inDepth;
+layout(binding=1)uniform sampler2D inPos;//in viewspace
+layout(binding=2)uniform sampler2D inNormal;//in viewspace
+layout(r16f,binding=3)uniform image2D outImage;
+layout(PUSH_CONSTANT)uniform uPushConstant
+{
+	int aoType;
+	int sampleStep;
+	int sampleStepNum;
+	int sampleDirections;
+	float maxRadius0;
+	float maxRadius1;
+}uPc;
+
+layout(SET(1)binding=0)buffer UBOCamera
+{
+	mat4 V;
+	mat4 P;
+	vec3 eyePos;
+	int cascadeNum;
+	float cascadeSplit[];
+}uboCamera;
+
+float rand(vec2 co){
+	return fract(sin(dot(co,vec2(12.9898,78.233)))*43758.5453);
+}
+
+mat2 rotate(float angle)
+{
+	float sinAngle=sin(angle);
+	float cosAngle=cos(angle);
+	return mat2(cosAngle,sinAngle,-sinAngle,cosAngle);
+}
+
+float integrateArcGTAOUniform(float h1,float h2)
+{
+	return 1-.5*(cos(h1)+cos(h2));
+}
+//h [0, PI/2]
+float integrateArcGTAOCosine(float h1,float h2,float n)
+{
+	return(-.25*(cos(2*h1-n)+cos(2*h2-n))+.5*(cos(n)+(h1+h2)*sin(n)));
+}
+float GTAOFastSqrt(float x)
+{
+	return uintBitsToFloat(0x1FBD1DF5+(floatBitsToUint(x)>>1));
+}
+//x [-1,1], result [0 PI]
+float GTAOFastAcos(float x)
+{
+	float res=-.156583*abs(x)+PI/2.;
+	res*=GTAOFastSqrt(1.-abs(x));
+	return x>=0?res:(PI-res);
+}
+float getDepth(vec2 uv)
+{
+	//#ifdef VULKAN
+	//uv.y=1.-uv.y;
+	//#endif
+	return texture(inDepth,uv).r;
+}
+float CalcAO(vec2 texcoord,vec2 dxy)
+{
+	float ao=0.;
+	float depth0=getDepth(texcoord);
+	if(depth0==1)
+		return 0;
+	mat4 transM=inverse(uboCamera.P);
+	#ifdef VULKAN
+	transM[1][1]=-transM[1][1];
+	#endif
+	//vec2 xy=vec2(texcoord.x,);
+	vec4 p0=transM*vec4(texcoord*2-1,depth0,1);
+	p0.xyz/=p0.w;
+	vec3 V=normalize(-p0.xyz);
+	vec3 N=texture(inNormal,texcoord).xyz;//in viewspace
+
+	vec4 temph;
+	vec2 duv;
+	float depth;
+
+	float d_angle=PI/uPc.sampleDirections;
+	float randval=rand(texcoord);
+	mat2 rotM=rotate(randval*2*PI);
+	float k;
+	for(uint i=0;i<uPc.sampleDirections;++i)
+	{
+		float cosh1=-1,cosh2=-1;
+		vec2 dir=rotM*vec2(cos(d_angle*i),sin(d_angle*i));
+		//vec2 dir=vec2(0,1);
+		for(int j=1;j<=uPc.sampleStepNum;++j)
+		{
+			duv=(j+randval-0.5)*dir*dxy*uPc.sampleStep;
+			depth=getDepth(texcoord+duv);
+			if(depth<1)
+			{
+				temph=transM*vec4(2*(texcoord+duv)-1,depth,1);
+				temph.xyz/=temph.w;
+				temph.xyz-=p0.xyz;
+				k=clamp((length(temph.xyz)-uPc.maxRadius0)/(uPc.maxRadius1-uPc.maxRadius0),0,1);
+				temph.xyz=normalize(temph.xyz);
+				cosh1=max(mix(dot(temph.xyz,V),-1,k),cosh1);
+			}
+			depth=getDepth(texcoord-duv);
+			if(depth<1)
+			{
+				//temph=transM*vec4(vec2(2*(texcoord.x-duv.x)-1,1.-2*(texcoord.y-duv.y)),depth,1);
+				temph=transM*vec4(2*(texcoord-duv)-1,depth,1);
+				temph.xyz/=temph.w;
+				temph.xyz-=p0.xyz;
+				k=clamp((length(temph.xyz)-uPc.maxRadius0)/(uPc.maxRadius1-uPc.maxRadius0),0,1);
+				temph.xyz=normalize(temph.xyz);
+				cosh2=max(mix(dot(temph.xyz,V),-1,k),cosh2);
+			}
+		}
+		#ifdef VULKAN
+		dir.y=-dir.y;
+		#endif
+		vec3 Sn=cross(V,vec3(dir,0));
+		vec3 Np=normalize(N-dot(N,Sn)*Sn);
+		float s=dot(Np,vec3(dir,0))>dot(V,vec3(dir,0))?-1:1;
+		float np=s*GTAOFastAcos(clamp(dot(V,Np),0,1));
+		float h1=np+max(-GTAOFastAcos(cosh1)-np,-PI05);//h1<0
+		float h2=np+min(GTAOFastAcos(cosh2)-np,PI05);//
+		if(uPc.aoType==0)
+		{
+			ao+=integrateArcGTAOUniform(h1,h2);
+		}
+		else
+		{
+			ao+=integrateArcGTAOCosine(max(h1,-PI05),min(h2,PI05),np);
+		}
+	}
+	return ao/uPc.sampleDirections;
+}
+//float CalcAO2(vec2 texcoord,vec2 dxy)
+//{
+//	float ao=0.;
+//	vec4 p0=texture(inPos,texcoord);
+//	if(p0.w==0)
+//		return 0;
+//	vec3 V=normalize(-p0.xyz);
+//	vec3 N=texture(inNormal,texcoord).xyz;//in viewspace
+
+//	vec4 p;
+//	float r;
+//	vec3 temph;
+//	vec2 duv;
+
+//	//const vec2 dirs[]={{1,0},{1,1},{0,1},{-1,1}};
+//	const int count=4;
+//	float d_angle=PI/count;
+//	mat2 rotM=rotate(rand(texcoord)*2*PI);
+//	float k;
+//	for(int i=0;i<count;++i)
+//	{
+//		float cosh1=-1,cosh2=-1;
+//		//vec2 dir=dirs[i];
+//		vec2 dir=rotM*vec2(cos(d_angle*i),sin(d_angle*i));
+//		for(int j=1;j<=uPc.sampleStepNum;++j)
+//		{
+//			duv=j*dir*dxy*uPc.sampleStep;
+//			duv.y=-duv.y;
+
+//			p=texture(inPos,texcoord+duv);
+//			p.xyz-=p0.xyz;
+//			if(p.w==1)
+//			{
+//				k=clamp((length(p.xyz)-uPc.maxRadius0)/(uPc.maxRadius1-uPc.maxRadius0),0,1);
+//				temph=normalize(p.xyz);
+//				cosh1=clamp(mix(dot(temph,V),-1,k),cosh1,1);
+//			}
+//			p=texture(inPos,texcoord-duv);
+//			p.xyz-=p0.xyz;
+//			if(p.w==1)
+//			{
+//				k=clamp((length(p.xyz)-uPc.maxRadius0)/(uPc.maxRadius1-uPc.maxRadius0),0,1);
+//				temph=normalize(p.xyz);
+//				cosh2=clamp(mix(dot(temph,V),-1,k),cosh2,1);
+//			}
+//		}
+//		vec3 Sn=cross(V,vec3(dir,0));
+//		vec3 Np=normalize(N-dot(N,Sn)*Sn);
+//		float s=dot(Np,vec3(dir,0))>dot(V,vec3(dir,0))?-1:1;
+//		float np=s*GTAOFastAcos(clamp(dot(V,Np),0,1));
+//		float h1=np+max(-GTAOFastAcos(cosh1)-np,-PI05);//h1<0
+//		float h2=np+min(GTAOFastAcos(cosh2)-np,PI05);//
+//		if(uPc.aoType==0)
+//			ao+=integrateArcGTAOUniform(h1,h2);
+//		else
+//			ao+=integrateArcGTAOCosine(max(h1,-PI05),min(h2,PI05),np);
+//	}
+//	return ao/count;
+//}
+void main()
+{
+	ivec2 outImgDim=imageSize(outImage);
+	ivec2 xy=ivec2(gl_GlobalInvocationID.x%outImgDim.x,gl_GlobalInvocationID.x/outImgDim.x);
+	if(xy.y>=outImgDim.y)
+	return;
+	vec2 dxy=1./outImgDim;
+	vec2 uv=(vec2(xy)+.5)*dxy;
+	float ao=CalcAO(uv,dxy);
+	imageStore(outImage,xy,vec4(ao,0,0,0));
+}

@@ -1,0 +1,163 @@
+#version 450
+
+#define PI 3.141592653
+
+#ifdef VULKAN
+#define SET(x) set=x,
+#define PUSH_CONSTANT push_constant
+#else
+#define SET(x)
+#extension GL_EXT_scalar_block_layout: enable
+#define PUSH_CONSTANT std430,binding=2
+#endif
+
+
+layout(local_size_x=64,local_size_y=1,local_size_z=1)in;
+//layout(local_size_x_id=0)in;
+//layout(local_size_y_id=1)in;
+//layout(local_size_z_id=2)in;
+
+layout(rgba32f,binding=0) uniform image1D inImage;
+layout(rgba32f,binding=1) uniform imageCube outImage;
+
+vec3 getCubeTexCoordFromCubeMap(ivec3 st,uint width){
+    vec2 uv=vec2(st.xy+0.5)*2./float(width)-1.;
+    vec3 res;
+    switch(st.z){
+        case 0: //x+
+            res=vec3(1.,-uv.y,-uv.x);
+            break;  
+        case 1: //x-
+            res=vec3(-1.,-uv.y,uv.x);
+            break;
+        case 2: //y+
+            res=vec3(uv.x,1,uv.y);
+            break;
+        case 3: //y-
+            res=vec3(uv.x,-1,-uv.y);
+            break;
+        case 4: //z+
+            res=vec3(uv.x,-uv.y,1.);
+            break;
+        case 5: //z-
+            res=vec3(-uv.x,-uv.y,-1.);
+            break;
+    }
+	#ifndef VULKAN
+	res.y=-res.y;	
+	#endif
+    return normalize(res);
+}
+int YlmTexCoord(int l, int m){
+	switch(l)
+	{
+		case 0:
+			return 0;
+		case 1:
+			return m+2;
+		case 2:
+			return m+6;
+		case 4:
+			return m+13;
+		default:
+			return 0;
+	}
+}
+
+vec3 Llm(int l,int m){
+    return imageLoad(inImage,YlmTexCoord(l,m)).rgb;
+}
+
+float SH_ylm(vec3 N,int l,int m){
+	if(l==0&&m==0)return 0.28209479177387814;
+	else if(l==1){
+		switch(m){
+			case -1:return 0.4886025119029199*N.y; 
+			case 0:return 0.488603*N.z;
+			case 1:return 0.488603*N.x;
+		}	
+	}else if(l==2){
+		switch(m){
+			case -2:return 1.092548*N.x*N.y;
+			case -1:return 1.092548*N.y*N.z; 
+			case 0:return 0.315392*(3*N.z*N.z-1.);
+			case 1:return 1.092548*N.x*N.z;
+			case 2:return 0.546274*(N.x*N.x-N.y*N.y);
+		}
+	}
+	else if(l==3)
+	{
+		switch(m){
+			case -3:return 0.590043589926644*N.y*(3*N.x*N.x-N.y*N.y); 
+			case -2:return 2.890611442640554*N.y*N.x*N.z; 
+			case -1:return 0.457045799464466*N.y*(5*N.z*N.z-1); 
+			case 0:return 0.373176332590115*N.z*(5*N.z*N.z-3);
+			case 1:return 0.457045799464466*N.x*(5*N.z*N.z-1);
+			case 2:return 1.445305721320277*N.z*(N.x*N.x-N.y*N.y);
+			case 3:return 0.590043589926644*N.x*(N.x*N.x-3*N.y*N.y);
+		}
+	}
+	else if(l==4)
+	{
+		switch(m){
+			case -4:return 2.5033429417967046*N.y*N.x*(N.x*N.x-N.y*N.y); 
+			case -3:return 1.7701307697799304*N.y*N.z*(3*N.x*N.x-N.y*N.y); 
+			case -2:return 0.9461746957575601*N.y*N.x*(7*N.z*N.z-1); 
+			case -1:return 0.6690465435572892*N.y*N.z*(7*N.z*N.z-3); 
+			case 0:return 0.10578554691520431*(35.*pow(abs(N.z),4)-30.*N.z*N.z+3);
+			case 1:return 0.6690465435572892*N.x*N.z*(7*N.z*N.z-3);
+			case 2:return 0.47308734787878004*(N.x*N.x-N.y*N.y)*(7*N.z*N.z-1);
+			case 3:return 1.7701307697799304*N.x*N.z*(N.x*N.x-3*N.y*N.y);
+			case 4:return 0.6258357354491761*(pow(abs(N.x),4)-6*N.x*N.x*N.y*N.y+pow(abs(N.y),4));
+		}
+	}
+	return 0.;
+}
+
+ivec2 getlm(uint i){
+	if(i<1)
+		return ivec2(0,0);
+	else if(i<4)
+		return ivec2(1,i-2);
+	else if(i<9)
+		return ivec2(2,i-6);
+	else if(i<16)
+		return ivec2(3,i-12);
+	else
+		return ivec2(4,i-20);
+}
+
+float A2(int l)
+{
+	l=abs(l);
+	if(l>5)
+		return 0;
+	const float ret[]={PI,
+		2.0943951023931953,
+		0.7853981633974483,
+		0,
+		-0.1308996938995747,
+		0,
+		0.04908738521234052
+	};
+	return ret[l];
+}
+vec3 irradianceRecontruct(vec3 N)
+{
+	vec3 col=vec3(0);
+	const int len[]={1,4,9,18};
+	for(uint i=0;i<len[3];++i)
+	{
+		ivec2 lm=getlm(i);
+		col+= A2(lm.x)*Llm(lm.x,lm.y)*SH_ylm(N,lm.x,lm.y);
+	}
+	return col;
+}
+void main()
+{
+	ivec3 ijk=ivec3(gl_LocalInvocationID.x,gl_WorkGroupID.x,gl_WorkGroupID.y);
+	const uint cubemapWidth=gl_WorkGroupSize.x;
+	//const uint cubemapWidth=gl_NumWorkGroups.x;
+    vec3 N=normalize(getCubeTexCoordFromCubeMap(ijk,cubemapWidth));
+    imageStore(outImage,ijk,vec4(irradianceRecontruct(N.xzy),1.));
+}

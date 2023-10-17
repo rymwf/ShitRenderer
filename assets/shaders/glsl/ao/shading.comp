@@ -1,0 +1,93 @@
+#version 460
+
+#ifdef VULKAN
+#define SET(x)set=x,
+#define PUSH_CONSTANT push_constant
+#else
+#define SET(x)
+#extension GL_EXT_scalar_block_layout:enable
+#define PUSH_CONSTANT std430,binding=0
+#endif
+
+layout(local_size_x=1024,local_size_y=1,local_size_z=1,
+	local_size_x_id=0,local_size_x_id=1,local_size_x_id=2
+)in;
+
+layout(SET(0)binding=0)buffer UBOCamera
+{
+	mat4 V;
+	mat4 P;
+	vec3 eyePos;
+	int cascadeNum;
+	float cascadeSplit[];
+}uboCamera;
+
+layout(SET(1)binding=0)uniform sampler2D inPos;
+layout(SET(1)binding=1)uniform sampler2D inN;
+layout(SET(1)binding=2)uniform sampler2D inDiffuse;
+layout(SET(1)binding=3)uniform sampler2D inSpecularShininess;
+layout(SET(1)binding=4)uniform sampler2D inEmissionAO;
+
+layout(SET(2)binding=5)uniform sampler2D inCalcAO;
+
+layout(SET(3)r16f,binding=0)uniform image2D outImage;
+
+layout(PUSH_CONSTANT)uniform uPushConstant
+{
+	int renderMode;
+	float aoBlur;
+};
+
+const float ambient=.5;
+
+vec3 AOMultiBounce(float visibility,vec3 albedo)
+{
+	return visibility/(1-albedo*(1-visibility));
+}
+
+vec3 GTAOMultiBounce(float visibility,vec3 albedo)
+{
+	vec3 a=2.0404*albedo-.3324;
+	vec3 b=-4.7951*albedo+.6417;
+	vec3 c=2.7552*albedo+.6903;
+	return max(vec3(visibility),((visibility*a+b)*visibility+c)*visibility);
+}
+
+void main()
+{
+	//ivec2 inTexDim=textureSize(inTex,0);
+	ivec2 outImgDim=imageSize(outImage);
+	ivec2 xy=ivec2(gl_GlobalInvocationID.x%outImgDim.x,gl_GlobalInvocationID.x/outImgDim.x);
+	if(xy.y>=outImgDim.y)
+	return;
+	vec2 uv=(vec2(xy)+.5)/outImgDim;
+	//#ifdef VULKAN
+	//uv.y=1.-uv.y;
+	//#endif
+	//==================
+	vec3 diffuse=textureLod(inDiffuse,uv,0).rgb;
+	float ao=textureLod(inCalcAO,uv,aoBlur).r;
+	vec3 ao2=GTAOMultiBounce(ao,diffuse);
+	
+	vec3 Lo=vec3(0);
+	switch(renderMode)
+	{
+		case 0:
+			Lo=vec3(ao);
+		break;
+		case 1:
+			Lo=ao2;
+		break;
+		case 2:
+		Lo=diffuse*ambient*ao2;
+		break;
+		case 3:
+		Lo=vec3(textureLod(inEmissionAO,uv,0).a);
+		break;
+		case 4:
+		Lo=diffuse*ambient;
+		break;
+	}
+	imageStore(outImage,xy,vec4(Lo,1));
+	//imageStore(outImage,xy,vec4(uv,0,1));
+}
